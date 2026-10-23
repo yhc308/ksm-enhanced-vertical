@@ -2,3 +2,6 @@ patches/dependencies/*.patch -text
 patches/dependencies/manifest.json text eol=lf
 *.py text eol=lf
 *.md text eol=lf
+
+# Serialized UI resources remain available; collapse their generated data in review.
+kshootmania/App/mods/**/*.noco linguist-generated=true
