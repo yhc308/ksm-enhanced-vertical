@@ -20,15 +20,14 @@ namespace MusicGame::Graphics
 	}
 
 	KeyBeamGraphics::KeyBeamGraphics()
-		: m_beamTexture(TextureAsset(kKeyBeamTextureFilename))
-        , m_perfectBeamTexture(TextureAsset(U"judge_p.gif"))
+		: m_beamTexture(TextureAsset(kKeyBeamTextureFilename)), m_perfectBeamTexture(TextureAsset(U"judge_p.gif"))
 	{
 	}
 
 	void KeyBeamGraphics::draw(const GameStatus& gameStatus, const ViewStatus& viewStatus, const HighwayRenderTexture& target) const
 	{
 		const ScopedRenderTarget2D renderTarget(target.additiveTexture());
-        const Transformer2D layout{Mat3x2::Scale(GameRender::VerticalEnabled() ? Vertical::kButtonWidthScale : 1.0,1.0,Vec2{static_cast<double>(kHighwayTextureWideCenterX),0})};
+		const Transformer2D layout{ Mat3x2::Scale(GameRender::VerticalEnabled() ? Vertical::kButtonWidthScale : 1.0, 1.0, Vec2{ static_cast<double>(kHighwayTextureWideCenterX), 0 }) };
 		const ScopedRenderStates2D renderState(BlendState::Additive);
 
 		for (std::size_t i = 0; i < kson::kNumBTLanesSZ + kson::kNumFXLanesSZ; ++i)
@@ -56,11 +55,12 @@ namespace MusicGame::Graphics
 				alpha = 1.0 - (sec - kKeyBeamFullWidthSec) / (kKeyBeamEndSec - kKeyBeamFullWidthSec);
 			}
 
-            const auto displayType=SkinPreset::DisplayBeam(laneStatus.keyBeamType,SkinPreset::Current().keyBeamMode);
-            if(!displayType)continue;
-            const bool perfect = *displayType == Judgment::KeyBeamType::kPerfectCritical;
-            const Texture& texture = perfect ? m_perfectBeamTexture : m_beamTexture;
-            const int32 column = perfect ? 0 : static_cast<int32>(*displayType);
+			const auto displayType = SkinPreset::DisplayBeam(laneStatus.keyBeamType, SkinPreset::Current().keyBeamMode);
+			if (!displayType)
+				continue;
+			const bool perfect = *displayType == Judgment::KeyBeamType::kPerfectCritical;
+			const Texture& texture = perfect ? m_perfectBeamTexture : m_beamTexture;
+			const int32 column = perfect ? 0 : static_cast<int32>(*displayType);
 			const TextureRegion beamTextureRegion = texture(
 				kBTKeyBeamTextureSize.x * (static_cast<double>(column) + 0.5 - widthRate / 2),
 				0,

@@ -9,6 +9,8 @@ if (NOT CMAKE_CONFIGURATION_TYPES AND
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+option(KSM_ENABLE_DIAGNOSTICS "Enable opt-in mod diagnostic command-line fixtures" OFF)
+
 option(OUTPUT_LICENSE_TXT "Output license.txt on startup" OFF)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/App)
@@ -30,6 +32,8 @@ add_executable(kshootmania
 	${GAME_SRC_FILES}
 	src/Main.cpp
 )
+
+target_compile_definitions(kshootmania PRIVATE KSM_ENABLE_DIAGNOSTICS=$<BOOL:${KSM_ENABLE_DIAGNOSTICS}>)
 
 if(APPLE)
     set_target_properties(kshootmania PROPERTIES

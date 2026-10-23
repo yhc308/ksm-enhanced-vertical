@@ -78,16 +78,12 @@ namespace MusicGame::Graphics
 
 	LaserApproachIndicator::LaserApproachIndicator(const kson::ChartData& chartData)
 		: m_texture(kTextureFilename,
-			{
-				.row = 2,
-				.column = 2,
-				.sourceSize = Size{ 240, 240 },
-			})
-		, m_textureRegionNormalL(m_texture(0, 0))
-		, m_textureRegionBlinkL(m_texture(0, 1))
-		, m_textureRegionNormalR(m_texture(1, 0))
-		, m_textureRegionBlinkR(m_texture(1, 1))
-		, m_chartData(chartData)
+					{
+						.row = 2,
+						.column = 2,
+						.sourceSize = Size{ 240, 240 },
+					}),
+		  m_textureRegionNormalL(m_texture(0, 0)), m_textureRegionBlinkL(m_texture(0, 1)), m_textureRegionNormalR(m_texture(1, 0)), m_textureRegionBlinkR(m_texture(1, 1)), m_chartData(chartData)
 	{
 	}
 
@@ -186,8 +182,8 @@ namespace MusicGame::Graphics
 			const bool shouldBlinkNow = ShouldBlink(elapsedMs);
 
 			const TextureRegion& textureRegion = (i == 0)
-				? (shouldBlinkNow ? m_textureRegionBlinkL : m_textureRegionNormalL)
-				: (shouldBlinkNow ? m_textureRegionBlinkR : m_textureRegionNormalR);
+													 ? (shouldBlinkNow ? m_textureRegionBlinkL : m_textureRegionNormalL)
+													 : (shouldBlinkNow ? m_textureRegionBlinkR : m_textureRegionNormalR);
 
 			const int32 xOffset = (i == 0) ? -kXOffsetFromCenter : kXOffsetFromCenter;
 			Vec2 pos = {
@@ -200,14 +196,14 @@ namespace MusicGame::Graphics
 			{
 				const auto viewport = Vertical::Viewport::Fit(GameRender::Width(), GameRender::Height());
 				const auto layout = Vertical::HUDDefinition()[U"laserApproach"];
-				pos = {viewport.x(layout[i == 0 ? U"leftX" : U"rightX"].get<double>()),
-					anchorY.value_or(GameRender::Height() * Vertical::ModConfig::Load().layout.judgmentLineY) -
-					layout[U"offsetY"].get<double>() * viewport.scale};
+				pos = { viewport.x(layout[i == 0 ? U"leftX" : U"rightX"].get<double>()),
+						anchorY.value_or(GameRender::Height() * Vertical::ModConfig::Load().layout.judgmentLineY) -
+							layout[U"offsetY"].get<double>() * viewport.scale };
 				verticalSize = layout[U"size"].get<double>() * viewport.scale;
 			}
 			const ScopedRenderStates2D samplerState(SamplerState::ClampLinear);
 			textureRegion
-				.resized(verticalSize > 0 ? SizeF{verticalSize, verticalSize} : SizeF{Scaled(kIconSize)})
+				.resized(verticalSize > 0 ? SizeF{ verticalSize, verticalSize } : SizeF{ Scaled(kIconSize) })
 				.drawAt(pos, ColorF(1.0, alpha));
 		}
 	}

@@ -252,8 +252,7 @@ namespace MusicGame::Judgment
 	}
 
 	LaserSlamJudgment::LaserSlamJudgment(double sec, int32 direction)
-		: m_sec(sec)
-		, m_direction(direction)
+		: m_sec(sec), m_direction(direction)
 	{
 	}
 
@@ -797,17 +796,7 @@ namespace MusicGame::Judgment
 	}
 
 	LaserLaneJudgment::LaserLaneJudgment(JudgmentPlayMode judgmentPlayMode, int32 laneIdx, const kson::ByPulse<kson::LaserSection>& lane, const kson::BeatInfo& beatInfo, const kson::TimingCache& timingCache)
-		: m_judgmentPlayMode(judgmentPlayMode)
-		, m_laneIdx(laneIdx)
-		, m_laserLineDirectionMap(CreateLaserLineDirectionMap(lane))
-		, m_laserLineDirectionMapForRippleEffect(CreateLaserLineDirectionMapForRippleEffect(m_laserLineDirectionMap, lane))
-		, m_laserLineDirectionChangeSecArray(CreateLaserLineDirectionChangeSecArray(lane, beatInfo, timingCache))
-		, m_laserLineDirectionChangeSecArrayCursor(m_laserLineDirectionChangeSecArray.begin())
-		, m_lineJudgmentArray(CreateLineJudgmentResultArray(lane, beatInfo, judgmentPlayMode))
-		, m_passedLineJudgmentCursor(m_lineJudgmentArray.begin())
-		, m_slamJudgmentArray(CreateSlamJudgmentArray(lane, beatInfo, timingCache, judgmentPlayMode))
-		, m_slamJudgmentArrayCursor(m_slamJudgmentArray.begin())
-		, m_passedSlamJudgmentCursor(m_slamJudgmentArray.begin())
+		: m_judgmentPlayMode(judgmentPlayMode), m_laneIdx(laneIdx), m_laserLineDirectionMap(CreateLaserLineDirectionMap(lane)), m_laserLineDirectionMapForRippleEffect(CreateLaserLineDirectionMapForRippleEffect(m_laserLineDirectionMap, lane)), m_laserLineDirectionChangeSecArray(CreateLaserLineDirectionChangeSecArray(lane, beatInfo, timingCache)), m_laserLineDirectionChangeSecArrayCursor(m_laserLineDirectionChangeSecArray.begin()), m_lineJudgmentArray(CreateLineJudgmentResultArray(lane, beatInfo, judgmentPlayMode)), m_passedLineJudgmentCursor(m_lineJudgmentArray.begin()), m_slamJudgmentArray(CreateSlamJudgmentArray(lane, beatInfo, timingCache, judgmentPlayMode)), m_slamJudgmentArrayCursor(m_slamJudgmentArray.begin()), m_passedSlamJudgmentCursor(m_slamJudgmentArray.begin())
 	{
 	}
 
@@ -1004,35 +993,53 @@ namespace MusicGame::Judgment
 		}
 	}
 
-    void LaserLaneJudgment::resetSettingsLoop() {
-        for(auto& [pulse,value]:m_lineJudgmentArray)value.result=JudgmentResult::kUnspecified;
-        for(auto& [pulse,value]:m_slamJudgmentArray)value.reset();
-        m_passedLineJudgmentCursor=m_lineJudgmentArray.begin();
-        m_slamJudgmentArrayCursor=m_passedSlamJudgmentCursor=m_slamJudgmentArray.begin();
-        m_laserLineDirectionChangeSecArrayCursor=m_laserLineDirectionChangeSecArray.begin();
-        m_isLockedForExit=false;m_inputAccumulator=LaserInputAccumulator{};
-        m_lastCorrectMovementSec=m_prevTimeSec=m_prevTimeSecForDraw=kPastTimeSec;
-        m_prevPulse=m_prevPulseForDraw=kPastPulse;
-        m_prevCurrentLaserSectionPulse.reset();m_prevCurrentLaserSectionPulseForDraw.reset();
-        m_prevIsCursorInCriticalJudgmentRange=m_prevIsCursorInCriticalJudgmentRangeForDraw=m_prevIsCursorInAutoFitRange=false;
-    }
-    void LaserLaneJudgment::skipSettings(const kson::ByPulse<kson::LaserSection>& lane,kson::Pulse pulse,kson::Pulse drawPulse,double time,double drawTime,LaserLaneStatus& status) {
-        while(m_passedLineJudgmentCursor!=m_lineJudgmentArray.end() && m_passedLineJudgmentCursor->first<=pulse){
-            auto& result=m_passedLineJudgmentCursor->second.result;
-            if(result==JudgmentResult::kUnspecified)result=JudgmentResult::kError;
-            ++m_passedLineJudgmentCursor;
-        }
-        while(m_slamJudgmentArrayCursor!=m_slamJudgmentArray.end() && m_slamJudgmentArrayCursor->second.sec()<=time){
-            m_slamJudgmentArrayCursor->second.setResult(JudgmentResult::kError);++m_slamJudgmentArrayCursor;
-        }
-        m_passedSlamJudgmentCursor=m_slamJudgmentArrayCursor;
-        while(m_laserLineDirectionChangeSecArrayCursor!=m_laserLineDirectionChangeSecArray.end() && *m_laserLineDirectionChangeSecArrayCursor<=time)++m_laserLineDirectionChangeSecArrayCursor;
-        m_inputAccumulator.resetAccumulation(time);m_lastCorrectMovementSec=kPastTimeSec;
-        m_prevIsCursorInCriticalJudgmentRange=m_prevIsCursorInCriticalJudgmentRangeForDraw=m_prevIsCursorInAutoFitRange=false;
-        status=LaserLaneStatus{};status.noteCursorX=kson::GraphSectionValueAt(lane,pulse);status.noteVisualCursorX=kson::GraphSectionValueAt(lane,drawPulse);
-        m_prevCurrentLaserSectionPulse.reset();m_prevCurrentLaserSectionPulseForDraw.reset();
-        m_prevPulse=pulse;m_prevPulseForDraw=drawPulse;m_prevTimeSec=time;m_prevTimeSecForDraw=drawTime;
-    }
+	void LaserLaneJudgment::resetSettingsLoop()
+	{
+		for (auto& [pulse, value] : m_lineJudgmentArray)
+			value.result = JudgmentResult::kUnspecified;
+		for (auto& [pulse, value] : m_slamJudgmentArray)
+			value.reset();
+		m_passedLineJudgmentCursor = m_lineJudgmentArray.begin();
+		m_slamJudgmentArrayCursor = m_passedSlamJudgmentCursor = m_slamJudgmentArray.begin();
+		m_laserLineDirectionChangeSecArrayCursor = m_laserLineDirectionChangeSecArray.begin();
+		m_isLockedForExit = false;
+		m_inputAccumulator = LaserInputAccumulator{};
+		m_lastCorrectMovementSec = m_prevTimeSec = m_prevTimeSecForDraw = kPastTimeSec;
+		m_prevPulse = m_prevPulseForDraw = kPastPulse;
+		m_prevCurrentLaserSectionPulse.reset();
+		m_prevCurrentLaserSectionPulseForDraw.reset();
+		m_prevIsCursorInCriticalJudgmentRange = m_prevIsCursorInCriticalJudgmentRangeForDraw = m_prevIsCursorInAutoFitRange = false;
+	}
+	void LaserLaneJudgment::skipSettings(const kson::ByPulse<kson::LaserSection>& lane, kson::Pulse pulse, kson::Pulse drawPulse, double time, double drawTime, LaserLaneStatus& status)
+	{
+		while (m_passedLineJudgmentCursor != m_lineJudgmentArray.end() && m_passedLineJudgmentCursor->first <= pulse)
+		{
+			auto& result = m_passedLineJudgmentCursor->second.result;
+			if (result == JudgmentResult::kUnspecified)
+				result = JudgmentResult::kError;
+			++m_passedLineJudgmentCursor;
+		}
+		while (m_slamJudgmentArrayCursor != m_slamJudgmentArray.end() && m_slamJudgmentArrayCursor->second.sec() <= time)
+		{
+			m_slamJudgmentArrayCursor->second.setResult(JudgmentResult::kError);
+			++m_slamJudgmentArrayCursor;
+		}
+		m_passedSlamJudgmentCursor = m_slamJudgmentArrayCursor;
+		while (m_laserLineDirectionChangeSecArrayCursor != m_laserLineDirectionChangeSecArray.end() && *m_laserLineDirectionChangeSecArrayCursor <= time)
+			++m_laserLineDirectionChangeSecArrayCursor;
+		m_inputAccumulator.resetAccumulation(time);
+		m_lastCorrectMovementSec = kPastTimeSec;
+		m_prevIsCursorInCriticalJudgmentRange = m_prevIsCursorInCriticalJudgmentRangeForDraw = m_prevIsCursorInAutoFitRange = false;
+		status = LaserLaneStatus{};
+		status.noteCursorX = kson::GraphSectionValueAt(lane, pulse);
+		status.noteVisualCursorX = kson::GraphSectionValueAt(lane, drawPulse);
+		m_prevCurrentLaserSectionPulse.reset();
+		m_prevCurrentLaserSectionPulseForDraw.reset();
+		m_prevPulse = pulse;
+		m_prevPulseForDraw = drawPulse;
+		m_prevTimeSec = time;
+		m_prevTimeSecForDraw = drawTime;
+	}
 
 	std::size_t LaserLaneJudgment::lineJudgmentCount() const
 	{

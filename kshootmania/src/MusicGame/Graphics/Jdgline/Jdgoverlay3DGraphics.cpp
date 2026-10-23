@@ -67,8 +67,8 @@ namespace MusicGame::Graphics
 		{
 		case kCritical:
 			return m_chipCriticalTexture;
-        case kPerfectCritical:
-            return m_chipPerfectCriticalTexture;
+		case kPerfectCritical:
+			return m_chipPerfectCriticalTexture;
 
 		case kNearFast:
 		case kNear:
@@ -101,13 +101,14 @@ namespace MusicGame::Graphics
 				const int32 frameIdx = static_cast<int32>(sec / kChipAnimDurationSec * kChipAnimFrames);
 				const int32 columnIdx = chipAnimState.type == Judgment::ChipAnimType::kNearFast ? 1 : 0; // FASTの場合は列が異なる
 				Vec2 position = Scaled(kTextureSize.x / 4 + 92 + (isBT ? 0 : 30) + (isBT ? kBTLaneDiffX : kFXLaneDiffX) * laneIdx + centerSplitShiftX, 17);
-				SizeF size=Scaled(kChipAnimSize);
-                if(GameRender::VerticalEnabled()){
-                    size.x*=ViewportGeometry::ButtonScale();
-                    const double x=Vertical::ButtonWorldX(isBT,laneIdx,centerSplitShiftX*42.0/kBTLaneDiffX);
-                    position.x=Scaled(kTextureSize.x/2+x*8/.95)-size.x/2;
-                }
-                chipAnimTexture(chipAnimState.type)(frameIdx,columnIdx).resized(size).draw(position);
+				SizeF size = Scaled(kChipAnimSize);
+				if (GameRender::VerticalEnabled())
+				{
+					size.x *= ViewportGeometry::ButtonScale();
+					const double x = Vertical::ButtonWorldX(isBT, laneIdx, centerSplitShiftX * 42.0 / kBTLaneDiffX);
+					position.x = Scaled(kTextureSize.x / 2 + x * 8 / .95) - size.x / 2;
+				}
+				chipAnimTexture(chipAnimState.type)(frameIdx, columnIdx).resized(size).draw(position);
 			}
 		}
 	}
@@ -132,11 +133,12 @@ namespace MusicGame::Graphics
 			const double sec = gameStatus.currentTimeSec - laneStatus.currentLongNoteAnimOffsetTimeSec;
 			Vec2 position = Scaled(kTextureSize.x / 4 + (isBT ? 75 : 96) + (isBT ? kBTLaneDiffX : kFXLaneDiffX) * laneIdx + centerSplitShiftX, isBT ? 10 : 0);
 			SizeF size = Scaled(isBT ? kLongAnimSizeBT : kLongAnimSizeFX);
-            if(GameRender::VerticalEnabled()){
-                size.x*=ViewportGeometry::ButtonScale();
-                const double x=Vertical::ButtonWorldX(isBT,laneIdx,centerSplitShiftX*42.0/kBTLaneDiffX);
-                position.x=Scaled(kTextureSize.x/2+x*8/.95)-size.x/2;
-            }
+			if (GameRender::VerticalEnabled())
+			{
+				size.x *= ViewportGeometry::ButtonScale();
+				const double x = Vertical::ButtonWorldX(isBT, laneIdx, centerSplitShiftX * 42.0 / kBTLaneDiffX);
+				position.x = Scaled(kTextureSize.x / 2 + x * 8 / .95) - size.x / 2;
+			}
 
 			int32 frameIdx;
 			if (laneStatus.currentLongNotePulse.has_value())
@@ -181,7 +183,7 @@ namespace MusicGame::Graphics
 	{
 		const int32 frameIdx = static_cast<int32>(MathUtils::WrappedFmod(gameStatus.currentTimeSec / kLaserAnimLoopDurationSec, 1.0) * kLaserAnimLoopFrames);
 		SizeF size = Scaled(kLaserAnimSize);
-        size.x*=ViewportGeometry::LaserScale();
+		size.x *= ViewportGeometry::LaserScale();
 		for (int32 i = 0; i < kson::kNumLaserLanes; ++i)
 		{
 			const auto& laneStatus = gameStatus.laserLaneStatus[i];
@@ -197,9 +199,11 @@ namespace MusicGame::Graphics
 				continue;
 			}
 			const double cursorX = laneStatus.cursorWide ? ((cursorXOpt.value() - 0.5) * 2 + 0.5) : cursorXOpt.value();
-			Vec2 position = Scaled(kTextureSize.x / 4 + 28 + static_cast<int32>(295 * ViewportGeometry::LaserValue(cursorX)),17);
-            if(GameRender::VerticalEnabled())position.x=Scaled(kTextureSize.x/2+Vertical::LaserWorldX(cursorX)*8/.95)-size.x/2;
-            else position.x-=Scaled(kLaserAnimSize.x)*(ViewportGeometry::LaserScale()-1)/2;
+			Vec2 position = Scaled(kTextureSize.x / 4 + 28 + static_cast<int32>(295 * ViewportGeometry::LaserValue(cursorX)), 17);
+			if (GameRender::VerticalEnabled())
+				position.x = Scaled(kTextureSize.x / 2 + Vertical::LaserWorldX(cursorX) * 8 / .95) - size.x / 2;
+			else
+				position.x -= Scaled(kLaserAnimSize.x) * (ViewportGeometry::LaserScale() - 1) / 2;
 			m_laserAnimTexture(frameIdx, i).resized(size).draw(position);
 		}
 	}
@@ -231,65 +235,65 @@ namespace MusicGame::Graphics
 				}
 
 				SizeF size = Scaled(kLaserRippleAnimSize);
-                size.x*=ViewportGeometry::LaserScale();
+				size.x *= ViewportGeometry::LaserScale();
 				const double x = rippleAnimStatus.wide ? ((rippleAnimStatus.x - 0.5) * 2 + 0.5) : rippleAnimStatus.x;
-				Vec2 position = Scaled(kTextureSize.x / 4 - 6 + static_cast<int32>(295 * ViewportGeometry::LaserValue(x)),17);
-                if(GameRender::VerticalEnabled())position.x=Scaled(kTextureSize.x/2+Vertical::LaserWorldX(x)*8/.95)-size.x/2;
-                else position.x-=Scaled(kLaserRippleAnimSize.x)*(ViewportGeometry::LaserScale()-1)/2;
+				Vec2 position = Scaled(kTextureSize.x / 4 - 6 + static_cast<int32>(295 * ViewportGeometry::LaserValue(x)), 17);
+				if (GameRender::VerticalEnabled())
+					position.x = Scaled(kTextureSize.x / 2 + Vertical::LaserWorldX(x) * 8 / .95) - size.x / 2;
+				else
+					position.x -= Scaled(kLaserRippleAnimSize.x) * (ViewportGeometry::LaserScale() - 1) / 2;
 				m_laserRippleAnimTexture(frameIdx, i).resized(size).draw(position, ColorF{ kLaserRippleAnimAlpha });
 			}
 		}
 	}
 
 	Jdgoverlay3DGraphics::Jdgoverlay3DGraphics(const BasicCamera3D& camera)
-		: m_renderTexture(Scaled(kTextureSize.x), Scaled(kTextureSize.y))
-		, m_chipCriticalTexture(kChipCriticalAnimTextureFilename,
-			{
-				.row = kChipAnimFrames,
-				.sourceScale = SourceScale::kNoScaling,
-				.sourceSize = kChipAnimSourceSize,
-			})
-        , m_chipPerfectCriticalTexture(U"judge_p1.gif",
-            {
-                .row = kChipAnimFrames,
-                .sourceScale = SourceScale::kNoScaling,
-                .sourceSize = kChipAnimSourceSize,
-            })
-		, m_chipNearTexture(kChipNearAnimTextureFilename,
-			{
-				.row = kChipAnimFrames,
-				.column = 2, // 1列目はSLOW(またはFAST/SLOW非表示時)、2列目はFAST
-				.sourceScale = SourceScale::kNoScaling,
-				.sourceSize = kChipAnimSourceSize,
-			})
-		, m_chipErrorTexture(kChipErrorAnimTextureFilename,
-			{
-				.row = kChipAnimFrames,
-				.sourceScale = SourceScale::kNoScaling,
-				.sourceSize = kChipAnimSourceSize,
-			})
-		, m_longAnimTexture(kLongAnimTextureFilename,
-			{
-				.row = kLongAnimTotalFrames,
-				.sourceScale = SourceScale::kNoScaling,
-				.sourceSize = kLongAnimSourceSize,
-			})
-		, m_laserAnimTexture(kLaserAnimTextureFilename,
-			{
-				.row = kLaserAnimLoopFrames,
-				.column = kson::kNumLaserLanes,
-				.sourceScale = SourceScale::kNoScaling,
-				.sourceSize = kLaserAnimSourceSize,
-			})
-		, m_laserRippleAnimTexture(kLaserRippleAnimTextureFilename,
-			{
-				.row = kLaserRippleAnimFrames,
-				.column = kson::kNumLaserLanes,
-				.sourceScale = SourceScale::kNoScaling,
-				.sourceSize = kLaserRippleAnimSourceSize,
-			})
-		, m_transform(camera.billboard(kPlaneCenter, kPlaneSize))
-		, m_mesh(MeshData::Billboard())
+		: m_renderTexture(Scaled(kTextureSize.x), Scaled(kTextureSize.y)), m_chipCriticalTexture(kChipCriticalAnimTextureFilename,
+																								 {
+																									 .row = kChipAnimFrames,
+																									 .sourceScale = SourceScale::kNoScaling,
+																									 .sourceSize = kChipAnimSourceSize,
+																								 }),
+		  m_chipPerfectCriticalTexture(U"judge_p1.gif",
+									   {
+										   .row = kChipAnimFrames,
+										   .sourceScale = SourceScale::kNoScaling,
+										   .sourceSize = kChipAnimSourceSize,
+									   }),
+		  m_chipNearTexture(kChipNearAnimTextureFilename,
+							{
+								.row = kChipAnimFrames,
+								.column = 2, // 1列目はSLOW(またはFAST/SLOW非表示時)、2列目はFAST
+								.sourceScale = SourceScale::kNoScaling,
+								.sourceSize = kChipAnimSourceSize,
+							}),
+		  m_chipErrorTexture(kChipErrorAnimTextureFilename,
+							 {
+								 .row = kChipAnimFrames,
+								 .sourceScale = SourceScale::kNoScaling,
+								 .sourceSize = kChipAnimSourceSize,
+							 }),
+		  m_longAnimTexture(kLongAnimTextureFilename,
+							{
+								.row = kLongAnimTotalFrames,
+								.sourceScale = SourceScale::kNoScaling,
+								.sourceSize = kLongAnimSourceSize,
+							}),
+		  m_laserAnimTexture(kLaserAnimTextureFilename,
+							 {
+								 .row = kLaserAnimLoopFrames,
+								 .column = kson::kNumLaserLanes,
+								 .sourceScale = SourceScale::kNoScaling,
+								 .sourceSize = kLaserAnimSourceSize,
+							 }),
+		  m_laserRippleAnimTexture(kLaserRippleAnimTextureFilename,
+								   {
+									   .row = kLaserRippleAnimFrames,
+									   .column = kson::kNumLaserLanes,
+									   .sourceScale = SourceScale::kNoScaling,
+									   .sourceSize = kLaserRippleAnimSourceSize,
+								   }),
+		  m_transform(camera.billboard(kPlaneCenter, kPlaneSize)), m_mesh(MeshData::Billboard())
 	{
 	}
 
@@ -306,21 +310,24 @@ namespace MusicGame::Graphics
 		drawLaserRippleAnim(gameStatus);
 	}
 
-	void Jdgoverlay3DGraphics::draw3D(const ViewStatus& viewStatus,const BasicCamera3D& camera,Float3 displayAnchor) const
+	void Jdgoverlay3DGraphics::draw3D(const ViewStatus& viewStatus, const BasicCamera3D& camera, Float3 displayAnchor) const
 	{
-        // Composite feedback over the judgment bar, following the exact note hit plane.
-        const ScopedRenderStates3D state{BlendState::Additive,DepthStencilState{false,false}};
-        if(GameRender::VerticalEnabled()) {
-            const Transformer3D transform{Vertical::HighwayOrigin(viewStatus)};
-            m_mesh.draw(camera.billboard(displayAnchor,kPlaneSize),m_renderTexture);
-        } else {
-            // Preserve KSM's original landscape billboard, pivot and zoom rules.
-            const double scale=viewStatus.camStatus.useLegacyJdgScale
-                ? Camera::LegacyJdgoverlayScale(viewStatus.camStatus.zoomBottom)
-                : Camera::JdgoverlayScale(viewStatus.camStatus.zoomBottom);
-            const double radians=Math::ToRadians(viewStatus.camStatus.rotationDeg+viewStatus.camStatus.rotationDegHighway)+viewStatus.tiltRadians;
-            const Transformer3D transform(Mat4x4::Translate(Vec3::Right(viewStatus.camStatus.shiftX))*Mat4x4::Scale(scale,kPlaneCenter)*TiltTransformMatrix(radians));
-            m_mesh.draw(m_transform,m_renderTexture);
-        }
-    }
+		// Composite feedback over the judgment bar, following the exact note hit plane.
+		const ScopedRenderStates3D state{ BlendState::Additive, DepthStencilState{ false, false } };
+		if (GameRender::VerticalEnabled())
+		{
+			const Transformer3D transform{ Vertical::HighwayOrigin(viewStatus) };
+			m_mesh.draw(camera.billboard(displayAnchor, kPlaneSize), m_renderTexture);
+		}
+		else
+		{
+			// Preserve KSM's original landscape billboard, pivot and zoom rules.
+			const double scale = viewStatus.camStatus.useLegacyJdgScale
+									 ? Camera::LegacyJdgoverlayScale(viewStatus.camStatus.zoomBottom)
+									 : Camera::JdgoverlayScale(viewStatus.camStatus.zoomBottom);
+			const double radians = Math::ToRadians(viewStatus.camStatus.rotationDeg + viewStatus.camStatus.rotationDegHighway) + viewStatus.tiltRadians;
+			const Transformer3D transform(Mat4x4::Translate(Vec3::Right(viewStatus.camStatus.shiftX)) * Mat4x4::Scale(scale, kPlaneCenter) * TiltTransformMatrix(radians));
+			m_mesh.draw(m_transform, m_renderTexture);
+		}
+	}
 }

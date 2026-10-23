@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "TimingFeedback.hpp"
 #include "JudgeSettingSession.hpp"
 #include "Scroll/HispeedSetting.hpp"
@@ -21,16 +21,22 @@ namespace MusicGame
 	{
 		// Observation/replay sessions must never create normal score records.
 		bool diagnosticSession = false;
-        bool skinPreview = false;
-        std::shared_ptr<JudgeSettingSession> judgeSetting;
-        FastSlowMode liveFastSlowMode() const {return judgeSetting?judgeSetting->values.mode:fastSlowMode;}
-        const TimingHudSettings& liveTimingHud() const {return judgeSetting?judgeSetting->values.hud:timingHud;}
+		bool skinPreview = false;
+		std::shared_ptr<JudgeSettingSession> judgeSetting;
+		FastSlowMode liveFastSlowMode() const
+		{
+			return judgeSetting ? judgeSetting->values.mode : fastSlowMode;
+		}
+		const TimingHudSettings& liveTimingHud() const
+		{
+			return judgeSetting ? judgeSetting->values.hud : timingHud;
+		}
 		GameMode gameMode = GameMode::kNormal;
 
 		IsAutoPlayYN isAutoPlay = IsAutoPlayYN::No;
 
 		GaugeType gaugeType = GaugeType::kNormalGauge;
-        bool apsEnabled = false;
+		bool apsEnabled = false;
 
 		TurnMode turnMode = TurnMode::kNormal;
 
@@ -60,7 +66,7 @@ namespace MusicGame
 
 		FastSlowMode fastSlowMode = FastSlowMode::kHide;
 
-        TimingHudSettings timingHud;
+		TimingHudSettings timingHud;
 
 		Array<HispeedType> availableHispeedTypes = { HispeedType::OMod };
 
@@ -101,7 +107,7 @@ namespace MusicGame
 		// visualOffsetを考慮したglobalOffsetを取得
 		int32 effectiveGlobalOffsetMs() const
 		{
-			return globalOffsetMs - (judgeSetting?judgeSetting->values.visual:visualOffsetMs);
+			return globalOffsetMs - (judgeSetting ? judgeSetting->values.visual : visualOffsetMs);
 		}
 
 		// visualOffsetを考慮したinputDelayを取得(オートプレイ時は判定調整なし)
@@ -113,20 +119,20 @@ namespace MusicGame
 			}
 			else
 			{
-				return judgeSetting ? judgeSetting->values.input+judgeSetting->values.visual : inputDelayMs+visualOffsetMs;
+				return judgeSetting ? judgeSetting->values.input + judgeSetting->values.visual : inputDelayMs + visualOffsetMs;
 			}
 		}
 
 		// オートプレイ時は判定調整なし
 		int32 effectiveLaserInputDelayMs() const
 		{
-			return isAutoPlay ? 0 : (judgeSetting?judgeSetting->values.laser:laserInputDelayMs);
+			return isAutoPlay ? 0 : (judgeSetting ? judgeSetting->values.laser : laserInputDelayMs);
 		}
 
 		// visualOffsetを考慮したオーディオエフェクト遅延を取得
 		int32 effectiveAudioProcDelayMs() const
 		{
-			return audioProcDelayMs + (judgeSetting?judgeSetting->values.visual:visualOffsetMs);
+			return audioProcDelayMs + (judgeSetting ? judgeSetting->values.visual : visualOffsetMs);
 		}
 
 		bool isAssist() const
@@ -137,13 +143,13 @@ namespace MusicGame
 		}
 
 		// スコアを保存すべきかどうか
-        bool effectiveApsEnabled() const
-        {
-            return apsEnabled && gaugeType == GaugeType::kHardGauge && gameMode == GameMode::kNormal &&
-                !judgeSetting && !skinPreview && !diagnosticSession && !testPlayOption.has_value();
-        }
+		bool effectiveApsEnabled() const
+		{
+			return apsEnabled && gaugeType == GaugeType::kHardGauge && gameMode == GameMode::kNormal &&
+				   !judgeSetting && !skinPreview && !diagnosticSession && !testPlayOption.has_value();
+		}
 
-        bool shouldSaveScore() const
+		bool shouldSaveScore() const
 		{
 			return !judgeSetting && !skinPreview && !diagnosticSession && !isAutoPlay && !testPlayOption.has_value();
 		}

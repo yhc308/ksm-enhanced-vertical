@@ -45,16 +45,16 @@ namespace MusicGame::Graphics
 		// TODO: separate into single class
 		const Mesh m_bgBillboardMesh;
 		const Mesh m_verticalLayerMesh;
-        const bool m_vertical;
-        const bool m_depthEnabled;
-        const bool m_backgroundOnly;
-        const bool m_warpDebug;
-        const Texture m_uvTexture;
-        Vertical::ProjectiveWall m_tunnelWarp;
-        MeshData m_referenceGear{4,2};
-        Mat4x4 layerTransform(const ViewStatus& view) const;
+		const bool m_vertical;
+		const bool m_depthEnabled;
+		const bool m_backgroundOnly;
+		const bool m_warpDebug;
+		const Texture m_uvTexture;
+		Vertical::ProjectiveWall m_tunnelWarp;
+		MeshData m_referenceGear{ 4, 2 };
+		Mat4x4 layerTransform(const ViewStatus& view) const;
 		std::array<Texture, 2> m_bgTextures;
-		const std::array<Mesh,2> m_verticalBGMeshes;
+		const std::array<Mesh, 2> m_verticalBGMeshes;
 		const Mat4x4 m_bgTransform;
 		std::array<Array<Texture>, 2> m_layerFrameTextures;
 		const Mat4x4 m_layerTransform;
@@ -67,19 +67,19 @@ namespace MusicGame::Graphics
 
 		std::shared_ptr<noco::Canvas> m_hudCanvas;
 		ScoreAnimator m_scoreAnimator;
-        int32 m_exHudCaptureStage = -1;
+		int32 m_exHudCaptureStage = -1;
 
 		GaugePanel m_gaugePanel;
 		ComboOverlay m_comboOverlay;
 		AchievementPanel m_achievementPanel;
 		LaserApproachIndicator m_laserApproachIndicator;
 		MoviePanel m_moviePanel;
-        TimingOverlay m_timingOverlay;
-        PlayJudgeIndicator m_playJudgeIndicator;
+		TimingOverlay m_timingOverlay;
+		PlayJudgeIndicator m_playJudgeIndicator;
 
 		const PlayOption m_playOption;
-        const bool m_layerTilt;
-        const bool m_layerSpin;
+		const bool m_layerTilt;
+		const bool m_layerSpin;
 
 		const double m_layerFrameOriginTimeSec;
 
@@ -100,8 +100,11 @@ namespace MusicGame::Graphics
 
 		[[nodiscard]]
 		bool hasMovie() const;
-        Array<double> geometrySignature(const ViewStatus& view) const;
-        void writeWarpReport() const {m_tunnelWarp.writeReport(U"vertical-warp-preview.csv");}
+		Array<double> geometrySignature(const ViewStatus& view) const;
+		void writeWarpReport() const
+		{
+			m_tunnelWarp.writeReport(U"vertical-warp-preview.csv");
+		}
 
 		void seekMoviePosSec(SecondsF posSec);
 	};

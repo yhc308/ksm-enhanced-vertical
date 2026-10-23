@@ -11,10 +11,7 @@ namespace MusicGame::Graphics
 
 	ScorePanel::ScorePanel()
 		//: m_captionTexture(TextureAsset(kCaptionTextureFilename))
-		: m_captionTexture(SkinPreset::LoadTexture(kCaptionTextureFilename))
-		, m_numberTextureFont(kNumberTextureFontFilename, { 64, 64 })
-		, m_numberLayout(Scaled(24, 24), TextureFontTextLayout::Align::Right, 8, Scaled(22))
-		, m_animationTimer(kAnimationDuration, StartImmediately::No)
+		: m_captionTexture(SkinPreset::LoadTexture(kCaptionTextureFilename)), m_numberTextureFont(kNumberTextureFontFilename, { 64, 64 }), m_numberLayout(Scaled(24, 24), TextureFontTextLayout::Align::Right, 8, Scaled(22)), m_animationTimer(kAnimationDuration, StartImmediately::No)
 	{
 	}
 

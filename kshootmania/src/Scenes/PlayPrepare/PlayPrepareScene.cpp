@@ -1,4 +1,5 @@
-﻿#include "ksmaudio/Diagnostics.hpp"
+﻿#include "Diagnostics/DiagnosticArguments.hpp"
+#include "ksmaudio/Diagnostics.hpp"
 #include "PlayPrepareScene.hpp"
 #include "Scenes/Select/SelectScene.hpp"
 #include "Scenes/Play/PlayScene.hpp"
@@ -54,19 +55,12 @@ namespace
 }
 
 PlayPrepareScene::PlayPrepareScene(FilePathView chartFilePath, MusicGame::IsAutoPlayYN isAutoPlay, const Optional<CoursePlayState>& courseState, const Optional<MusicGame::TestPlayOption>& testPlayOption, const Optional<SelectSceneSearchParams>& selectSearchParams)
-	: m_chartFilePath(chartFilePath)
-	, m_isAutoPlay(isAutoPlay)
-	, m_chartData(FsUtils::HasKsonExtension(chartFilePath)
-		? kson::LoadKsonChartData(chartFilePath.toUTF8())
-		: kson::LoadKshChartData(chartFilePath.toUTF8()))
-	, m_courseState(courseState)
-	, m_testPlayOption(testPlayOption)
-	, m_selectSearchParams(selectSearchParams)
-	, m_canvas(LoadPlayPrepareSceneCanvas())
-	, m_hispeedMenu(ConfigIni::LoadAvailableHispeedTypes(), LoadHispeedSettingFromConfigIni(), kson::GetEffectiveStdBPM(m_chartData), GetInitialBPM(m_chartData))
-	, m_highwayScroll(m_chartData)
+	: m_chartFilePath(chartFilePath), m_isAutoPlay(isAutoPlay), m_chartData(FsUtils::HasKsonExtension(chartFilePath)
+																				? kson::LoadKsonChartData(chartFilePath.toUTF8())
+																				: kson::LoadKshChartData(chartFilePath.toUTF8())),
+	  m_courseState(courseState), m_testPlayOption(testPlayOption), m_selectSearchParams(selectSearchParams), m_canvas(LoadPlayPrepareSceneCanvas()), m_hispeedMenu(ConfigIni::LoadAvailableHispeedTypes(), LoadHispeedSettingFromConfigIni(), kson::GetEffectiveStdBPM(m_chartData), GetInitialBPM(m_chartData)), m_highwayScroll(m_chartData)
 {
-    ksmaudio::qa::Scope qaConstruct{"PlayPrepareScene.construct",true};
+	ksmaudio::qa::Scope qaConstruct{ "PlayPrepareScene.construct", true };
 	const double startBPM = GetInitialBPM(m_chartData);
 
 	// ハイスピード設定でHighwayScrollを更新
@@ -122,11 +116,17 @@ PlayPrepareScene::PlayPrepareScene(FilePathView chartFilePath, MusicGame::IsAuto
 
 Co::Task<void> PlayPrepareScene::start()
 {
-	const auto updateRunner = Co::UpdaterTask([this] { update(); }).runScoped();
+	const auto updateRunner = Co::UpdaterTask([this]
+											  {
+												  update();
+											  })
+								  .runScoped();
 
-    if(System::GetCommandLineArgs().contains(U"--vertical-preview-prepare")) {
-        while(true) co_await Co::NextFrame();
-    }
+	if (ModDiagnostics::Arguments().contains(U"--vertical-preview-prepare"))
+	{
+		while (true)
+			co_await Co::NextFrame();
+	}
 	CommonSEAddon::Play(CommonSEType::kSelEnter);
 
 	// ハイスピード変更から一定時間経過、またはBackキーで終了
@@ -178,8 +178,8 @@ Co::Task<void> PlayPrepareScene::start()
 
 void PlayPrepareScene::update()
 {
-    ksmaudio::qa::Scope qaScope{"PlayPrepareScene.update",false};
-    ksmaudio::qa::Scene("playprepare");
+	ksmaudio::qa::Scope qaScope{ "PlayPrepareScene.update", false };
+	ksmaudio::qa::Scene("playprepare");
 	// 画面全体がクリック可能なのでカーソルを人差し指に変更
 	Cursor::RequestStyle(CursorStyle::Hand);
 
@@ -206,14 +206,16 @@ void PlayPrepareScene::update()
 
 void PlayPrepareScene::draw() const
 {
-    ksmaudio::qa::Scope qaScope{"PlayPrepareScene.draw",false};
-    if(Vertical::ModConfig::Load().enabled) Scene::Rect().draw(Palette::Black);
+	ksmaudio::qa::Scope qaScope{ "PlayPrepareScene.draw", false };
+	if (Vertical::ModConfig::Load().enabled)
+		Scene::Rect().draw(Palette::Black);
 	m_canvas->draw();
-    if(m_introAlpha>0) {
-        const double scale=Min(Scene::Width()/640.0,Scene::Height()/480.0);
-        const auto flash=Vertical::ModConfig::Load().enabled?Vertical::MenuContent::Rect():RectF{Arg::center=Scene::Center(),640*scale,480*scale};
-        flash.draw(ColorF{1.0,m_introAlpha});
-    }
+	if (m_introAlpha > 0)
+	{
+		const double scale = Min(Scene::Width() / 640.0, Scene::Height() / 480.0);
+		const auto flash = Vertical::ModConfig::Load().enabled ? Vertical::MenuContent::Rect() : RectF{ Arg::center = Scene::Center(), 640 * scale, 480 * scale };
+		flash.draw(ColorF{ 1.0, m_introAlpha });
+	}
 
 	// フェードアウト描画
 	// (途中でハイスピード変更したときにフェードアウトを途中で戻す必要があるため、Co::ScreenFadeOutを使わずに毎フレームの処理で描画)
@@ -227,14 +229,24 @@ void PlayPrepareScene::draw() const
 
 Co::Task<void> PlayPrepareScene::fadeIn()
 {
-	const auto canvasUpdateRunner = Co::UpdaterTask([this] { m_canvas->update(noco::HitTestEnabledYN::No); }).runScoped();
+	const auto canvasUpdateRunner = Co::UpdaterTask([this]
+													{
+														m_canvas->update(noco::HitTestEnabledYN::No);
+													})
+										.runScoped();
 
-    if(!Vertical::ModConfig::Load().enabled) co_await Co::ScreenFadeIn(kFadeDuration, Palette::White);
-    else {
-        Stopwatch fade{StartImmediately::Yes};
-        while(fade.elapsed()<kFadeDuration) {m_introAlpha=1-fade.sF()/kFadeDuration.count();co_await Co::NextFrame();}
-        m_introAlpha=0;
-    }
+	if (!Vertical::ModConfig::Load().enabled)
+		co_await Co::ScreenFadeIn(kFadeDuration, Palette::White);
+	else
+	{
+		Stopwatch fade{ StartImmediately::Yes };
+		while (fade.elapsed() < kFadeDuration)
+		{
+			m_introAlpha = 1 - fade.sF() / kFadeDuration.count();
+			co_await Co::NextFrame();
+		}
+		m_introAlpha = 0;
+	}
 }
 
 Co::Task<void> PlayPrepareScene::postFadeOut()

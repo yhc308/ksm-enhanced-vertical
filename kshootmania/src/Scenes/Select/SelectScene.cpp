@@ -1,4 +1,5 @@
-﻿#include "ksmaudio/Diagnostics.hpp"
+﻿#include "Diagnostics/DiagnosticArguments.hpp"
+#include "ksmaudio/Diagnostics.hpp"
 #include "SelectScene.hpp"
 #include "Scenes/PlayPrepare/PlayPrepareScene.hpp"
 #include "Scenes/Title/TitleScene.hpp"
@@ -36,7 +37,8 @@ namespace
 		{
 			throw Error{ U"Failed to load '{}'"_fmt(uiFilePath) };
 		}
-		if (Vertical::ModConfig::Load().enabled) canvas->setAutoFitMode(noco::AutoFitMode::Contain);
+		if (Vertical::ModConfig::Load().enabled)
+			canvas->setAutoFitMode(noco::AutoFitMode::Contain);
 		return canvas;
 	}
 
@@ -356,24 +358,33 @@ void SelectScene::exitSearchMode()
 
 SelectScene::SelectScene(const Optional<SelectSceneSearchParams>& initialSearchParams)
 	: m_folderCloseButton(
-		ConfigIni::GetInt(ConfigIni::Key::kSelectCloseFolderKey) == ConfigIni::Value::SelectCloseFolderKey::kBackButton
-			? static_cast<Button>(kButtonBack)
-			: static_cast<Button>(kButtonBackspace))
-	, m_canvas(LoadSelectSceneCanvas())
-	, m_menu(
-		m_canvas,
-		[this](FilePathView chartFilePath, MusicGame::IsAutoPlayYN isAutoPlayYN, Optional<CoursePlayState> courseState) { moveToPlayScene(chartFilePath, isAutoPlayYN, courseState); },
-		[this](StringView msg) { m_dialogRunner = Co::Play<SimpleDialog>(String{ U"ERROR" }, String{ msg }).runScoped(); },
-		[this]() { exitSearchMode(); },
-		[this]() { openFavoriteDialogForCursor(); })
-	, m_playerNames(GetPlayerNames())
-	, m_fxButtonUpDetection({ KeyShift })
-	, m_btOptionPanel(m_canvas)
-	, m_playStatsPanel(m_canvas)
+		  ConfigIni::GetInt(ConfigIni::Key::kSelectCloseFolderKey) == ConfigIni::Value::SelectCloseFolderKey::kBackButton
+			  ? static_cast<Button>(kButtonBack)
+			  : static_cast<Button>(kButtonBackspace)),
+	  m_canvas(LoadSelectSceneCanvas()), m_menu(
+											 m_canvas,
+											 [this](FilePathView chartFilePath, MusicGame::IsAutoPlayYN isAutoPlayYN, Optional<CoursePlayState> courseState)
+											 {
+												 moveToPlayScene(chartFilePath, isAutoPlayYN, courseState);
+											 },
+											 [this](StringView msg)
+											 {
+												 m_dialogRunner = Co::Play<SimpleDialog>(String{ U"ERROR" }, String{ msg }).runScoped();
+											 },
+											 [this]()
+											 {
+												 exitSearchMode();
+											 },
+											 [this]()
+											 {
+												 openFavoriteDialogForCursor();
+											 }),
+	  m_playerNames(GetPlayerNames()), m_fxButtonUpDetection({ KeyShift }), m_btOptionPanel(m_canvas), m_playStatsPanel(m_canvas)
 {
-    ksmaudio::qa::Scope qaConstruct{"SelectScene.construct",true};
+	ksmaudio::qa::Scope qaConstruct{ "SelectScene.construct", true };
 	AutoMuteAddon::SetEnabled(true);
-	if (Vertical::ModConfig::Load().enabled) m_commonOverlay.setModScreenLayout();
+	if (Vertical::ModConfig::Load().enabled)
+		m_commonOverlay.setModScreenLayout();
 
 	// 検索結果表示ノードを取得
 	m_searchResultNode = NocoUtils::GetNodeByPath(m_canvas, { U"SearchResult" });
@@ -421,9 +432,15 @@ SelectScene::SelectScene(const Optional<SelectSceneSearchParams>& initialSearchP
 		{
 			m_searchPhase = SelectSceneSearchPhase::kInput;
 			m_dialogRunner = Co::Play<SearchInputDialog>(
-				restoreQuery,
-				[this](StringView q) { m_menu.setSearchQuery(q); }
-			).runScoped([this](const Optional<String>& result) { onSearchInputDialogClosed(result); });
+								 restoreQuery,
+								 [this](StringView q)
+								 {
+									 m_menu.setSearchQuery(q);
+								 })
+								 .runScoped([this](const Optional<String>& result)
+											{
+												onSearchInputDialogClosed(result);
+											});
 		}
 		else
 		{
@@ -440,8 +457,8 @@ SelectScene::SelectScene(const Optional<SelectSceneSearchParams>& initialSearchP
 
 void SelectScene::update()
 {
-    ksmaudio::qa::Scope qaScope{"SelectScene.update",false};
-    ksmaudio::qa::Scene("select");
+	ksmaudio::qa::Scope qaScope{ "SelectScene.update", false };
+	ksmaudio::qa::Scene("select");
 	const noco::HitTestEnabledYN hitTestEnabled{ !isFadingIn() && !isFadingOut() && InputUtils::IsUIMouseInputEnabled() };
 
 	// ダイアログ表示中は必要な更新のみ実行
@@ -454,8 +471,10 @@ void SelectScene::update()
 	}
 
 	// 共通オーバーレイを更新
-    if(Scene::Height()>Scene::Width())m_commonOverlay.setModScreenLayout();
-    if(TimingHudCapture::Enabled()&&System::GetCommandLineArgs().contains(U"--back-button-capture"))m_commonOverlay.setBackButtonFocused(true);
+	if (Scene::Height() > Scene::Width())
+		m_commonOverlay.setModScreenLayout();
+	if (TimingHudCapture::Enabled() && ModDiagnostics::Arguments().contains(U"--back-button-capture"))
+		m_commonOverlay.setBackButtonFocused(true);
 	m_commonOverlay.update(hitTestEnabled);
 
 	// BTオプションパネル更新
@@ -496,7 +515,7 @@ void SelectScene::update()
 		return;
 	}
 
-	const bool closeFolder = !inSearchMode && m_menu.isFolderOpen() && KeyConfig::Down(m_folderCloseButton/* ← kBackspace・kBackのいずれかが入っている */);
+	const bool closeFolder = !inSearchMode && m_menu.isFolderOpen() && KeyConfig::Down(m_folderCloseButton /* ← kBackspace・kBackのいずれかが入っている */);
 
 	// BackSpaceキーまたはBackボタン(Escキー)でフォルダを閉じる
 	if (closeFolder)
@@ -595,32 +614,58 @@ void SelectScene::update()
 	// Shift+A〜Zでアルファベットジャンプ
 	if (KeyShift.pressed())
 	{
-		if (KeyA.down()) m_menu.jumpToAlphabetItem(U'A');
-		else if (KeyB.down()) m_menu.jumpToAlphabetItem(U'B');
-		else if (KeyC.down()) m_menu.jumpToAlphabetItem(U'C');
-		else if (KeyD.down()) m_menu.jumpToAlphabetItem(U'D');
-		else if (KeyE.down()) m_menu.jumpToAlphabetItem(U'E');
-		else if (KeyF.down()) m_menu.jumpToAlphabetItem(U'F');
-		else if (KeyG.down()) m_menu.jumpToAlphabetItem(U'G');
-		else if (KeyH.down()) m_menu.jumpToAlphabetItem(U'H');
-		else if (KeyI.down()) m_menu.jumpToAlphabetItem(U'I');
-		else if (KeyJ.down()) m_menu.jumpToAlphabetItem(U'J');
-		else if (KeyK.down()) m_menu.jumpToAlphabetItem(U'K');
-		else if (KeyL.down()) m_menu.jumpToAlphabetItem(U'L');
-		else if (KeyM.down()) m_menu.jumpToAlphabetItem(U'M');
-		else if (KeyN.down()) m_menu.jumpToAlphabetItem(U'N');
-		else if (KeyO.down()) m_menu.jumpToAlphabetItem(U'O');
-		else if (KeyP.down()) m_menu.jumpToAlphabetItem(U'P');
-		else if (KeyQ.down()) m_menu.jumpToAlphabetItem(U'Q');
-		else if (KeyR.down()) m_menu.jumpToAlphabetItem(U'R');
-		else if (KeyS.down()) m_menu.jumpToAlphabetItem(U'S');
-		else if (KeyT.down()) m_menu.jumpToAlphabetItem(U'T');
-		else if (KeyU.down()) m_menu.jumpToAlphabetItem(U'U');
-		else if (KeyV.down()) m_menu.jumpToAlphabetItem(U'V');
-		else if (KeyW.down()) m_menu.jumpToAlphabetItem(U'W');
-		else if (KeyX.down()) m_menu.jumpToAlphabetItem(U'X');
-		else if (KeyY.down()) m_menu.jumpToAlphabetItem(U'Y');
-		else if (KeyZ.down()) m_menu.jumpToAlphabetItem(U'Z');
+		if (KeyA.down())
+			m_menu.jumpToAlphabetItem(U'A');
+		else if (KeyB.down())
+			m_menu.jumpToAlphabetItem(U'B');
+		else if (KeyC.down())
+			m_menu.jumpToAlphabetItem(U'C');
+		else if (KeyD.down())
+			m_menu.jumpToAlphabetItem(U'D');
+		else if (KeyE.down())
+			m_menu.jumpToAlphabetItem(U'E');
+		else if (KeyF.down())
+			m_menu.jumpToAlphabetItem(U'F');
+		else if (KeyG.down())
+			m_menu.jumpToAlphabetItem(U'G');
+		else if (KeyH.down())
+			m_menu.jumpToAlphabetItem(U'H');
+		else if (KeyI.down())
+			m_menu.jumpToAlphabetItem(U'I');
+		else if (KeyJ.down())
+			m_menu.jumpToAlphabetItem(U'J');
+		else if (KeyK.down())
+			m_menu.jumpToAlphabetItem(U'K');
+		else if (KeyL.down())
+			m_menu.jumpToAlphabetItem(U'L');
+		else if (KeyM.down())
+			m_menu.jumpToAlphabetItem(U'M');
+		else if (KeyN.down())
+			m_menu.jumpToAlphabetItem(U'N');
+		else if (KeyO.down())
+			m_menu.jumpToAlphabetItem(U'O');
+		else if (KeyP.down())
+			m_menu.jumpToAlphabetItem(U'P');
+		else if (KeyQ.down())
+			m_menu.jumpToAlphabetItem(U'Q');
+		else if (KeyR.down())
+			m_menu.jumpToAlphabetItem(U'R');
+		else if (KeyS.down())
+			m_menu.jumpToAlphabetItem(U'S');
+		else if (KeyT.down())
+			m_menu.jumpToAlphabetItem(U'T');
+		else if (KeyU.down())
+			m_menu.jumpToAlphabetItem(U'U');
+		else if (KeyV.down())
+			m_menu.jumpToAlphabetItem(U'V');
+		else if (KeyW.down())
+			m_menu.jumpToAlphabetItem(U'W');
+		else if (KeyX.down())
+			m_menu.jumpToAlphabetItem(U'X');
+		else if (KeyY.down())
+			m_menu.jumpToAlphabetItem(U'Y');
+		else if (KeyZ.down())
+			m_menu.jumpToAlphabetItem(U'Z');
 	}
 
 	updateAlphabetJump();
@@ -738,8 +783,9 @@ void SelectScene::openFavoriteDialogForCursor()
 
 void SelectScene::draw() const
 {
-    ksmaudio::qa::Scope qaScope{"SelectScene.draw",false};
-	if (Vertical::ModConfig::Load().enabled) Scene::Rect().draw(Palette::Black);
+	ksmaudio::qa::Scope qaScope{ "SelectScene.draw", false };
+	if (Vertical::ModConfig::Load().enabled)
+		Scene::Rect().draw(Palette::Black);
 	m_canvas->draw();
 	m_commonOverlay.draw();
 }

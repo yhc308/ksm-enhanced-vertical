@@ -1,4 +1,5 @@
-﻿#include "Graphics/ExScorePanel.hpp"
+﻿#include "Diagnostics/DiagnosticArguments.hpp"
+#include "Graphics/ExScorePanel.hpp"
 #include "ksmaudio/Diagnostics.hpp"
 #include "ResultScene.hpp"
 #include "Scenes/Select/SelectScene.hpp"
@@ -64,7 +65,10 @@ namespace
 	};
 
 	constexpr std::array<StringView, kNumDifficulties> kDifficultyAbbreviations = {
-		U"LT", U"CH", U"EX", U"IN",
+		U"LT",
+		U"CH",
+		U"EX",
+		U"IN",
 	};
 
 	String SignString(int32 value)
@@ -448,16 +452,10 @@ namespace
 }
 
 ResultScene::ResultScene(const ResultSceneArgs& args)
-	: m_canvas(LoadResultSceneCanvas())
-	, m_chartData(args.chartData)
-	, m_playResult(args.playResult)
-	, m_newRecordPanel(m_canvas)
-	, m_snsShare(BuildResultTweetText(args.chartData, args.playResult, args.chartFilePath, args.courseState))
-	, m_courseState(args.courseState)
-	, m_selectSearchParams(args.selectSearchParams)
+	: m_canvas(LoadResultSceneCanvas()), m_chartData(args.chartData), m_playResult(args.playResult), m_newRecordPanel(m_canvas), m_snsShare(BuildResultTweetText(args.chartData, args.playResult, args.chartFilePath, args.courseState)), m_courseState(args.courseState), m_selectSearchParams(args.selectSearchParams)
 {
-    ksmaudio::qa::Scope qaConstruct{"ResultScene.construct",true};
-    m_canvas->setParamValue(U"judgePanelImage",U"imgs/"+MusicGame::JudgeImage(U"result_v2_judge.png",m_playResult.playOption.timingHud.judgeColor));
+	ksmaudio::qa::Scope qaConstruct{ "ResultScene.construct", true };
+	m_canvas->setParamValue(U"judgePanelImage", U"imgs/" + MusicGame::JudgeImage(U"result_v2_judge.png", m_playResult.playOption.timingHud.judgeColor));
 	// コースモードの場合は結果を記録
 	if (m_courseState)
 	{
@@ -468,8 +466,7 @@ ResultScene::ResultScene(const ResultSceneArgs& args)
 	int32 oldScore = 0;
 	if (m_playResult.playOption.shouldSaveScore())
 	{
-		const KscKey condition
-		{
+		const KscKey condition{
 			.gaugeType = m_playResult.playOption.gaugeType,
 			.turnMode = m_playResult.playOption.turnMode,
 			.playbackSpeed = m_playResult.playOption.playbackSpeed,
@@ -482,24 +479,27 @@ ResultScene::ResultScene(const ResultSceneArgs& args)
 		// スコア保存前に前回までのハイスコアを取得
 		const HighScoreInfo oldHighScore = KscIO::ReadHighScoreInfo(chartFilePath, condition);
 		oldScore = oldHighScore.score(m_playResult.playOption.gaugeType);
-        m_bestScoreComparison = ResultBestScoreComparison::Capture(oldHighScore, m_playResult);
+		m_bestScoreComparison = ResultBestScoreComparison::Capture(oldHighScore, m_playResult);
 
 		// NewRecordパネルに値を設定
 		m_newRecordPanel.setValue(oldScore, m_playResult.score);
 
 		// スコアを保存
-		{ ksmaudio::qa::Scope save{"result.score.save",true}; KscIO::WriteHighScoreInfo(chartFilePath, m_playResult, condition); }
+		{
+			ksmaudio::qa::Scope save{ "result.score.save", true };
+			KscIO::WriteHighScoreInfo(chartFilePath, m_playResult, condition);
+		}
 	}
 
-    // Render-only preview never reads or writes a high score.
-    if (m_playResult.playOption.diagnosticSession &&
-        System::GetCommandLineArgs().contains(U"--vertical-preview-new-record"))
-        m_newRecordPanel.setValue(0, m_playResult.score);
+	// Render-only preview never reads or writes a high score.
+	if (m_playResult.playOption.diagnosticSession &&
+		ModDiagnostics::Arguments().contains(U"--vertical-preview-new-record"))
+		m_newRecordPanel.setValue(0, m_playResult.score);
 
 	updateCanvasParams();
 
-    ExScorePanel::Set(*m_canvas,m_playResult.exScore,m_playResult.exMaximum);
-    ResultBestScorePanel::Set(*m_canvas,m_bestScoreComparison);
+	ExScorePanel::Set(*m_canvas, m_playResult.exScore, m_playResult.exMaximum);
+	ResultBestScorePanel::Set(*m_canvas, m_bestScoreComparison);
 	// ジャケット画像を設定
 	const FilePath chartDir = FileSystem::ParentPath(args.chartFilePath);
 	const FilePath jacketPath = FsUtils::ResolveJacketPath(chartDir, Unicode::FromUTF8(m_chartData.meta.jacketFilename));
@@ -536,8 +536,8 @@ void ResultScene::updateCanvasParams()
 {
 	// ゲージタイプとパーセンテージに応じてゲージの見た目を変更
 	const int32 percentThreshold = m_playResult.playOption.gaugeType == GaugeType::kHardGauge
-		? MusicGame::kGaugePercentageThresholdHardWarning
-		: MusicGame::kGaugePercentageThreshold;
+									   ? MusicGame::kGaugePercentageThresholdHardWarning
+									   : MusicGame::kGaugePercentageThreshold;
 	const int32 gaugePercentageInt = static_cast<int32>(m_playResult.gaugePercentage);
 	const int32 gaugeTextureIndex = static_cast<int32>(m_playResult.playOption.gaugeType) * 2 + (gaugePercentageInt < percentThreshold ? 0 : 1);
 
@@ -557,13 +557,13 @@ void ResultScene::updateCanvasParams()
 		{ U"maxComboNumber", m_playResult.maxCombo },
 		{ U"criticalCount", m_playResult.comboStats.critical },
 		{ U"nearCount", m_playResult.comboStats.totalNear() },
-        { U"fastErrorCount", m_playResult.detailedStats.fastError },
-        { U"fastNearCount", m_playResult.detailedStats.fastNear },
-        { U"fastCriticalCount", m_playResult.detailedStats.fastCritical },
-        { U"perfectCriticalCount", m_playResult.detailedStats.perfectCritical },
-        { U"slowCriticalCount", m_playResult.detailedStats.slowCritical },
-        { U"slowNearCount", m_playResult.detailedStats.slowNear },
-        { U"slowErrorCount", m_playResult.detailedStats.slowError + Max(unjudgedCombo, 0) },
+		{ U"fastErrorCount", m_playResult.detailedStats.fastError },
+		{ U"fastNearCount", m_playResult.detailedStats.fastNear },
+		{ U"fastCriticalCount", m_playResult.detailedStats.fastCritical },
+		{ U"perfectCriticalCount", m_playResult.detailedStats.perfectCritical },
+		{ U"slowCriticalCount", m_playResult.detailedStats.slowCritical },
+		{ U"slowNearCount", m_playResult.detailedStats.slowNear },
+		{ U"slowErrorCount", m_playResult.detailedStats.slowError + Max(unjudgedCombo, 0) },
 		{ U"errorCount", errorCountWithUnjudged },
 		{ U"gaugePercentageNumber", static_cast<int32>(m_playResult.gaugePercentage) },
 		{ U"gaugeTextureIndex", static_cast<double>(gaugeTextureIndex) },
@@ -584,14 +584,18 @@ void ResultScene::updateCanvasParams()
 
 Co::Task<void> ResultScene::start()
 {
-	const auto updateRunner = Co::UpdaterTask([this] { update(); }).runScoped();
+	const auto updateRunner = Co::UpdaterTask([this]
+											  {
+												  update();
+											  })
+								  .runScoped();
 
-    // Isolated visual tests must not be dismissed by desktop keyboard/mouse activity.
-    if (System::GetCommandLineArgs().contains(U"--result-detail-capture")
-        && FileSystem::Exists(FsUtils::GetResourcePath(U"audio-test-fixture")))
-    {
-        while (true) co_await Co::NextFrame();
-    }
+	// Isolated visual tests must not be dismissed by desktop keyboard/mouse activity.
+	if (ModDiagnostics::Arguments().contains(U"--result-detail-capture") && FileSystem::Exists(FsUtils::GetResourcePath(U"audio-test-fixture")))
+	{
+		while (true)
+			co_await Co::NextFrame();
+	}
 
 	bool userPressedStartOrBack = false;
 
@@ -745,8 +749,8 @@ bool ResultScene::isClickDecideDown() const
 
 void ResultScene::update()
 {
-    ksmaudio::qa::Scope qaScope{"ResultScene.update",false};
-    ksmaudio::qa::Scene("result");
+	ksmaudio::qa::Scope qaScope{ "ResultScene.update", false };
+	ksmaudio::qa::Scene("result");
 	// 画面全体がクリック可能なのでカーソルを人差し指に変更
 	Cursor::RequestStyle(CursorStyle::Hand);
 
@@ -760,7 +764,7 @@ void ResultScene::update()
 
 void ResultScene::draw() const
 {
-    ksmaudio::qa::Scope qaScope{"ResultScene.draw",false};
+	ksmaudio::qa::Scope qaScope{ "ResultScene.draw", false };
 	m_canvas->draw();
 }
 

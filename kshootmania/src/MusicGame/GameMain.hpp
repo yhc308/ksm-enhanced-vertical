@@ -45,7 +45,8 @@ namespace MusicGame
 
 	class GameMain
 	{
-        GameRender::Context m_renderContext=GameRender::Current();
+		GameRender::Context m_renderContext = GameRender::Current();
+
 	public:
 		using StartFadeOutYN = YesNo<struct StartFadeOutYN_tag>;
 
@@ -72,14 +73,14 @@ namespace MusicGame
 
 		// プレイオプション
 		const PlayOption m_playOption;
-        double m_settingsChartOffset=0;
+		double m_settingsChartOffset = 0;
 
 		// 判定
 		std::unique_ptr<Judgment::JudgmentMain> m_judgmentMain;
 
 		// 視点制御
 		Camera::HighwayTilt m_highwayTilt; // 傾き
-		Camera::CamSystem m_camSystem; // 視点変更
+		Camera::CamSystem m_camSystem;	   // 視点変更
 
 		// スクロール(ハイスピード・scroll_speedの処理)
 		Scroll::HighwayScroll m_highwayScroll;
@@ -99,9 +100,9 @@ namespace MusicGame
 
 		// グラフィックス
 		std::unique_ptr<Graphics::GraphicsMain> m_graphicsMain;
-        Optional<std::pair<int32, double>> m_previewResetValues;
-        GaugePresentation m_gaugePresentation;
-        bool m_apsJustTriggered = false;
+		Optional<std::pair<int32, double>> m_previewResetValues;
+		GaugePresentation m_gaugePresentation;
+		bool m_apsJustTriggered = false;
 
 		// 状態
 		GameStatus m_gameStatus;
@@ -110,7 +111,7 @@ namespace MusicGame
 
 		// Backボタンによる途中終了かどうか(未判定ノーツが残った状態でlockForExitが呼ばれた場合にtrue)
 		bool m_isAborted = false;
-        bool m_inputFeedbackLocked = false;
+		bool m_inputFeedbackLocked = false;
 
 		// 再生制御
 		bool m_isPaused = false;
@@ -118,7 +119,7 @@ namespace MusicGame
 		Stopwatch m_syncAdjustStopwatch;
 
 		double currentChartTime() const;
-        void updateStatus();
+		void updateStatus();
 
 		void updateHighwayScroll();
 
@@ -135,17 +136,39 @@ namespace MusicGame
 	public:
 		explicit GameMain(const GameCreateInfo& createInfo);
 
-        void reloadPreviewGraphics();
-        void resetPreview(double chartTime = 0.0);
-        void resetJudgeSettingLoop(double musicTime=0);
-        double settingsMusicTime() const {return m_bgm.posSec().count()-(m_playOption.judgeSetting?m_playOption.judgeSetting->values.visual/1000.0:0.0);}
-        void pauseJudgeSetting(bool paused);
-        GameRender::Context renderContext() const{return m_renderContext;}
-        Array<double> geometrySignature() const{const GameRender::Scope scope{m_renderContext};return m_graphicsMain->geometrySignature(m_viewStatus);}
-        HispeedSetting settingsHispeed() const{return m_hispeedSettingMenu.hispeedSetting();}
-        int32 settingsEffectiveHispeed() const{return m_highwayScroll.currentHispeed();}
-        double previewTime() const { return m_gameStatus.currentTimeSec; }
-        const ViewStatus& previewView() const { return m_viewStatus; }
+		void reloadPreviewGraphics();
+		void resetPreview(double chartTime = 0.0);
+		void resetJudgeSettingLoop(double musicTime = 0);
+		double settingsMusicTime() const
+		{
+			return m_bgm.posSec().count() - (m_playOption.judgeSetting ? m_playOption.judgeSetting->values.visual / 1000.0 : 0.0);
+		}
+		void pauseJudgeSetting(bool paused);
+		GameRender::Context renderContext() const
+		{
+			return m_renderContext;
+		}
+		Array<double> geometrySignature() const
+		{
+			const GameRender::Scope scope{ m_renderContext };
+			return m_graphicsMain->geometrySignature(m_viewStatus);
+		}
+		HispeedSetting settingsHispeed() const
+		{
+			return m_hispeedSettingMenu.hispeedSetting();
+		}
+		int32 settingsEffectiveHispeed() const
+		{
+			return m_highwayScroll.currentHispeed();
+		}
+		double previewTime() const
+		{
+			return m_gameStatus.currentTimeSec;
+		}
+		const ViewStatus& previewView() const
+		{
+			return m_viewStatus;
+		}
 		void start();
 
 		StartFadeOutYN update();

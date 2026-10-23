@@ -1,4 +1,4 @@
-#include "ExScore.hpp"
+﻿#include "ExScore.hpp"
 #include "JudgmentHandler.hpp"
 #include "ButtonLaneJudgment.hpp"
 #include "LaserLaneJudgment.hpp"
@@ -97,26 +97,28 @@ namespace MusicGame::Judgment
 	}
 
 	JudgmentHandler::JudgmentHandler(const kson::ChartData& chartData, const BTLaneJudgments& btLaneJudgments, const FXLaneJudgments& fxLaneJudgments, const LaserLaneJudgments& laserLaneJudgments, const PlayOption& playOption, const Optional<CourseContinuation>& courseContinuation, GameMode gameMode)
-		: m_playOption(playOption)
-		, m_totalCombo(TotalCombo(btLaneJudgments, fxLaneJudgments, laserLaneJudgments))
-        , m_exMaximum(ChartExMaximum(chartData))
-		, m_scoringStatus(
-			TotalGaugeValue(btLaneJudgments, fxLaneJudgments, laserLaneJudgments, kScoreValueCritical, kScoreValueCritical),
-			GaugeValueMax(chartData.gauge.total, btLaneJudgments, fxLaneJudgments, laserLaneJudgments),
-			playOption.gaugeType,
-			courseContinuation,
-			gameMode, playOption.effectiveApsEnabled())
-		, m_camPatternMain(chartData)
+		: m_playOption(playOption), m_totalCombo(TotalCombo(btLaneJudgments, fxLaneJudgments, laserLaneJudgments)), m_exMaximum(ChartExMaximum(chartData)), m_scoringStatus(
+																																								TotalGaugeValue(btLaneJudgments, fxLaneJudgments, laserLaneJudgments, kScoreValueCritical, kScoreValueCritical),
+																																								GaugeValueMax(chartData.gauge.total, btLaneJudgments, fxLaneJudgments, laserLaneJudgments),
+																																								playOption.gaugeType,
+																																								courseContinuation,
+																																								gameMode, playOption.effectiveApsEnabled()),
+		  m_camPatternMain(chartData)
 	{
-        if(playOption.effectiveBtJudgmentPlayMode()!=JudgmentPlayMode::kOff &&
-           playOption.effectiveFxJudgmentPlayMode()!=JudgmentPlayMode::kOff &&
-           playOption.effectiveLaserJudgmentPlayMode()!=JudgmentPlayMode::kOff){
-            int64 liveMaximum=0;
-            for(const auto& lane:btLaneJudgments)liveMaximum+=lane.chipJudgmentCount()*5+lane.longJudgmentCount()*2;
-            for(const auto& lane:fxLaneJudgments)liveMaximum+=lane.chipJudgmentCount()*5+lane.longJudgmentCount()*2;
-            for(const auto& lane:laserLaneJudgments)liveMaximum+=(lane.lineJudgmentCount()+lane.slamJudgmentCount())*2;
-            if(liveMaximum!=m_exMaximum)throw Error{U"EX SCORE judgment count mismatch"};
-        }
+		if (playOption.effectiveBtJudgmentPlayMode() != JudgmentPlayMode::kOff &&
+			playOption.effectiveFxJudgmentPlayMode() != JudgmentPlayMode::kOff &&
+			playOption.effectiveLaserJudgmentPlayMode() != JudgmentPlayMode::kOff)
+		{
+			int64 liveMaximum = 0;
+			for (const auto& lane : btLaneJudgments)
+				liveMaximum += lane.chipJudgmentCount() * 5 + lane.longJudgmentCount() * 2;
+			for (const auto& lane : fxLaneJudgments)
+				liveMaximum += lane.chipJudgmentCount() * 5 + lane.longJudgmentCount() * 2;
+			for (const auto& lane : laserLaneJudgments)
+				liveMaximum += (lane.lineJudgmentCount() + lane.slamJudgmentCount()) * 2;
+			if (liveMaximum != m_exMaximum)
+				throw Error{ U"EX SCORE judgment count mismatch" };
+		}
 	}
 
 	void JudgmentHandler::onChipJudged(JudgmentResult result, Optional<double> timingDiffMs)
@@ -128,14 +130,16 @@ namespace MusicGame::Judgment
 			return;
 		}
 
-		if(m_playOption.judgeSetting)m_playOption.judgeSetting->chip(result,timingDiffMs);
-        m_timingFeedback.offer(result, timingDiffMs);
-        m_detailedStats.add(result, timingDiffMs);
-        m_exScore+=ExChipPoints(result,timingDiffMs);
+		if (m_playOption.judgeSetting)
+			m_playOption.judgeSetting->chip(result, timingDiffMs);
+		m_timingFeedback.offer(result, timingDiffMs);
+		m_detailedStats.add(result, timingDiffMs);
+		m_exScore += ExChipPoints(result, timingDiffMs);
 
-        m_inputTiming.add(result, timingDiffMs);
+		m_inputTiming.add(result, timingDiffMs);
 
-		if(!m_playOption.judgeSetting)m_scoringStatus.onChipOrLaserSlamJudgment(result);
+		if (!m_playOption.judgeSetting)
+			m_scoringStatus.onChipOrLaserSlamJudgment(result);
 	}
 
 	void JudgmentHandler::onLongJudged(JudgmentResult result)
@@ -147,10 +151,12 @@ namespace MusicGame::Judgment
 			return;
 		}
 
-        if(m_playOption.judgeSetting)m_playOption.judgeSetting->tick(result);
-        m_detailedStats.add(result);
-        m_exScore+=ExTickPoints(result);
-		if(!m_playOption.judgeSetting)m_scoringStatus.onLongOrLaserLineJudgment(result);
+		if (m_playOption.judgeSetting)
+			m_playOption.judgeSetting->tick(result);
+		m_detailedStats.add(result);
+		m_exScore += ExTickPoints(result);
+		if (!m_playOption.judgeSetting)
+			m_scoringStatus.onLongOrLaserLineJudgment(result);
 	}
 
 	void JudgmentHandler::onLaserLineJudged(JudgmentResult result)
@@ -162,10 +168,12 @@ namespace MusicGame::Judgment
 			return;
 		}
 
-        if(m_playOption.judgeSetting)m_playOption.judgeSetting->tick(result);
-        m_detailedStats.add(result);
-        m_exScore+=ExTickPoints(result);
-		if(!m_playOption.judgeSetting)m_scoringStatus.onLongOrLaserLineJudgment(result);
+		if (m_playOption.judgeSetting)
+			m_playOption.judgeSetting->tick(result);
+		m_detailedStats.add(result);
+		m_exScore += ExTickPoints(result);
+		if (!m_playOption.judgeSetting)
+			m_scoringStatus.onLongOrLaserLineJudgment(result);
 	}
 
 	void JudgmentHandler::onLaserSlamJudged(JudgmentResult result, kson::Pulse laserSlamPulse, double prevTimeSec, kson::Pulse prevPulse, int32 direction)
@@ -177,10 +185,12 @@ namespace MusicGame::Judgment
 			return;
 		}
 
-        if(m_playOption.judgeSetting)m_playOption.judgeSetting->tick(result);
-        m_detailedStats.add(result);
-        m_exScore+=ExTickPoints(result);
-		if(!m_playOption.judgeSetting)m_scoringStatus.onChipOrLaserSlamJudgment(result);
+		if (m_playOption.judgeSetting)
+			m_playOption.judgeSetting->tick(result);
+		m_detailedStats.add(result);
+		m_exScore += ExTickPoints(result);
+		if (!m_playOption.judgeSetting)
+			m_scoringStatus.onChipOrLaserSlamJudgment(result);
 
 		if (result != JudgmentResult::kError)
 		{
@@ -195,14 +205,15 @@ namespace MusicGame::Judgment
 	void JudgmentHandler::applyToViewStatus(ViewStatus& viewStatusRef, double currentTimeSec, kson::Pulse currentPulse)
 	{
 		viewStatusRef.timingFeedback = m_timingFeedback.commit(currentTimeSec);
-        viewStatusRef.detailedJudgments = m_detailedStats;
-        viewStatusRef.inputTiming = m_inputTiming;
+		viewStatusRef.detailedJudgments = m_detailedStats;
+		viewStatusRef.inputTiming = m_inputTiming;
 
 		// ScoringStatusをViewStatusに反映
 		viewStatusRef.score = m_scoringStatus.score();
-        viewStatusRef.exScore=m_exScore;viewStatusRef.exMaximum=m_exMaximum;
+		viewStatusRef.exScore = m_exScore;
+		viewStatusRef.exMaximum = m_exMaximum;
 		viewStatusRef.effectiveGaugeType = m_scoringStatus.effectiveGaugeType();
-        viewStatusRef.apsProtected = m_scoringStatus.apsProtected();
+		viewStatusRef.apsProtected = m_scoringStatus.apsProtected();
 		viewStatusRef.gaugePercentage = m_scoringStatus.gaugePercentage(m_playOption.gaugeType);
 		viewStatusRef.gaugePercentageInt = m_scoringStatus.gaugePercentageInt(m_playOption.gaugeType);
 		const int32 displayCombo = m_scoringStatus.displayCombo();
@@ -228,17 +239,18 @@ namespace MusicGame::Judgment
 		m_camPatternMain.applyToCamStatus(viewStatusRef.camStatus, currentPulse);
 	}
 
-    bool JudgmentHandler::tryActivateAps(ViewStatus& view)
-    {
-        if (!m_scoringStatus.tryActivateAps()) return false;
-        view.effectiveGaugeType = m_scoringStatus.effectiveGaugeType();
-        view.apsProtected = false;
-        view.gaugePercentage = m_scoringStatus.gaugePercentage(view.effectiveGaugeType);
-        view.gaugePercentageInt = m_scoringStatus.gaugePercentageInt(view.effectiveGaugeType);
-        return true;
-    }
+	bool JudgmentHandler::tryActivateAps(ViewStatus& view)
+	{
+		if (!m_scoringStatus.tryActivateAps())
+			return false;
+		view.effectiveGaugeType = m_scoringStatus.effectiveGaugeType();
+		view.apsProtected = false;
+		view.gaugePercentage = m_scoringStatus.gaugePercentage(view.effectiveGaugeType);
+		view.gaugePercentageInt = m_scoringStatus.gaugePercentageInt(view.effectiveGaugeType);
+		return true;
+	}
 
-    void JudgmentHandler::lockForExit()
+	void JudgmentHandler::lockForExit()
 	{
 		m_isLockedForExit = true;
 	}
@@ -270,20 +282,20 @@ namespace MusicGame::Judgment
 	PlayResult JudgmentHandler::playResult(double currentTimeSec, double chartEndTimeSec, IsHardFailedYN isHardFailed, bool isAborted) const
 	{
 		const double chartTimeProgress = chartEndTimeSec > 0.0 ? Clamp(currentTimeSec / chartEndTimeSec, 0.0, 1.0) : 1.0;
-        const Optional<int32> timingAverageMs = m_inputTiming.roundedMeanMs();
+		const Optional<int32> timingAverageMs = m_inputTiming.roundedMeanMs();
 
-        auto resolvedOption = m_playOption;
-        resolvedOption.gaugeType = m_scoringStatus.effectiveGaugeType();
+		auto resolvedOption = m_playOption;
+		resolvedOption.gaugeType = m_scoringStatus.effectiveGaugeType();
 
-		return PlayResult
-		{
+		return PlayResult{
 			.score = m_scoringStatus.score(),
-            .exScore=m_exScore,.exMaximum=m_exMaximum,
+			.exScore = m_exScore,
+			.exMaximum = m_exMaximum,
 			.maxCombo = m_scoringStatus.maxCombo(),
 			.finalCourseCombo = m_scoringStatus.courseCombo(),
 			.totalCombo = m_totalCombo,
 			.comboStats = m_scoringStatus.comboStats(),
-            .detailedStats = m_detailedStats,
+			.detailedStats = m_detailedStats,
 			.chipOrLaserSlamStats = m_scoringStatus.chipOrLaserSlamStats(),
 			.longOrLaserLineStats = m_scoringStatus.longOrLaserLineStats(),
 			.playOption = resolvedOption,

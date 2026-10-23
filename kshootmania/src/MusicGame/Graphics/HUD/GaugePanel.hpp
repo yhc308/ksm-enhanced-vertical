@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "MusicGame/GameDefines.hpp"
 #include "MusicGame/GaugePresentation.hpp"
 #include "Graphics/NumberTextureFont.hpp"
@@ -13,9 +13,9 @@ namespace MusicGame::Graphics
 		const TiledTexture m_barTexture;
 		const TiledTexture m_barAnimTexture;
 		const Texture m_percentBaseTexture;
-        const Texture m_apsTexture;
-        const PixelShader m_apsDodgeShader;
-        void drawAps(const RectF& rect, const GaugeVisual& visual) const;
+		const Texture m_apsTexture;
+		const PixelShader m_apsDodgeShader;
+		void drawAps(const RectF& rect, const GaugeVisual& visual) const;
 		const NumberTextureFont m_percentNumberTextureFont;
 		const TextureFontTextLayout m_percentNumberLayout;
 

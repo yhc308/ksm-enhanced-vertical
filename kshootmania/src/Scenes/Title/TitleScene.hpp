@@ -13,16 +13,16 @@ private:
 
 	std::shared_ptr<noco::Canvas> m_canvas;
 
-    TitleMenu m_menu;
-    std::unique_ptr<SkinOverlay> m_skinOverlay;
-    std::unique_ptr<JudgeSettingOverlay> m_judgeOverlay;
-    RenderTexture m_skinBackdrop;
-    bool m_paletteFocused = false;
-    bool m_fixtureOpened = false;
-    Stopwatch m_fixtureClock{StartImmediately::Yes};
-    Stopwatch m_returnBgmClock;
-    int m_returnBgmTestStage=0;
-    void openSkinOverlay();
+	TitleMenu m_menu;
+	std::unique_ptr<SkinOverlay> m_skinOverlay;
+	std::unique_ptr<JudgeSettingOverlay> m_judgeOverlay;
+	RenderTexture m_skinBackdrop;
+	bool m_paletteFocused = false;
+	bool m_fixtureOpened = false;
+	Stopwatch m_fixtureClock{ StartImmediately::Yes };
+	Stopwatch m_returnBgmClock;
+	int m_returnBgmTestStage = 0;
+	void openSkinOverlay();
 
 	TitleMenuItem m_selectedMenuItem = TitleMenuItem::kStart;
 

@@ -10,9 +10,7 @@ namespace MusicGame::Graphics
 	}
 
 	FrameRateMonitor::FrameRateMonitor()
-		: m_numberTextureFont(kNumberTextureFontFilename, { 20, 18 })
-		, m_numberLayout(Scaled(10, 9), TextureFontTextLayout::Align::Right)
-		, m_fpsTexture(TextureAsset(kFPSTextureFilename))
+		: m_numberTextureFont(kNumberTextureFontFilename, { 20, 18 }), m_numberLayout(Scaled(10, 9), TextureFontTextLayout::Align::Right), m_fpsTexture(TextureAsset(kFPSTextureFilename))
 	{
 	}
 

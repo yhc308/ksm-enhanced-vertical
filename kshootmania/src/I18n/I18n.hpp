@@ -85,7 +85,7 @@ namespace I18n
 		MissingImageLabel,
 		IndicatorLabel,
 		DepthLabel,
-        NotImplemented,
+		NotImplemented,
 		KeyBeamLabel,
 		DepthTitle,
 		CustomOther,
@@ -145,10 +145,10 @@ namespace I18n
 		FastSlow,
 		FastSlowHide,
 		FastSlowShow,
-        FastSlowNew,
-        TimingPosition,
-        TimingMsDisplay,
-        TimingMsColor,
+		FastSlowNew,
+		TimingPosition,
+		TimingMsDisplay,
+		TimingMsColor,
 		NoteSkin,
 		NoteSkinDefault,
 		NoteSkinNote,
@@ -377,7 +377,11 @@ namespace I18n
 		}
 		else
 		{
-			static_assert([] { return false; }(), "I18n::Get(): Unsupported enum type.");
+			static_assert([]
+						  {
+							  return false;
+						  }(),
+						  "I18n::Get(): Unsupported enum type.");
 			return U"";
 		}
 	}

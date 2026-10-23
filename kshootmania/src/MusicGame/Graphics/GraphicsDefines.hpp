@@ -16,8 +16,8 @@ namespace MusicGame::Graphics
 
 	constexpr float kJdglineYFromBottom = 14.0f;
 
-    // Padding increases the texture AND plane by the same ratio: 768 px / 3 lane widths.
-    constexpr int32 kHighwayRenderPadding = 128;
+	// Padding increases the texture AND plane by the same ratio: 768 px / 3 lane widths.
+	constexpr int32 kHighwayRenderPadding = 128;
 	constexpr Size kHighwayTextureSizeWide = { kHighwayTextureSize.x * kLaserXScaleWide + 2 * kHighwayRenderPadding, kHighwayTextureSize.y };
 	constexpr Float2 kHighwayPlaneSizeWide = { kHighwayPlaneSize.x * (kLaserXScaleWide + 1), kHighwayPlaneSize.y };
 
@@ -67,18 +67,19 @@ namespace MusicGame::Graphics
 		return Mat4x4::Rotate(Float3::Backward(), radians, center);
 	}
 
-    // Display-only portrait origin, fitted to the supplied SDVX silhouettes.
-    // Conjugating the rotation changes its axis, never the authored angle/time.
-    // USC Camera::GetOriginTransform uses a portrait-specific base orientation.
-    constexpr double kVerticalGearAxisPitch = 2.7_deg;
-    constexpr Vec3 kVerticalGearTiltCenter = {0.0, 24.4, 0.0};
-    inline Mat4x4 GearTiltTransformMatrix(double radians)
-    {
-        if (!GameRender::VerticalEnabled()) return TiltTransformMatrix(radians);
-        const Float3 axis{0.0f, static_cast<float>(Sin(kVerticalGearAxisPitch)),
-            static_cast<float>(-Cos(kVerticalGearAxisPitch))};
-        return Mat4x4::Rotate(axis, radians, kVerticalGearTiltCenter);
-    }
+	// Display-only portrait origin, fitted to the supplied SDVX silhouettes.
+	// Conjugating the rotation changes its axis, never the authored angle/time.
+	// USC Camera::GetOriginTransform uses a portrait-specific base orientation.
+	constexpr double kVerticalGearAxisPitch = 2.7_deg;
+	constexpr Vec3 kVerticalGearTiltCenter = { 0.0, 24.4, 0.0 };
+	inline Mat4x4 GearTiltTransformMatrix(double radians)
+	{
+		if (!GameRender::VerticalEnabled())
+			return TiltTransformMatrix(radians);
+		const Float3 axis{ 0.0f, static_cast<float>(Sin(kVerticalGearAxisPitch)),
+						   static_cast<float>(-Cos(kVerticalGearAxisPitch)) };
+		return Mat4x4::Rotate(axis, radians, kVerticalGearTiltCenter);
+	}
 
 	inline Mat4x4 JudgmentPlaneTransformMatrix(double tiltRadians)
 	{

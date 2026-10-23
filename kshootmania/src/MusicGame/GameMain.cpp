@@ -13,7 +13,7 @@ namespace MusicGame
 	namespace
 	{
 		constexpr double kPlayFinishFadeOutStartSec = 2.4; // TODO: HARD落ちした場合は赤色表示を加えた上で4.8秒にする
-		constexpr double kTestPlaySeekMarginSec = 1.0; // テストプレイで開始小節より前にシークするマージン(秒)
+		constexpr double kTestPlaySeekMarginSec = 1.0;	   // テストプレイで開始小節より前にシークするマージン(秒)
 
 		Audio::BGM CreateBGM(const kson::ChartData& chartData, const FilePath& parentPath, const PlayOption& playOption, const FolderConfIni& folderConfIni)
 		{
@@ -175,42 +175,60 @@ namespace MusicGame
 		}
 	}
 
-    double GameMain::currentChartTime() const {
-        if(const auto fixed=GaugePresentation::FixtureChartTime()){
-            if(m_playOption.judgeSetting)return (*fixed>=0?std::fmod(*fixed,JudgeSettingSession::kLoopSeconds):*fixed)+m_playOption.judgeSetting->values.visual/1000.0;
-            return *fixed;
-        }
-        return m_bgm.posSec().count();
-    }
+	double GameMain::currentChartTime() const
+	{
+		if (const auto fixed = GaugePresentation::FixtureChartTime())
+		{
+			if (m_playOption.judgeSetting)
+				return (*fixed >= 0 ? std::fmod(*fixed, JudgeSettingSession::kLoopSeconds) : *fixed) + m_playOption.judgeSetting->values.visual / 1000.0;
+			return *fixed;
+		}
+		return m_bgm.posSec().count();
+	}
 	void GameMain::updateStatus()
 	{
-    ksmaudio::qa::Scope qaScope{"game.updateStatus",false};
+		ksmaudio::qa::Scope qaScope{ "game.updateStatus", false };
 		// 曲の音声の更新
-        ksmaudio::qa::Phase("game.BGM.update");
+		ksmaudio::qa::Phase("game.BGM.update");
 		m_bgm.update();
-        if(m_playOption.judgeSetting){
-            auto& setting=*m_playOption.judgeSetting;
-            if(setting.rebase){
-                m_bgm.setSettingsOffset(SecondsF{m_settingsChartOffset+m_playOption.effectiveGlobalOffsetMs()/1000.0});
-                Audio::s_scheduling={};if(ksmaudio::IsASIOActive())ksmaudio::CancelScheduledSounds();
-                m_audioEffectMain.setSettingsDelay(m_playOption.effectiveAudioProcDelayMs()/1000.0);
-                m_laserSlamSE.resetPreviewPlayback();m_fxChipSE.resetPreviewPlayback();
-                for(auto& lane:m_gameStatus.btLaneStatus)lane=ButtonLaneStatus{};
-                for(auto& lane:m_gameStatus.fxLaneStatus)lane=ButtonLaneStatus{};
-                m_judgmentMain->clearTimingFeedback();
-                setting.rebase=false;
-            }
-            if(const auto fixtureTime=GaugePresentation::FixtureChartTime()){
-                const auto cycles=static_cast<uint64>(Max(0.0,std::floor(*fixtureTime/JudgeSettingSession::kLoopSeconds)));
-                if(cycles>setting.loops){resetJudgeSettingLoop(std::fmod(*fixtureTime,JudgeSettingSession::kLoopSeconds));setting.loops=cycles;}
-            }else if(settingsMusicTime()>=JudgeSettingSession::kLoopSeconds)resetJudgeSettingLoop(std::fmod(settingsMusicTime(),JudgeSettingSession::kLoopSeconds));
-        }
-        if(m_playOption.skinPreview && m_bgm.posSec().count()>=18.0) resetPreview(std::fmod(m_bgm.posSec().count(),18.0));
+		if (m_playOption.judgeSetting)
+		{
+			auto& setting = *m_playOption.judgeSetting;
+			if (setting.rebase)
+			{
+				m_bgm.setSettingsOffset(SecondsF{ m_settingsChartOffset + m_playOption.effectiveGlobalOffsetMs() / 1000.0 });
+				Audio::s_scheduling = {};
+				if (ksmaudio::IsASIOActive())
+					ksmaudio::CancelScheduledSounds();
+				m_audioEffectMain.setSettingsDelay(m_playOption.effectiveAudioProcDelayMs() / 1000.0);
+				m_laserSlamSE.resetPreviewPlayback();
+				m_fxChipSE.resetPreviewPlayback();
+				for (auto& lane : m_gameStatus.btLaneStatus)
+					lane = ButtonLaneStatus{};
+				for (auto& lane : m_gameStatus.fxLaneStatus)
+					lane = ButtonLaneStatus{};
+				m_judgmentMain->clearTimingFeedback();
+				setting.rebase = false;
+			}
+			if (const auto fixtureTime = GaugePresentation::FixtureChartTime())
+			{
+				const auto cycles = static_cast<uint64>(Max(0.0, std::floor(*fixtureTime / JudgeSettingSession::kLoopSeconds)));
+				if (cycles > setting.loops)
+				{
+					resetJudgeSettingLoop(std::fmod(*fixtureTime, JudgeSettingSession::kLoopSeconds));
+					setting.loops = cycles;
+				}
+			}
+			else if (settingsMusicTime() >= JudgeSettingSession::kLoopSeconds)
+				resetJudgeSettingLoop(std::fmod(settingsMusicTime(), JudgeSettingSession::kLoopSeconds));
+		}
+		if (m_playOption.skinPreview && m_bgm.posSec().count() >= 18.0)
+			resetPreview(std::fmod(m_bgm.posSec().count(), 18.0));
 
 		// 再生時間と現在のBPMを取得
 		// TODO: SecondsFに統一
-		const double currentTimeSec=currentChartTime();
-        ksmaudio::qa::GameTime(currentTimeSec);
+		const double currentTimeSec = currentChartTime();
+		ksmaudio::qa::GameTime(currentTimeSec);
 		const double inputDelaySec = m_playOption.effectiveInputDelayMs() / 1000.0;
 		const double laserInputDelaySec = m_playOption.effectiveLaserInputDelayMs() / 1000.0;
 		const double audioProcDelaySec = m_playOption.effectiveAudioProcDelayMs() / 1000.0;
@@ -244,30 +262,34 @@ namespace MusicGame
 		m_viewStatus.tiltRadiansForBgLayer = m_highwayTilt.radiansForBgLayer();
 
 		// 判定の更新
-        ksmaudio::qa::Phase("game.judgment");
+		ksmaudio::qa::Phase("game.judgment");
 		m_judgmentMain->update(m_chartData, m_gameStatus, m_viewStatus);
 
-		if(m_playOption.judgeSetting){
-            auto& setting=*m_playOption.judgeSetting;setting.finishFrame();
-            m_viewStatus.detailedJudgments=setting.counts;m_viewStatus.inputTiming=setting.cumulative;
-            if(!setting.enabled())m_viewStatus.timingFeedback.reset();
-        }
-        m_viewStatus.timingAdjustMs = timingAdjustOffsetMs();
+		if (m_playOption.judgeSetting)
+		{
+			auto& setting = *m_playOption.judgeSetting;
+			setting.finishFrame();
+			m_viewStatus.detailedJudgments = setting.counts;
+			m_viewStatus.inputTiming = setting.cumulative;
+			if (!setting.enabled())
+				m_viewStatus.timingFeedback.reset();
+		}
+		m_viewStatus.timingAdjustMs = timingAdjustOffsetMs();
 
-        // Preserve the original frame-end HARD failure boundary. APS must resolve before finish/lock.
-        if (!m_gameStatus.playFinishStatus.has_value() && m_judgmentMain->tryActivateAps(m_viewStatus)) {
-            m_apsJustTriggered = true;
-            ksmaudio::qa::Event("APS_SWITCHED_TO_NORMAL", m_gameStatus.currentPulse);
-        }
+		// Preserve the original frame-end HARD failure boundary. APS must resolve before finish/lock.
+		if (!m_gameStatus.playFinishStatus.has_value() && m_judgmentMain->tryActivateAps(m_viewStatus))
+		{
+			m_apsJustTriggered = true;
+			ksmaudio::qa::Event("APS_SWITCHED_TO_NORMAL", m_gameStatus.currentPulse);
+		}
 
-        // HARDゲージ/コースモード落ち判定
+		// HARDゲージ/コースモード落ち判定
 		if (!m_playOption.judgeSetting && !m_gameStatus.playFinishStatus.has_value() &&
 			(m_viewStatus.effectiveGaugeType == GaugeType::kHardGauge || m_playOption.gameMode == GameMode::kCourseMode) &&
 			m_viewStatus.gaugePercentageInt <= kGaugePercentageThresholdHard)
 		{
-			ksmaudio::qa::Event("JUDGMENT_FINISHED_OR_FAILED",m_gameStatus.currentPulse);
-			m_gameStatus.playFinishStatus = PlayFinishStatus
-			{
+			ksmaudio::qa::Event("JUDGMENT_FINISHED_OR_FAILED", m_gameStatus.currentPulse);
+			m_gameStatus.playFinishStatus = PlayFinishStatus{
 				.finishTimeSec = currentTimeSec,
 				.achievement = Achievement::kNone,
 				.isHardFailed = IsHardFailedYN::Yes,
@@ -282,9 +304,8 @@ namespace MusicGame
 
 		if (!m_playOption.skinPreview && !m_playOption.judgeSetting && !m_gameStatus.playFinishStatus.has_value() && m_judgmentMain->isFinished())
 		{
-			ksmaudio::qa::Event("JUDGMENT_FINISHED_OR_FAILED",m_gameStatus.currentPulse);
-			m_gameStatus.playFinishStatus = PlayFinishStatus
-			{
+			ksmaudio::qa::Event("JUDGMENT_FINISHED_OR_FAILED", m_gameStatus.currentPulse);
+			m_gameStatus.playFinishStatus = PlayFinishStatus{
 				.finishTimeSec = currentTimeSec,
 				.achievement = m_judgmentMain->playResult(m_chartData, m_timingCache, currentTimeSec, IsHardFailedYN::No, false).achievement(),
 			};
@@ -299,48 +320,38 @@ namespace MusicGame
 			// ハイスピードメニュー更新前にHighwayScrollを更新してBPMを設定
 			m_highwayScroll.update(m_hispeedSettingMenu.hispeedSetting(), m_gameStatus.currentBPM);
 		}
-		if (!m_playOption.skinPreview && (!m_playOption.judgeSetting || m_playOption.judgeSetting->enabled())) m_hispeedSettingMenu.update(m_gameStatus.currentBPM);
+		if (!m_playOption.skinPreview && (!m_playOption.judgeSetting || m_playOption.judgeSetting->enabled()))
+			m_hispeedSettingMenu.update(m_gameStatus.currentBPM);
 		m_highwayScroll.update(m_hispeedSettingMenu.hispeedSetting(), m_gameStatus.currentBPM);
 	}
 
 	GameMain::GameMain(const GameCreateInfo& createInfo)
-		: m_chartFilePath(createInfo.chartFilePath)
-		, m_parentPath(FileSystem::ParentPath(createInfo.chartFilePath))
-		, m_chartData(LoadChartDataWithTurn(createInfo, &m_noteArrangement, &m_sRandomFXAudioMapping, &m_laserCurvedPulses))
-		, m_timingCache(kson::CreateTimingCache(m_chartData.beat))
-		, m_playOption(createInfo.playOption)
-        , m_settingsChartOffset((m_chartData.audio.bgm.offset+createInfo.folderConfIni.offsetMs)/1000.0/createInfo.playOption.nonZeroPlaybackSpeed())
-		, m_judgmentMain(std::make_unique<Judgment::JudgmentMain>(
-			m_chartData,
-			m_timingCache,
-			createInfo.playOption,
-			createInfo.courseContinuation,
-			createInfo.playOption.gameMode))
-		, m_camSystem(m_chartData)
-		, m_highwayScroll(m_chartData)
-		, m_bgm(CreateBGM(m_chartData, m_parentPath, createInfo.playOption, createInfo.folderConfIni))
-		, m_assistTick(createInfo.assistTickMode)
-		, m_laserSlamSE(m_chartData, m_timingCache, m_parentPath, createInfo.playOption.isAutoPlaySE, createInfo.folderConfIni.volumeScale)
-		, m_fxChipSE(m_chartData, m_timingCache, m_parentPath, createInfo.playOption.isAutoPlaySE, createInfo.folderConfIni.volumeScale)
-		, m_hardFailedSound("se/play_hardfailed.wav")
-		, m_audioEffectMain(m_bgm, m_chartData, m_timingCache, m_parentPath, createInfo.playOption.effectiveAudioProcDelayMs() / 1000.0, m_chartData.audio.bgm.vol * createInfo.folderConfIni.volumeScale)
-		, m_hispeedSettingMenu(createInfo.playOption.availableHispeedTypes, createInfo.playOption.hispeedSetting, kson::GetEffectiveStdBPM(m_chartData), GetInitialBPM(m_chartData))
-		, m_graphicsMain(std::make_unique<Graphics::GraphicsMain>(m_chartData, m_timingCache, m_parentPath, createInfo.playOption))
+		: m_chartFilePath(createInfo.chartFilePath), m_parentPath(FileSystem::ParentPath(createInfo.chartFilePath)), m_chartData(LoadChartDataWithTurn(createInfo, &m_noteArrangement, &m_sRandomFXAudioMapping, &m_laserCurvedPulses)), m_timingCache(kson::CreateTimingCache(m_chartData.beat)), m_playOption(createInfo.playOption), m_settingsChartOffset((m_chartData.audio.bgm.offset + createInfo.folderConfIni.offsetMs) / 1000.0 / createInfo.playOption.nonZeroPlaybackSpeed()), m_judgmentMain(std::make_unique<Judgment::JudgmentMain>(
+																																																																																																																							   m_chartData,
+																																																																																																																							   m_timingCache,
+																																																																																																																							   createInfo.playOption,
+																																																																																																																							   createInfo.courseContinuation,
+																																																																																																																							   createInfo.playOption.gameMode)),
+		  m_camSystem(m_chartData), m_highwayScroll(m_chartData), m_bgm(CreateBGM(m_chartData, m_parentPath, createInfo.playOption, createInfo.folderConfIni)), m_assistTick(createInfo.assistTickMode), m_laserSlamSE(m_chartData, m_timingCache, m_parentPath, createInfo.playOption.isAutoPlaySE, createInfo.folderConfIni.volumeScale), m_fxChipSE(m_chartData, m_timingCache, m_parentPath, createInfo.playOption.isAutoPlaySE, createInfo.folderConfIni.volumeScale), m_hardFailedSound("se/play_hardfailed.wav"), m_audioEffectMain(m_bgm, m_chartData, m_timingCache, m_parentPath, createInfo.playOption.effectiveAudioProcDelayMs() / 1000.0, m_chartData.audio.bgm.vol * createInfo.folderConfIni.volumeScale), m_hispeedSettingMenu(createInfo.playOption.availableHispeedTypes, createInfo.playOption.hispeedSetting, kson::GetEffectiveStdBPM(m_chartData), GetInitialBPM(m_chartData)), m_graphicsMain(std::make_unique<Graphics::GraphicsMain>(m_chartData, m_timingCache, m_parentPath, createInfo.playOption))
 	{
 	}
 
 	void GameMain::start()
 	{
-    ksmaudio::qa::Scope qaScope{"game.start",true};
+		ksmaudio::qa::Scope qaScope{ "game.start", true };
 		const double globalOffsetSec = m_playOption.effectiveGlobalOffsetMs() / 1000.0;
 		m_graphicsMain->prepareMovie(globalOffsetSec);
 
-		if(m_playOption.judgeSetting){resetJudgeSettingLoop();m_playOption.judgeSetting->loops=0;}
-        else if (m_playOption.skinPreview)
-        {
-            resetPreview();
-        }
-        else if (m_playOption.isTestPlayWithStartMeasure())
+		if (m_playOption.judgeSetting)
+		{
+			resetJudgeSettingLoop();
+			m_playOption.judgeSetting->loops = 0;
+		}
+		else if (m_playOption.skinPreview)
+		{
+			resetPreview();
+		}
+		else if (m_playOption.isTestPlayWithStartMeasure())
 		{
 			const int32 startMeasure = *m_playOption.testPlayOption->startMeasure;
 			const kson::Pulse startPulse = kson::MeasureIdxToPulse(
@@ -363,37 +374,38 @@ namespace MusicGame
 
 	GameMain::StartFadeOutYN GameMain::update()
 	{
-        m_apsJustTriggered = false;
-        const GameRender::Scope renderScope{m_renderContext};
+		m_apsJustTriggered = false;
+		const GameRender::Scope renderScope{ m_renderContext };
 		// 一時停止・早送りの制御
 		ksmaudio::qa::Phase("game.input");
-        if (!m_playOption.skinPreview && !m_playOption.judgeSetting) processPlaybackControl();
+		if (!m_playOption.skinPreview && !m_playOption.judgeSetting)
+			processPlaybackControl();
 
-        // Collect real button edges before judgment; even empty hits produce feedback.
-        // Start-held speed controls and exit/menu actions must not trigger ticks.
-        const bool inputTickEnabled = !m_playOption.skinPreview && (!m_playOption.judgeSetting || m_playOption.judgeSetting->enabled()) && !m_inputFeedbackLocked && !m_isPaused
-            && !m_gameStatus.playFinishStatus.has_value() && Window::GetState().focused
-            && !KeyConfig::Pressed(kButtonStart) && !KeyConfig::Down(kButtonBack);
-        if (inputTickEnabled) {
-            std::array<bool, kson::kNumBTLanesSZ> btDown{};
-            std::array<bool, kson::kNumFXLanesSZ> fxDown{};
-            for (size_t i = 0; i < btDown.size(); ++i)
-                btDown[i] = KeyConfig::PhysicalDown(static_cast<Button>(kButtonBT_A + i));
-            for (size_t i = 0; i < fxDown.size(); ++i)
-                fxDown[i] = KeyConfig::PhysicalDown(static_cast<Button>(kButtonFX_L + i));
-            m_assistTick.updateInput(btDown, fxDown, true);
-        }
+		// Collect real button edges before judgment; even empty hits produce feedback.
+		// Start-held speed controls and exit/menu actions must not trigger ticks.
+		const bool inputTickEnabled = !m_playOption.skinPreview && (!m_playOption.judgeSetting || m_playOption.judgeSetting->enabled()) && !m_inputFeedbackLocked && !m_isPaused && !m_gameStatus.playFinishStatus.has_value() && Window::GetState().focused && !KeyConfig::Pressed(kButtonStart) && !KeyConfig::Down(kButtonBack);
+		if (inputTickEnabled)
+		{
+			std::array<bool, kson::kNumBTLanesSZ> btDown{};
+			std::array<bool, kson::kNumFXLanesSZ> fxDown{};
+			for (size_t i = 0; i < btDown.size(); ++i)
+				btDown[i] = KeyConfig::PhysicalDown(static_cast<Button>(kButtonBT_A + i));
+			for (size_t i = 0; i < fxDown.size(); ++i)
+				fxDown[i] = KeyConfig::PhysicalDown(static_cast<Button>(kButtonFX_L + i));
+			m_assistTick.updateInput(btDown, fxDown, true);
+		}
 
 		// 状態更新
 		updateStatus();
-        if (m_isPaused || m_inputFeedbackLocked || m_gameStatus.playFinishStatus.has_value()) {
-            m_judgmentMain->clearTimingFeedback();
-            m_viewStatus.timingFeedback.reset();
-        }
+		if (m_isPaused || m_inputFeedbackLocked || m_gameStatus.playFinishStatus.has_value())
+		{
+			m_judgmentMain->clearTimingFeedback();
+			m_viewStatus.timingFeedback.reset();
+		}
 
 		// スクロールの更新
 		ksmaudio::qa::Phase("game.scroll");
-        updateHighwayScroll();
+		updateHighwayScroll();
 
 		// 音声エフェクトの更新
 		// (S-RANDOM時は元FXレーン基準に変換した押下状態を渡す)
@@ -401,8 +413,8 @@ namespace MusicGame
 		for (std::size_t i = 0U; i < kson::kNumFXLanesSZ; ++i)
 		{
 			longFXPressed[i] = m_sRandomFXAudioMapping.has_value()
-				? sRandomLongFXPressed(i)
-				: m_gameStatus.fxLaneStatus[i].longNotePressed;
+								   ? sRandomLongFXPressed(i)
+								   : m_gameStatus.fxLaneStatus[i].longNotePressed;
 		}
 		std::array<bool, kson::kNumLaserLanesSZ> laserIsOnOrNone;
 		for (std::size_t i = 0U; i < kson::kNumLaserLanesSZ; ++i)
@@ -411,23 +423,26 @@ namespace MusicGame
 			laserIsOnOrNone[i] = !laneStatus.noteCursorX.has_value() || laneStatus.isCursorInCriticalJudgmentRange();
 		}
 		const kson::FXLane<kson::Interval>& fxNoteLanesForAudio = m_sRandomFXAudioMapping.has_value()
-			? m_sRandomFXAudioMapping->fxLanesForAudio
-			: m_chartData.note.fx;
+																	  ? m_sRandomFXAudioMapping->fxLanesForAudio
+																	  : m_chartData.note.fx;
 		ksmaudio::qa::Phase("game.effects");
-        m_audioEffectMain.update(m_bgm, m_chartData, fxNoteLanesForAudio, m_timingCache, {
-			.longFXPressed = longFXPressed,
-			.laserIsOnOrNone = laserIsOnOrNone,
-		}, m_playOption.judgeSetting?kson::SecToPulse(m_gameStatus.currentTimeSec-m_playOption.judgeSetting->values.visual/1000.0,m_chartData.beat,m_timingCache):m_gameStatus.currentPulse);
+		m_audioEffectMain.update(m_bgm, m_chartData, fxNoteLanesForAudio, m_timingCache, {
+																							 .longFXPressed = longFXPressed,
+																							 .laserIsOnOrNone = laserIsOnOrNone,
+																						 },
+								 m_playOption.judgeSetting ? kson::SecToPulse(m_gameStatus.currentTimeSec - m_playOption.judgeSetting->values.visual / 1000.0, m_chartData.beat, m_timingCache) : m_gameStatus.currentPulse);
 
-        if (ksmaudio::IsASIOActive()) Audio::BeginScheduledAudioFrame(m_bgm.clockSnapshot(), Scene::DeltaTime());
+		if (ksmaudio::IsASIOActive())
+			Audio::BeginScheduledAudioFrame(m_bgm.clockSnapshot(), Scene::DeltaTime());
 		// 効果音の更新
 		// TODO: SecondsFに統一
-		const double currentTimeSec=currentChartTime();
-		const double currentTimeSecForAssistTick = currentTimeSec - (m_playOption.judgeSetting?m_playOption.judgeSetting->values.visual:m_playOption.visualOffsetMs) / 1000.0;
+		const double currentTimeSec = currentChartTime();
+		const double currentTimeSecForAssistTick = currentTimeSec - (m_playOption.judgeSetting ? m_playOption.judgeSetting->values.visual : m_playOption.visualOffsetMs) / 1000.0;
 		ksmaudio::qa::Phase("game.assistTick");
-        m_assistTick.update(m_chartData, m_timingCache, currentTimeSecForAssistTick);
+		m_assistTick.update(m_chartData, m_timingCache, currentTimeSecForAssistTick);
 		ksmaudio::qa::Phase("game.laserSounds");
-        if(!m_playOption.judgeSetting || m_playOption.judgeSetting->enabled())m_laserSlamSE.update(m_chartData, m_gameStatus);
+		if (!m_playOption.judgeSetting || m_playOption.judgeSetting->enabled())
+			m_laserSlamSE.update(m_chartData, m_gameStatus);
 
 		// FXチップ効果音の更新
 		std::array<Audio::FXChipJudgedStatus, kson::kNumFXLanesSZ> fxChipJudgedStatuses;
@@ -440,31 +455,32 @@ namespace MusicGame
 		{
 			for (std::size_t i = 0U; i < kson::kNumFXLanesSZ; ++i)
 			{
-				fxChipJudgedStatuses[i] = Audio::FXChipJudgedStatus
-				{
+				fxChipJudgedStatuses[i] = Audio::FXChipJudgedStatus{
 					.lastJudgedChipPulse = m_gameStatus.fxLaneStatus[i].lastJudgedChipPulse,
 					.lastChipJudgedTimeSec = m_gameStatus.fxLaneStatus[i].lastChipJudgedTimeSec,
 				};
 			}
 		}
 		ksmaudio::qa::Phase("game.FXSounds");
-        if(!m_playOption.judgeSetting || m_playOption.judgeSetting->enabled())m_fxChipSE.update(m_chartData, m_gameStatus, fxChipJudgedStatuses);
+		if (!m_playOption.judgeSetting || m_playOption.judgeSetting->enabled())
+			m_fxChipSE.update(m_chartData, m_gameStatus, fxChipJudgedStatuses);
 
 		// グラフィックの更新
 		ksmaudio::qa::Phase("game.graphicsUpdate");
 		// Preview-only display reset; judgments and audio keep advancing.
-        if (m_playOption.skinPreview && m_gameStatus.currentTimeSec >= 17.0)
-        {
-            if (!m_previewResetValues) m_previewResetValues = std::pair{m_viewStatus.score, m_viewStatus.gaugePercentage};
-            const double factor = 1.0 - Clamp((m_gameStatus.currentTimeSec - 17.0) / 0.5, 0.0, 1.0);
-            m_viewStatus.score = static_cast<int32>(m_previewResetValues->first * factor);
-            m_viewStatus.gaugePercentage = m_previewResetValues->second * factor;
-            m_viewStatus.gaugePercentageInt = static_cast<int32>(m_viewStatus.gaugePercentage);
-        }
-        // グラフィックの更新
+		if (m_playOption.skinPreview && m_gameStatus.currentTimeSec >= 17.0)
+		{
+			if (!m_previewResetValues)
+				m_previewResetValues = std::pair{ m_viewStatus.score, m_viewStatus.gaugePercentage };
+			const double factor = 1.0 - Clamp((m_gameStatus.currentTimeSec - 17.0) / 0.5, 0.0, 1.0);
+			m_viewStatus.score = static_cast<int32>(m_previewResetValues->first * factor);
+			m_viewStatus.gaugePercentage = m_previewResetValues->second * factor;
+			m_viewStatus.gaugePercentageInt = static_cast<int32>(m_viewStatus.gaugePercentage);
+		}
+		// グラフィックの更新
 		m_viewStatus.gaugeVisual = m_gaugePresentation.update(m_viewStatus.gaugePercentage, m_viewStatus.apsProtected,
-            m_apsJustTriggered, m_gameStatus.isPaused, GaugePresentation::FrameDelta(), m_gameStatus.currentTimeSec);
-        m_graphicsMain->update(m_gameStatus, m_viewStatus, m_timingCache);
+															  m_apsJustTriggered, m_gameStatus.isPaused, GaugePresentation::FrameDelta(), m_gameStatus.currentTimeSec);
+		m_graphicsMain->update(m_gameStatus, m_viewStatus, m_timingCache);
 
 		m_isFirstUpdate = false;
 
@@ -473,8 +489,8 @@ namespace MusicGame
 
 	void GameMain::draw() const
 	{
-        const GameRender::Scope renderScope{m_renderContext};
-    ksmaudio::qa::Scope qaScope{"game.draw",false};
+		const GameRender::Scope renderScope{ m_renderContext };
+		ksmaudio::qa::Scope qaScope{ "game.draw", false };
 		// HighwayScrollのコンテキスト
 		// (HighwayScrollからの座標取得の引数を省略するためのもの)
 		const Scroll::HighwayScrollContext highwayScrollContext(&m_highwayScroll, &m_chartData.beat, &m_timingCache, &m_gameStatus);
@@ -483,70 +499,89 @@ namespace MusicGame
 		m_graphicsMain->draw(m_chartData, m_laserCurvedPulses, m_timingCache, m_gameStatus, m_viewStatus, highwayScrollContext, m_bgm.duration());
 	}
 
-    void GameMain::pauseJudgeSetting(bool paused) {
-        if(!m_playOption.judgeSetting)return;
-        if(paused)m_bgm.pause();else m_bgm.play();
-        m_isPaused=paused;m_gameStatus.isPaused=paused;
-    }
-    void GameMain::resetJudgeSettingLoop(double musicTime) {
-        if(!m_playOption.judgeSetting)return;
-        const double chartTime=musicTime+m_playOption.judgeSetting->values.visual/1000.0;
-        ++m_playOption.judgeSetting->loops;
-        Audio::s_scheduling={};m_bgm.restartAtChartTime(SecondsF{chartTime});
-        m_judgmentMain->resetSettingsLoop(m_chartData);
-        m_assistTick.resetPreviewPlayback();m_laserSlamSE.resetPreviewPlayback();m_fxChipSE.resetPreviewPlayback();m_audioEffectMain.resetPreviewPlayback();
-        m_gameStatus=GameStatus{};m_viewStatus=ViewStatus{};m_gaugePresentation.reset();
-        m_highwayTilt=Camera::HighwayTilt{};m_camSystem=Camera::CamSystem{m_chartData};m_isFirstUpdate=true;
-        m_bgm.play();
-    }
+	void GameMain::pauseJudgeSetting(bool paused)
+	{
+		if (!m_playOption.judgeSetting)
+			return;
+		if (paused)
+			m_bgm.pause();
+		else
+			m_bgm.play();
+		m_isPaused = paused;
+		m_gameStatus.isPaused = paused;
+	}
+	void GameMain::resetJudgeSettingLoop(double musicTime)
+	{
+		if (!m_playOption.judgeSetting)
+			return;
+		const double chartTime = musicTime + m_playOption.judgeSetting->values.visual / 1000.0;
+		++m_playOption.judgeSetting->loops;
+		Audio::s_scheduling = {};
+		m_bgm.restartAtChartTime(SecondsF{ chartTime });
+		m_judgmentMain->resetSettingsLoop(m_chartData);
+		m_assistTick.resetPreviewPlayback();
+		m_laserSlamSE.resetPreviewPlayback();
+		m_fxChipSE.resetPreviewPlayback();
+		m_audioEffectMain.resetPreviewPlayback();
+		m_gameStatus = GameStatus{};
+		m_viewStatus = ViewStatus{};
+		m_gaugePresentation.reset();
+		m_highwayTilt = Camera::HighwayTilt{};
+		m_camSystem = Camera::CamSystem{ m_chartData };
+		m_isFirstUpdate = true;
+		m_bgm.play();
+	}
 
-    void GameMain::reloadPreviewGraphics()
-    {
-        const GameRender::Scope renderScope{m_renderContext};
-        if (!m_playOption.skinPreview) return;
-        auto next = std::make_unique<Graphics::GraphicsMain>(m_chartData, m_timingCache, m_parentPath, m_playOption);
-        next->update(m_gameStatus, m_viewStatus, m_timingCache);
-        m_graphicsMain.swap(next);
-    }
+	void GameMain::reloadPreviewGraphics()
+	{
+		const GameRender::Scope renderScope{ m_renderContext };
+		if (!m_playOption.skinPreview)
+			return;
+		auto next = std::make_unique<Graphics::GraphicsMain>(m_chartData, m_timingCache, m_parentPath, m_playOption);
+		next->update(m_gameStatus, m_viewStatus, m_timingCache);
+		m_graphicsMain.swap(next);
+	}
 
-    void GameMain::resetPreview(double chartTime)
-    {
-        if (!m_playOption.skinPreview) return;
-        // Restart the clock before rebuilding effects so loading time is not
-        // added to every 18s cycle. updateStatus catches up from the audio clock.
-        Audio::s_scheduling={};
-        m_assistTick.resetPreviewPlayback();
-        m_laserSlamSE.resetPreviewPlayback();
-        m_fxChipSE.resetPreviewPlayback();
-        m_audioEffectMain.resetPreviewPlayback();
-        m_bgm.restartAtChartTime(SecondsF{chartTime});
-        m_judgmentMain = std::make_unique<Judgment::JudgmentMain>(m_chartData, m_timingCache, m_playOption, none, GameMode::kNormal);
-        m_gameStatus = GameStatus{};
-        m_viewStatus = ViewStatus{};
-        m_previewResetValues.reset();
-        m_gaugePresentation.reset();
-        m_laserSlamSE.resetPreviewPlayback();
-        m_fxChipSE.resetPreviewPlayback();
-        m_highwayTilt = Camera::HighwayTilt{};
-        m_camSystem = Camera::CamSystem{m_chartData};
-        m_isFirstUpdate = true;
-        reloadPreviewGraphics();
-        m_bgm.play();
-    }
+	void GameMain::resetPreview(double chartTime)
+	{
+		if (!m_playOption.skinPreview)
+			return;
+		// Restart the clock before rebuilding effects so loading time is not
+		// added to every 18s cycle. updateStatus catches up from the audio clock.
+		Audio::s_scheduling = {};
+		m_assistTick.resetPreviewPlayback();
+		m_laserSlamSE.resetPreviewPlayback();
+		m_fxChipSE.resetPreviewPlayback();
+		m_audioEffectMain.resetPreviewPlayback();
+		m_bgm.restartAtChartTime(SecondsF{ chartTime });
+		m_judgmentMain = std::make_unique<Judgment::JudgmentMain>(m_chartData, m_timingCache, m_playOption, none, GameMode::kNormal);
+		m_gameStatus = GameStatus{};
+		m_viewStatus = ViewStatus{};
+		m_previewResetValues.reset();
+		m_gaugePresentation.reset();
+		m_laserSlamSE.resetPreviewPlayback();
+		m_fxChipSE.resetPreviewPlayback();
+		m_highwayTilt = Camera::HighwayTilt{};
+		m_camSystem = Camera::CamSystem{ m_chartData };
+		m_isFirstUpdate = true;
+		reloadPreviewGraphics();
+		m_bgm.play();
+	}
 
 	void GameMain::lockForExit()
 	{
-        m_inputFeedbackLocked = true;
-        m_judgmentMain->clearTimingFeedback();
-        m_viewStatus.timingFeedback.reset();
+		m_inputFeedbackLocked = true;
+		m_judgmentMain->clearTimingFeedback();
+		m_viewStatus.timingFeedback.reset();
 		m_isAborted = !m_judgmentMain->isFinished();
 		m_judgmentMain->lockForExit();
 	}
 
 	void GameMain::terminate()
 	{
-    ksmaudio::qa::Scope qaScope{"game.terminate",true};
-		if (!m_playOption.skinPreview && !m_playOption.judgeSetting && !m_playOption.diagnosticSession) m_hispeedSettingMenu.saveToConfigIni();
+		ksmaudio::qa::Scope qaScope{ "game.terminate", true };
+		if (!m_playOption.skinPreview && !m_playOption.judgeSetting && !m_playOption.diagnosticSession)
+			m_hispeedSettingMenu.saveToConfigIni();
 	}
 
 	FilePathView GameMain::chartFilePath() const
@@ -561,7 +596,7 @@ namespace MusicGame
 
 	PlayResult GameMain::playResult() const
 	{
-    ksmaudio::qa::Scope qaScope{"game.result.calculate",true};
+		ksmaudio::qa::Scope qaScope{ "game.result.calculate", true };
 		const IsHardFailedYN isHardFailed{ m_gameStatus.playFinishStatus.has_value() && m_gameStatus.playFinishStatus->isHardFailed };
 		return m_judgmentMain->playResult(m_chartData, m_timingCache, m_gameStatus.currentTimeSec, isHardFailed, m_isAborted);
 	}
@@ -658,8 +693,8 @@ namespace MusicGame
 				m_isPaused = true;
 			}
 			m_gameStatus.isPaused = m_isPaused;
-            m_judgmentMain->clearTimingFeedback();
-            m_viewStatus.timingFeedback.reset();
+			m_judgmentMain->clearTimingFeedback();
+			m_viewStatus.timingFeedback.reset();
 		}
 
 		// 早送り(Ctrl+Right)
@@ -671,8 +706,8 @@ namespace MusicGame
 				const auto currentPos = m_bgm.posSec();
 				const auto newPos = currentPos + SecondsF{ 1.0 };
 				m_bgm.seekPosSec(newPos);
-                m_judgmentMain->clearTimingFeedback();
-                m_viewStatus.timingFeedback.reset();
+				m_judgmentMain->clearTimingFeedback();
+				m_viewStatus.timingFeedback.reset();
 				m_graphicsMain->seekMoviePosSec(newPos);
 				m_graphicsMain->seekMoviePosSec(newPos);
 				m_fastForwardStopwatch.restart();

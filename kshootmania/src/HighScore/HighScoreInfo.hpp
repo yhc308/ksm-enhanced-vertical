@@ -4,7 +4,7 @@
 
 struct HighScoreInfo
 {
-    Optional<int64> exScore(GaugeType type) const;
+	Optional<int64> exScore(GaugeType type) const;
 	KscValue normalGauge;
 
 	KscValue easyGauge;

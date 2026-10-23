@@ -13,8 +13,7 @@ namespace
 }
 
 SearchInputDialog::SearchInputDialog(StringView initialQuery, std::function<void(StringView)> fnIncrementalUpdate)
-	: m_initialQuery(initialQuery)
-	, m_fnIncrementalUpdate(std::move(fnIncrementalUpdate))
+	: m_initialQuery(initialQuery), m_fnIncrementalUpdate(std::move(fnIncrementalUpdate))
 {
 }
 
@@ -27,7 +26,8 @@ Co::Task<Optional<String>> SearchInputDialog::start()
 		co_return none;
 	}
 
-	if (Vertical::ModConfig::Load().enabled) m_canvas->setAutoFitMode(noco::AutoFitMode::Contain);
+	if (Vertical::ModConfig::Load().enabled)
+		m_canvas->setAutoFitMode(noco::AutoFitMode::Contain);
 	const auto searchBoxNode = NocoUtils::GetNodeByPath(m_canvas, { U"SearchDialog", U"SearchBox" });
 	if (!searchBoxNode)
 	{
