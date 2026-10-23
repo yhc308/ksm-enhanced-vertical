@@ -417,6 +417,7 @@
     <ClInclude Include="src\Common\Encoding.hpp" />
     <ClInclude Include="src\Common\EnumUtils.hpp" />
     <ClInclude Include="src\Common\FrameRateLimit.hpp" />
+    <ClInclude Include="src\Common\WindowsWaitableTimer.hpp" />
     <ClInclude Include="src\Common\FsUtils.hpp" />
     <ClInclude Include="src\Common\IMEUtils.hpp" />
     <ClInclude Include="src\Common\MathUtils.hpp" />

@@ -1351,6 +1351,9 @@
     <ClInclude Include="src\Common\FrameRateLimit.hpp">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
+    <ClInclude Include="src\Common\WindowsWaitableTimer.hpp">
+      <Filter>Header Files\Common</Filter>
+    </ClInclude>
     <ClInclude Include="src\MusicGame\Camera\CamSystem.hpp">
       <Filter>Header Files\MusicGame\Camera</Filter>
     </ClInclude>

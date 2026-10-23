@@ -1,4 +1,5 @@
 ﻿#include "FrameRateLimit.hpp"
+#include "WindowsWaitableTimer.hpp"
 
 namespace
 {
@@ -6,8 +7,7 @@ namespace
 }
 
 FrameRateLimit::FrameRateLimit(const Optional<int32>& targetFPS)
-	: m_targetFPS(targetFPS)
-	, m_sleepUntil(std::chrono::steady_clock::now() - kMaxDrift)
+	: m_targetFPS(targetFPS), m_sleepUntil(std::chrono::steady_clock::now() - kMaxDrift)
 {
 }
 
@@ -30,6 +30,13 @@ void FrameRateLimit::postPresent()
 	}
 
 	// sleepを実行
+#if defined(_WIN32)
+	static thread_local WindowsWaitableTimer timer;
+	if (timer.waitUntil(m_sleepUntil))
+	{
+		return;
+	}
+#endif
 	std::this_thread::sleep_until(m_sleepUntil);
 }
 

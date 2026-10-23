@@ -483,3 +483,5 @@ dist_scripts/*.zip
 # Locally supplied ordinary songs for integration tests
 /tests/fixtures/
 !/docs/REFACTOR_VALIDATION.md
+
+!/docs/FRAME_PACING_FIX.md
