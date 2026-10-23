@@ -36,6 +36,6 @@ namespace MusicGame::Graphics
 
 		void update(const GameStatus& gameStatus, const kson::TimingCache& timingCache);
 
-		void draw(double currentTimeSec) const;
+		void draw(double currentTimeSec, Optional<double> anchorY = none) const;
 	};
 }

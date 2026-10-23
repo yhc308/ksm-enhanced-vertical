@@ -1,6 +1,9 @@
-﻿#include "ButtonNoteGraphics.hpp"
+﻿#include "Graphics/GameRenderContext.hpp"
+#include "MusicGame/Graphics/ViewportGeometry.hpp"
+#include "ButtonNoteGraphics.hpp"
 #include "NoteGraphicsUtils.hpp"
 #include "MusicGame/Graphics/GraphicsDefines.hpp"
+#include "Vertical/VerticalLaneGeometry.hpp"
 #include "MusicGame/Camera/CameraMath.hpp"
 #include "Graphics/ImageUtils.hpp"
 
@@ -30,7 +33,7 @@ namespace MusicGame::Graphics
 
 		Texture CreateLongNoteStartTexture(StringView filename)
 		{
-			const Image source{ FileSystem::PathAppend(FsUtils::GetResourcePath(U"imgs"), filename) };
+			const Image source{ SkinPreset::Resolve(filename) };
 			return Texture{ ImageUtils::ReplaceBlackWithTransparent(source.clipped(0, static_cast<int32>(kLongNoteStartTextureY), source.width(), kLongNoteStartTextureHeight)) };
 		}
 	}
@@ -38,6 +41,7 @@ namespace MusicGame::Graphics
 	void ButtonNoteGraphics::drawChipNotesCommon(const kson::ChartData& chartData, const ViewStatus& viewStatus, const PlayOption& playOption, const Scroll::HighwayScrollContext& highwayScrollContext, const HighwayRenderTexture& target, bool isBT) const
 	{
 		const ScopedRenderTarget2D renderTarget(target.additiveTexture());
+        const Transformer2D layout{Mat3x2::Scale(GameRender::VerticalEnabled() ? Vertical::kButtonWidthScale : 1.0,1.0,Vec2{static_cast<double>(kHighwayTextureWideCenterX),0})};
 		const ScopedRenderStates2D samplerState(SamplerState::ClampNearest);
 
 		const std::size_t numLanes = isBT ? kson::kNumBTLanesSZ : kson::kNumFXLanesSZ;
@@ -92,10 +96,10 @@ namespace MusicGame::Graphics
 				const double yRate = static_cast<double>(kHighwayTextureSize.y - positionStartY) / kHighwayTextureSize.y;
 				const int32 height = NoteGraphicsUtils::ChipNoteHeight(yRate);
 				const TiledTexture& sourceTexture = isBT ? m_chipBTNoteTexture : hasKeySound ? m_chipFXSENoteTexture : m_chipFXNoteTexture;
-				const Vec2 position = offsetPosition + Vec2::Right(centerSplitShiftX) + Vec2::Down(positionStartY - height / 2);
+				const Vec2 position = offsetPosition + Vec2::Right(centerSplitShiftX) + Vec2::Down(ViewportGeometry::NoteTop(positionStartY - height / 2, height));
 				const int32 colorIndex = isBT ? NoteGraphicsUtils::CalcChipNoteColorIndex(y, chartData.beat, playOption.noteSkin) : 0;
 				sourceTexture(0, colorIndex)
-					.resized(isBT ? 40 : 82, height)
+					.resized(isBT ? 40 : 82, height * ViewportGeometry::NoteScale())
 					.draw(position);
 			}
 		}
@@ -126,6 +130,7 @@ namespace MusicGame::Graphics
 		for (int32 i = 0; i < numColumns; ++i)
 		{
 			const ScopedRenderTarget2D renderTarget((i == 0) ? target.additiveTexture() : target.invMultiplyTexture());
+        const Transformer2D layout{Mat3x2::Scale(GameRender::VerticalEnabled() ? Vertical::kButtonWidthScale : 1.0,1.0,Vec2{static_cast<double>(kHighwayTextureWideCenterX),0})};
 			const ScopedRenderStates2D blendState((i == 0) ? (isBT ? BlendState::Additive : BlendState::Default2D) : BlendState::Subtractive);
 
 			for (std::size_t laneIdx = 0; laneIdx < numLanes; ++laneIdx)

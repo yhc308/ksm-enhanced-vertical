@@ -84,7 +84,12 @@ Array<String> I18n::GetAvailableLanguageList()
 			langList.push_back(FileSystem::BaseName(path));
 		}
 	}
-	return langList;
+    // Filesystem enumeration order is not a menu order. Keep existing names as saved IDs.
+    const Array<String> standard{U"English",U"Japanese",U"Korean",U"Simplified Chinese",U"Traditional Chinese"};
+    langList.sort();Array<String> ordered;
+    for(const auto& name:standard)if(langList.contains(name))ordered.push_back(name);
+    for(const auto& name:langList)if(!standard.contains(name))ordered.push_back(name);
+    return ordered;
 }
 
 I18n::StandardLanguage I18n::CurrentLanguage()
@@ -110,6 +115,15 @@ void I18n::LoadLanguage(StringView name, StringView fallback)
 	}
 
 	LoadDictionaryFromJSON(path);
+
+    // Existing custom language files may omit the new category. Fill only missing
+    // mod keys from English once per language change, preserving user translations.
+    const JSON english=JSON::Load(FileSystem::PathAppend(directoryPath,U"English.json"));
+    if(english && english[U"Mod"].isObject()){
+        auto& mod=s_dictionary[U"Mod"];
+        for(const auto& [key,value]:english[U"Mod"])
+            if(value.isString() && !mod.contains(key))mod[key]=value.getString();
+    }
 
 	AssetManagement::RefreshSystemFontForCurrentLanguage();
 }

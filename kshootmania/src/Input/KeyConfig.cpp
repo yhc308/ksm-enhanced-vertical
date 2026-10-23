@@ -4,6 +4,7 @@
 #include "LaserInput/SliderLaserInput.hpp"
 #include "LaserInput/MouseXYLaserInput.hpp"
 #include "Ini/ConfigIni.hpp"
+#include "Vertical/DiagnosticInputReplay.hpp"
 
 namespace
 {
@@ -296,7 +297,7 @@ namespace
 
 	bool IsBT3PlusStartPressed()
 	{
-		if (!ConfigIni::GetBool(ConfigIni::Key::kUse3BTsPlusStartAsBack, true))
+		if (!ConfigIni::GetBool(ConfigIni::Key::kUse3BTsPlusStartAsBack, false))
 		{
 			return false;
 		}
@@ -600,6 +601,7 @@ void KeyConfig::SaveToConfigIni()
 
 bool KeyConfig::Pressed(Button button)
 {
+	if (Vertical::DiagnosticInputReplay::Active()) return Vertical::DiagnosticInputReplay::Held(button);
 	if (button == kUnspecifiedButton)
 	{
 		return false;
@@ -681,14 +683,20 @@ Optional<Button> KeyConfig::LastPressedLaserButton(Button button1, Button button
 
 bool KeyConfig::Down(Button button)
 {
+	if (Vertical::DiagnosticInputReplay::Active()) return Vertical::DiagnosticInputReplay::Down(button);
 	if (button == kUnspecifiedButton)
 	{
 		return false;
 	}
 
-	if (s_virtualDownButtonsThisFrame[button])
+	return s_virtualDownButtonsThisFrame[button] || PhysicalDown(button);
+}
+
+bool KeyConfig::PhysicalDown(Button button)
+{
+	if (button == kUnspecifiedButton)
 	{
-		return true;
+		return false;
 	}
 
 	const bool ignoreKeyboard = ShouldIgnoreKeyboardInput();
@@ -829,6 +837,7 @@ Co::Task<void> KeyConfig::WaitUntilDown(Button button)
 
 bool KeyConfig::Up(Button button)
 {
+	if (Vertical::DiagnosticInputReplay::Active()) return Vertical::DiagnosticInputReplay::Up(button);
 	if (button == kUnspecifiedButton)
 	{
 		return false;
@@ -908,6 +917,7 @@ bool KeyConfig::Up(Button button)
 
 bool KeyConfig::IsLaserInputDigital()
 {
+	if (Vertical::DiagnosticInputReplay::Active()) return Vertical::DiagnosticInputReplay::state->laserDigital;
 	const int32 laserInputType = ConfigIni::GetInt(ConfigIni::Key::kLaserInputType, ConfigIni::Value::LaserInputType::kKeyboard);
 	return laserInputType == ConfigIni::Value::LaserInputType::kKeyboard;
 }
@@ -920,6 +930,7 @@ bool KeyConfig::IsLaserInputMouse()
 
 double KeyConfig::LaserDeltaCursorX(int32 laneIdx, double deltaTimeSec)
 {
+	if (Vertical::DiagnosticInputReplay::Active()) return Vertical::DiagnosticInputReplay::state->laserDelta.at(laneIdx);
 	// 入力方式が初期化されていない、または設定が変更された場合は再初期化
 	if (!s_laserInputMethods[laneIdx] || s_laserInputMethods[laneIdx]->reconstructionNeeded())
 	{

@@ -1,4 +1,5 @@
-﻿#include "FrameRateMonitor.hpp"
+﻿#include "Graphics/GameRenderContext.hpp"
+#include "FrameRateMonitor.hpp"
 
 namespace MusicGame::Graphics
 {
@@ -19,7 +20,7 @@ namespace MusicGame::Graphics
 	{
 		const ScopedRenderStates2D samplerState(SamplerState::ClampLinear);
 
-		m_fpsTexture.resized(Scaled(30, 9)).draw(Scene::Width() - Scaled(38), Scaled(460));
-		m_numberTextureFont.draw(m_numberLayout, { Scene::Width() - Scaled(40), Scaled(460) }, Profiler::FPS(), ZeroPaddingYN::No);
+		m_fpsTexture.resized(Scaled(30, 9)).draw(GameRender::Width() - Scaled(38), Scaled(460));
+		m_numberTextureFont.draw(m_numberLayout, { GameRender::Width() - Scaled(40), Scaled(460) }, Profiler::FPS(), ZeroPaddingYN::No);
 	}
 }

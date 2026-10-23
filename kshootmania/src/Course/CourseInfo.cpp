@@ -1,4 +1,4 @@
-﻿#include "CourseInfo.hpp"
+#include "CourseInfo.hpp"
 #include "Common/FsUtils.hpp"
 #include "Common/Encoding.hpp"
 
@@ -98,7 +98,7 @@ Optional<CourseInfo> CourseInfo::Load(FilePathView kcoFilePath)
 				// 拡張子なしの場合はimgs/icon内の画像を使用
 				if (FileSystem::Extension(courseInfo.iconPath).isEmpty())
 				{
-					courseInfo.iconPath = FileSystem::PathAppend(U"imgs/icon", courseInfo.iconPath + U".png");
+					courseInfo.iconPath = SkinPreset::Resolve(U"icon/" + courseInfo.iconPath + U".png");
 				}
 			}
 		}

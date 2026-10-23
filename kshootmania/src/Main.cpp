@@ -1,4 +1,11 @@
-﻿#include <Siv3D.hpp>
+﻿#include "ksmaudio/Diagnostics.hpp"
+#include "Common/AudioOutputSettings.hpp"
+#include <Siv3D.hpp>
+#ifdef _WIN32
+#include <bass.h>
+#endif
+#include "Diagnostics/SkinPresetFixture.hpp"
+#include "Diagnostics/RenderGeometryFixture.hpp"
 #include <CoTaskLib.hpp>
 #include <NocoUI.hpp>
 #include "Common/FrameRateLimit.hpp"
@@ -11,11 +18,34 @@
 #include <ksmaxis/ksmaxis.hpp>
 #include "RuntimeConfig.hpp"
 #include "Scenes/Title/TitleScene.hpp"
+#include "Scenes/Option/OptionScene.hpp"
+#include "Ini/AudioCalibration.hpp"
+#include "Diagnostics/AudioTimingFixture.hpp"
+#include "Diagnostics/AudioEndGameFixture.hpp"
+#include "Diagnostics/ApsVideoFixture.hpp"
+#include "Diagnostics/TimingHudFixture.hpp"
+#include "Diagnostics/ExScoreFixture.hpp"
+#include "Diagnostics/ApsFixture.hpp"
+#include "Diagnostics/JudgeSettingFixture.hpp"
+#include "Diagnostics/TimingHudCapture.hpp"
+#include "Scenes/Select/SelectScene.hpp"
+#include "Scenes/Result/ResultScene.hpp"
 #include "Scenes/Play/PlayScene.hpp"
 #include "Scenes/PlayPrepare/PlayPrepareScene.hpp"
 #include "TestPlayArgs.hpp"
 #include "Input/KeyConfig.hpp"
 #include "Input/InputUtils.hpp"
+#include "Vertical/VerticalDisplay.hpp"
+#include "Vertical/VerticalSelfTest.hpp"
+#include "Vertical/SpinRegression.hpp"
+#include "Vertical/ModOptionsScene.hpp"
+#include "Vertical/VerticalRenderPreview.hpp"
+#include "Vertical/JudgmentReplayTest.hpp"
+#include "Vertical/MenuInputTest.hpp"
+#include "Vertical/DisplayTransitionTest.hpp"
+#include "Scenes/Option/OptionScene.hpp"
+#include "Scenes/Select/SelectScene.hpp"
+#include "Scenes/Result/ResultScene.hpp"
 
 #ifdef __APPLE__
 #include <ksmplatform_macos/input_method.h>
@@ -354,6 +384,7 @@ void OutputLicenseTxt()
 ksmaudio::AudioBackend GetAudioBackendFromConfig()
 {
 	const StringView value = ConfigIni::GetString(ConfigIni::Key::kAudioBackend, ConfigIni::Value::AudioBackend::kDefault);
+    if (value == U"asio" || value.starts_with(U"asio:")) return ksmaudio::AudioBackend::ASIO;
 	return value == ConfigIni::Value::AudioBackend::kDirectSound ? ksmaudio::AudioBackend::DirectSound : ksmaudio::AudioBackend::Default;
 }
 #endif
@@ -371,11 +402,19 @@ void KSMMain()
 	LicenseManager::DisableDefaultTrigger();
 
 	// ウィンドウタイトル
-	Window::SetTitle(U"K-Shoot MANIA {} (unofficial build)"_fmt(kAppVersion));
+	Window::SetTitle(U"K-Shoot Mania V2.1.0 - Enhanced Vertical Mod (Unofficial Build)");
 
 	// カレントディレクトリを設定
 	// (ChangeCurrentDirectoryはここ以外は基本的に使用禁止。どうしても使う必要がある場合は必ずResourceDirectoryPathに戻すこと)
 	FileSystem::ChangeCurrentDirectory(FsUtils::ResourceDirectoryPath());
+    // Always record normal play as well as QA launches, in a session per process.
+    {
+        const auto root=FsUtils::GetResourcePath(U"log").toWstr();
+        if(!ksmaudio::qa::Start(std::filesystem::path{root})) throw Error{U"Cannot create log folder next to the executable"};
+        ksmaudio::qa::Event("BUILD",0,0,"ASIO+Sync automatic logging 2026-10-18");
+    }
+    ksmaudio::qa::Phase("startup.config");
+
 
 	// デフォルト色を指定
 	Scene::SetBackground(Palette::Black);
@@ -390,6 +429,42 @@ void KSMMain()
 
 	// config.iniを読み込み
 	ConfigIni::Load();
+	const auto originalVerticalConfig = Vertical::ModConfig::Load();
+	const bool previewTitle = System::GetCommandLineArgs().contains(U"--vertical-preview-title");
+	const bool previewOptions = System::GetCommandLineArgs().contains(U"--vertical-preview-options") || System::GetCommandLineArgs().contains(U"--vertical-options-test");
+	const bool previewHUD = System::GetCommandLineArgs().contains(U"--vertical-preview-hud");
+	const bool previewLegacyOptions = System::GetCommandLineArgs().contains(U"--vertical-preview-option-scene");
+	const bool previewPrepare = System::GetCommandLineArgs().contains(U"--vertical-preview-prepare");
+	const bool previewResult = System::GetCommandLineArgs().contains(U"--vertical-preview-result");
+	const bool previewSelect = System::GetCommandLineArgs().contains(U"--vertical-preview-select");
+	const bool previewSettings = System::GetCommandLineArgs().contains(U"--vertical-preview-settings");
+	const bool displayTest = System::GetCommandLineArgs().contains(U"--vertical-display-test");
+	const bool previewMode = previewResult || previewTitle || previewOptions || previewHUD || previewLegacyOptions || previewSelect || previewPrepare || previewSettings || displayTest;
+	if (displayTest) Vertical::SetDisplayConfigPersistence(false);
+	if (!previewMode && Vertical::ModConfig::MigrateLayout()) ConfigIni::Save();
+	if (previewMode)
+	{
+        Vertical::SettingsPersistence()=false;
+        Vertical::SetDisplayConfigPersistence(false);
+		auto previewConfig = originalVerticalConfig;
+		previewConfig.ResetLayout();
+		previewConfig.enabled = true;
+        if(System::GetCommandLineArgs().contains(U"--vertical-options-test")) {previewConfig.backgroundDepthEnabled=true;previewConfig.ResetDepthImages();}
+        if(System::GetCommandLineArgs().contains(U"--vertical-preview-depth-off"))previewConfig.backgroundDepthEnabled=false;
+		previewConfig.displayMode = System::GetCommandLineArgs().contains(U"--vertical-preview-borderless")
+			? Vertical::DisplayMode::BorderlessFullscreen : Vertical::DisplayMode::Windowed;
+		previewConfig.windowSize = {540, 960};
+        if(System::GetCommandLineArgs().contains(U"--vertical-preview-1080")) previewConfig.windowSize={1080,1920};
+        if(System::GetCommandLineArgs().contains(U"--vertical-preview-720")) previewConfig.windowSize={720,1280};
+        if(System::GetCommandLineArgs().contains(U"--vertical-preview-landscape"))
+        {
+            previewConfig.enabled = false;
+            previewConfig.windowSize = {1280,720};
+        }
+		previewConfig.Save();
+	}
+    ksmaudio::qa::Event("CONFIG_BACKEND",0,0,String{ConfigIni::GetString(ConfigIni::Key::kAudioBackend)}.toUTF8());
+    ksmaudio::qa::Event("CONFIG_ASSIST_TIMING",ConfigIni::GetInt(ConfigIni::Key::kAssistTick),ConfigIni::GetInt(ConfigIni::Key::kShowFastSlow));
 
 	// ランタイム設定を初期化
 	RuntimeConfig::RestoreJudgmentModesFromConfigIni();
@@ -400,20 +475,58 @@ void KSMMain()
 
 	// 音声処理を初期化
 #ifdef _WIN32
-	const bool audioInitialized = ksmaudio::Init(s3d::Platform::Windows::Window::GetHWND(), GetAudioBackendFromConfig());
+    const String configuredOutput{ConfigIni::GetString(ConfigIni::Key::kAudioBackend)};
+    AudioOutputSettings::Log(U"BEGIN startup output initialization: requested={}"_fmt(configuredOutput));
+    const std::string asioDriver = configuredOutput.starts_with(U"asio:") ? configuredOutput.substr(5).toUTF8() : "";
+	const bool audioInitialized = ksmaudio::InitWithTrace(s3d::Platform::Windows::Window::GetHWND(), GetAudioBackendFromConfig(), asioDriver,
+        [](const char* phase) { AudioOutputSettings::Log(Unicode::FromUTF8(phase)); ksmaudio::qa::Event("STARTUP_AUDIO",0,0,phase); ksmaudio::qa::Phase("startup.audio"); });
 #else
 	const bool audioInitialized = ksmaudio::Init(nullptr);
+#endif
+#ifdef _WIN32
+    AudioOutputSettings::Log(U"END startup output initialization: success={}, backend={}, driver={}, rate={}, frames={}, warning={}"_fmt(
+        audioInitialized, static_cast<int>(ksmaudio::GetAudioOutputStatus().backend),
+        Unicode::FromUTF8(ksmaudio::GetAudioOutputStatus().driver), ksmaudio::GetAudioOutputStatus().sampleRate,
+        ksmaudio::GetAudioOutputStatus().bufferSamples, Unicode::FromUTF8(ksmaudio::GetAudioOutputStatus().warning)));
 #endif
 	if (!audioInitialized)
 	{
 		throw Error{ I18n::Get(I18n::General::ErrorBassInitFailed, ksmaudio::GetLastErrorCode()) };
 	}
 
+    ksmaudio::qa::Event("OUTPUT", static_cast<std::uint64_t>(ksmaudio::GetAudioOutputStatus().sampleRate),
+        ksmaudio::GetAudioOutputStatus().bufferSamples, ksmaudio::GetAudioOutputStatus().driver);
+    ksmaudio::qa::Event("OUTPUT_WARNING",0,0,ksmaudio::GetAudioOutputStatus().warning);
+    AudioCalibration::Initialize();
+    if(System::GetCommandLineArgs().contains(U"--ex-score-test")){
+        try{ExScoreFixture::Run();}catch(const Error& error){TextWriter{FsUtils::GetResourcePath(U"ex-score-failure.txt")}.writeln(error);}
+        Vertical::OptionsPresentation::Reset();ksmaudio::Terminate();return;
+    }
+    if (System::GetCommandLineArgs().contains(U"--timing-hud-smoke-test")) {
+        try { TimingHudFixture::Run(); }
+        catch (const Error& error) { TextWriter{FsUtils::GetResourcePath(U"timing-hud-failure.txt")}.writeln(error); }
+        Vertical::OptionsPresentation::Reset();ksmaudio::Terminate(); return;
+    }
+    if (System::GetCommandLineArgs().contains(U"--audio-timing-smoke-test")) {
+        try { AudioTimingFixture::Run(); }
+        catch (const Error& error) { TextWriter{FileSystem::PathAppend(FsUtils::AppDataDirectoryPath(),U"audio-timing-failure.txt")}.writeln(error); }
+        Vertical::OptionsPresentation::Reset();ksmaudio::Terminate(); return;
+    }
+    if (System::GetCommandLineArgs().contains(U"--audio-calibration-smoke-test")) {
+        AudioCalibration::RunFixtureTests(); Vertical::OptionsPresentation::Reset();ksmaudio::Terminate(); return;
+    }
+    const auto& audioStatus = ksmaudio::GetAudioOutputStatus();
+    Logger << U"Audio output: " << (audioStatus.backend == ksmaudio::AudioBackend::ASIO ? U"ASIO" : U"BASS default/DirectSound")
+        << U", driver=" << Unicode::FromUTF8(audioStatus.driver)
+        << U", sampleRate=" << audioStatus.sampleRate << U", latencyMs=" << audioStatus.latencySec * 1000.0;
+    if (!audioStatus.warning.empty())
+        MessageBoxUtils::ShowOK(U"ASIO: " + Unicode::FromUTF8(audioStatus.warning) + U"\nUsing the default audio output. Check Sound settings to select another output.", MessageBoxStyle::Warning);
+
 	// マスターボリュームを適用
 	{
 		constexpr int32 kMasterVolumeDefault = 100;
 		const int32 masterVolume = ConfigIni::GetInt(ConfigIni::Key::kMasterVolume, kMasterVolumeDefault);
-		ksmaudio::SetMasterVolume(masterVolume / 100.0);
+		ksmaudio::SetMasterVolume(previewMode ? 0.0 : masterVolume / 100.0);
 	}
 
 	// ハイスコアのバックアップを作成
@@ -423,8 +536,34 @@ void KSMMain()
 	Window::SetToggleFullscreenEnabled(false); // Alt+Enter無効化
 	ApplyScreenSizeConfig();
 
+	// Validate the ordinary Play startup path, without preview-mode overrides.
+	if (System::GetCommandLineArgs().contains(U"--play-launch-config-check"))
+	{
+		TextWriter report{U"play-launch-config-check.csv"};
+		report.writeln(U"check,actual,expected,status");
+		bool passed = true;
+		const auto record = [&](StringView name, const String& actual, const String& expected, bool ok) {
+			passed = passed && ok;
+			report.writeln(U"{},{},{},{}"_fmt(name, actual, expected, ok ? U"PASS" : U"FAIL"));
+		};
+		record(U"landscape_restored", U"{}x{}"_fmt(Scene::Width(), Scene::Height()), U"800x600",
+			!Vertical::ModConfig::Load().enabled && Scene::Size() == Size{800,600});
+		const auto keys = String{ConfigIni::GetString(U"key")}.split(U',');
+		record(U"default_key_mapping", Format(keys.size()), U"14", keys.size() == 14);
+#ifdef _WIN32
+		const double volume = BASS_GetVolume();
+		const double expected = ConfigIni::GetInt(ConfigIni::Key::kMasterVolume, 100) / 100.0;
+		record(U"nonzero_master_volume", Format(volume), Format(expected), expected > 0 && Abs(volume - expected) < .001);
+#endif
+		report.writeln(U"overall,,,{}"_fmt(passed ? U"PASS" : U"FAIL"));
+		Vertical::OptionsPresentation::Reset();ksmaudio::Terminate();
+		return;
+	}
 	// アセット一覧を登録
+	SkinPreset::Initialize();
 	AssetManagement::RegisterAssets();
+    if (RenderGeometryFixture::Requested()) {RenderGeometryFixture::Run();Vertical::OptionsPresentation::Reset();ksmaudio::Terminate();return;}
+    if (SkinFixture::Enabled() && System::GetCommandLineArgs().contains(U"--skin-core-test")) { SkinFixture::Core(); Vertical::OptionsPresentation::Reset();ksmaudio::Terminate(); return; }
 
 	// Vsync設定を反映("0;120"または"1"の形式)
 	const Array<String> vsyncParts = String{ ConfigIni::GetString(ConfigIni::Key::kVsync, U"0;300") }.split(U';');
@@ -479,6 +618,24 @@ void KSMMain()
 
 	// NocoUIのグローバルデフォルトフォントを設定
 	noco::SetGlobalDefaultFont(AssetManagement::SystemFont());
+    if(System::GetCommandLineArgs().contains(U"--judge-setting-test")){
+        try{JudgeSettingFixture::Run();}catch(const Error& error){TextWriter{FsUtils::GetResourcePath(U"judge-setting-failure.txt")}.writeln(error);}
+        Vertical::OptionsPresentation::Reset();ksmaudio::Terminate();return;
+    }
+    if(System::GetCommandLineArgs().contains(U"--aps-video-fixture")){
+        try{ApsVideoFixture::Run();}catch(const Error& error){TextWriter{FsUtils::GetResourcePath(U"aps-video-failure.txt")}.writeln(error);}
+        Vertical::OptionsPresentation::Reset();ksmaudio::Terminate();return;
+    }
+    if(System::GetCommandLineArgs().contains(U"--aps-test")){
+        try{ApsFixture::Run();}catch(const Error& error){TextWriter{FsUtils::GetResourcePath(U"aps-failure.txt")}.writeln(error);}
+        Vertical::OptionsPresentation::Reset();ksmaudio::Terminate();return;
+    }
+    if(System::GetCommandLineArgs().contains(U"--audio-end-game-test")) {
+        try { AudioEndGameFixture::Run(); }
+        catch(const Error& error){TextWriter{FsUtils::GetResourcePath(U"audio-end-game-failure.txt")}.writeln(error);}
+        Vertical::OptionsPresentation::Reset();ksmaudio::Terminate();return;
+    }
+
 
 	// NocoUIの音声再生をゲーム本体と同じ音声バックエンド(BASS)で行う
 	noco::UISound::SetPlayAudioCallback(
@@ -516,9 +673,48 @@ void KSMMain()
 		}
 	}
 
+    const bool audioOptionsSmokeTest = System::GetCommandLineArgs().contains(U"--audio-options-smoke-test");
+    if (audioOptionsSmokeTest)
+    {
+        ksmaudio::SetMasterVolume(0.0);
+        ScreenCapture::SetScreenshotDirectory(FsUtils::AppDataDirectoryPath());
+    }
+
+    const bool resultDetailCapture=System::GetCommandLineArgs().contains(U"--result-detail-capture");
+    if(resultDetailCapture) {
+        if(!FileSystem::Exists(FsUtils::GetResourcePath(U"audio-test-fixture"))) throw Error{U"Isolated result fixture required"};
+        ksmaudio::SetMasterVolume(0);
+        ScreenCapture::SetScreenshotDirectory(FsUtils::GetResourcePath(U"./"));
+    }
+    const bool timingVisualCapture=TimingHudCapture::Enabled();
+    if(timingVisualCapture) {
+        ksmaudio::SetMasterVolume(0);
+        FileSystem::CreateDirectories(FsUtils::GetResourcePath(U"timing-captures"));
+        ScreenCapture::SetScreenshotDirectory(FsUtils::GetResourcePath(U"timing-captures/"));
+    }
+    int32 timingCapturedStage=-1;
 	// 開始シーンを決定
 	Co::SceneFactory initialSceneFactory;
-	if (testPlayArgs.has_value() && testPlayArgs->testPlayOption.hasStartMeasure())
+    if(resultDetailCapture) {
+        ResultSceneArgs args;
+        args.chartFilePath=FsUtils::GetResourcePath(U"songs/K-Shoot MANIA/flavorofyouth/flavorofyouth_ch.ksh");
+        args.chartData=kson::LoadKshChartData(args.chartFilePath.toUTF8());
+        args.playResult.playOption.testPlayOption.emplace(); // Never write a high score.
+        args.playResult.playOption.timingHud=RuntimeConfig::LoadTimingHudSettingsFromConfigIni();
+        args.playResult.score=9876543;args.playResult.maxCombo=1234;
+        args.playResult.detailedStats={12,56,90,1234,67,78,34};
+        args.playResult.comboStats={1391,56,78,46};
+        args.playResult.totalCombo=1581; // Includes ten unjudged notes: SLOW ERROR gets 44.
+        initialSceneFactory=Co::MakeSceneFactory<ResultScene>(args);
+    }
+    else if (timingVisualCapture && TimingHudCapture::IsMenu()) {
+        initialSceneFactory=Co::MakeSceneFactory<SelectScene>(Optional<SelectSceneSearchParams>{none});
+    }
+    else if (audioOptionsSmokeTest)
+    {
+        initialSceneFactory = Co::MakeSceneFactory<OptionScene>();
+    }
+	else if (testPlayArgs.has_value() && testPlayArgs->testPlayOption.hasStartMeasure())
 	{
 		// テストプレイ(-from指定あり)の場合
 		initialSceneFactory = Co::MakeSceneFactory<PlayScene>(
@@ -543,10 +739,118 @@ void KSMMain()
 	}
 
 	// メインループ
+	if (previewOptions) initialSceneFactory = Co::MakeSceneFactory<ModOptionsScene>(
+        System::GetCommandLineArgs().contains(U"--vertical-preview-depth") ? 3 :
+        System::GetCommandLineArgs().contains(U"--vertical-preview-graphics") ? 1 :
+        System::GetCommandLineArgs().contains(U"--vertical-preview-developer") ? 2 : 0,0);
+	if (previewHUD) initialSceneFactory = Co::MakeSceneFactory<VerticalRenderPreview>();
+	if (previewLegacyOptions || previewSettings) initialSceneFactory = Co::MakeSceneFactory<OptionScene>();
+    if(previewPrepare){
+        FilePath chart=U"../../test-output/ui-v12/fixture/test.ksh";
+        const auto args=System::GetCommandLineArgs();
+        for(size_t i=0;i+1<args.size();++i)if(args[i]==U"--vertical-preview-chart")chart=args[i+1];
+        initialSceneFactory=Co::MakeSceneFactory<PlayPrepareScene>(chart,MusicGame::IsAutoPlayYN::No);
+    }
+	if (previewSelect) initialSceneFactory = Co::MakeSceneFactory<SelectScene>();
+    if (previewResult)
+    {
+        ResultSceneArgs fixture;
+        fixture.chartData = kson::CreateEditorDefaultChartData();
+        fixture.chartData.meta.title = "Vertical result preview";
+        fixture.chartData.meta.artist = "Render-only fixture";
+        const auto args = System::GetCommandLineArgs();
+        for (size_t i = 0; i + 1 < args.size(); ++i)
+            if (args[i] == U"--vertical-preview-chart")
+            {
+                fixture.chartFilePath = args[i + 1];
+                fixture.chartData = FsUtils::HasKsonExtension(fixture.chartFilePath)
+                    ? kson::LoadKsonChartData(fixture.chartFilePath.toUTF8())
+                    : kson::LoadKshChartData(fixture.chartFilePath.toUTF8());
+            }
+        const bool cleared = args.contains(U"--vertical-preview-result-clear");
+        fixture.playResult.playOption.diagnosticSession = true;
+        fixture.playResult.playOption.timingHud=RuntimeConfig::LoadTimingHudSettingsFromConfigIni();
+        fixture.playResult.score = cleared ? 9850000 : 60150;
+        fixture.playResult.totalCombo = 1330;
+        fixture.playResult.comboStats.critical = cleared ? 1300 : 8;
+        fixture.playResult.maxCombo = cleared ? 1000 : 2;
+        fixture.playResult.gaugePercentage = cleared ? 100.0 : 0.0;
+        fixture.playResult.gaugePercentageForGrade = fixture.playResult.gaugePercentage;
+        initialSceneFactory = Co::MakeSceneFactory<ResultScene>(fixture);
+    }
 	const auto sceneRunner = Co::PlaySceneFrom(std::move(initialSceneFactory)).runScoped();
+	// Scene rendering runs in the CoTaskLib addon, after main-loop drawing.
+	// Keep the display confirmation above scenes and transition fades.
+	const Co::ScopedDrawer displayConfirmationDrawer{
+		[] { Vertical::DrawDisplayConfirmation(); }, Co::Layer::User_PostTransition_10};
+	Stopwatch previewTimer{StartImmediately::Yes};
+	bool previewCaptured = false;
+	bool previewMenuOpened = false;
+    bool previewSelectMoved = false;
+    int previewPrepareFrame=0;
+    const bool fastPreview=System::GetCommandLineArgs().contains(U"--vertical-preview-fast");
+    const bool warpBench=previewHUD && System::GetCommandLineArgs().contains(U"--vertical-preview-benchmark");
+    const bool warpSequence=previewHUD && System::GetCommandLineArgs().contains(U"--vertical-preview-sequence");
+    std::array<double,960> warpFrameTimes{};
+    int warpFrame=0,warpSequenceFrame=0;
+    double warpPreviousTime=previewTimer.sF();
+	std::unique_ptr<Vertical::DisplayTransitionTest> displayTestRunner;
+	if (displayTest) displayTestRunner = std::make_unique<Vertical::DisplayTransitionTest>();
 	
-	while (System::Update())
+    Stopwatch audioSmokeClock{StartImmediately::Yes};
+    bool audioSmokeCaptured = false;
+    int32 audioSmokeFrames = 0;
+    Stopwatch audioDiagnosticClock{StartImmediately::Yes};
+    std::uint64_t lastLateAudioEvents=0, lastRejectedAudioEvents=0;
+	while (true)
 	{
+        ksmaudio::qa::FrameBegin();
+        if(!System::Update()) break;
+        ksmaudio::qa::Phase("main.update");
+        if(ksmaudio::qa::writerFailed) throw Error{U"QA logging failed. Check free disk space and folder permissions."};
+        if(resultDetailCapture) {
+            if(!audioSmokeCaptured && audioSmokeClock.sF()>2.0) {
+                ResultBestScorePanel::CaptureLayout();ExScorePanel::CaptureLayout(U"result");ScreenCapture::SaveCurrentFrame(U"result-detail.png");audioSmokeCaptured=true;
+            }
+            if(audioSmokeClock.sF()>2.5) break;
+        }
+        if (timingVisualCapture && TimingHudCapture::Ready()) {
+            const auto stage=TimingHudCapture::Stage();
+            if (stage!=timingCapturedStage && TimingHudCapture::Fraction()>0.9) {
+                ExScorePanel::CaptureLayout(U"menu");ScreenCapture::SaveCurrentFrame(U"{}-{}.png"_fmt(TimingHudCapture::IsMenu()?U"menu":U"hud",stage));
+                timingCapturedStage=stage;
+            }
+            if (TimingHudCapture::Done()) break;
+        }
+        if (audioOptionsSmokeTest)
+        {
+            ++audioSmokeFrames;
+            if (!audioSmokeCaptured && audioSmokeClock.sF() >= 2.0)
+            {
+                ScreenCapture::SaveCurrentFrame(U"audio-options-smoke.png");
+                audioSmokeCaptured = true;
+            }
+            const bool pairTest = System::GetCommandLineArgs().any([](const String& arg){ return arg.starts_with(U"--audio-switch-pair="); });
+            if (audioSmokeClock.sF() >= 3.0 && (!pairTest || FileSystem::Exists(FsUtils::GetResourcePath(U"audio-switch-smoke-status.txt")))) break;
+        }
+        if (audioDiagnosticClock.sF() >= 5.0) {
+            const auto audioMetrics = ksmaudio::GetAudioLatencySnapshot();
+            if (audioMetrics.lateEvents != lastLateAudioEvents || audioMetrics.rejectedEvents != lastRejectedAudioEvents) {
+                Logger << U"[audio] scheduled events: late={}, rejected={}, sampleRate={}, frames={}"_fmt(
+                    audioMetrics.lateEvents, audioMetrics.rejectedEvents, audioMetrics.output.sampleRate, audioMetrics.output.bufferSamples);
+                lastLateAudioEvents=audioMetrics.lateEvents; lastRejectedAudioEvents=audioMetrics.rejectedEvents;
+            }
+            audioDiagnosticClock.restart();
+        }
+        const auto audioFailure = ksmaudio::GetAudioOutputFailure();
+        if (!audioFailure.empty())
+        {
+            AudioCalibration::Store();
+        ConfigIni::Save();
+            ksmaudio::SetMute(true);
+            // Abort before another judgment update. Do not save a disconnected-device score.
+            throw Error{Unicode::FromUTF8(audioFailure)};
+        }
 		// マウスカーソル非表示設定(全画面での非表示)
 		// プレイ中のみの非表示はPlaySceneで処理する
 		if (ConfigIni::GetInt(ConfigIni::Key::kHideMouseCursor, ConfigIni::Value::HideMouseCursor::kPlayOnly) == ConfigIni::Value::HideMouseCursor::kAll)
@@ -556,28 +860,91 @@ void KSMMain()
 
 		if (ksmaxis::IsInitialized())
 		{
+            ksmaudio::qa::Scope qaPhase{"input.ksmaxis"};
 			ksmaxis::Update();
 		}
 
 		// KeyConfigの入力状態を更新
+        ksmaudio::qa::Phase("input.KeyConfig");
 		KeyConfig::Update();
+        if (previewSelect && !previewSelectMoved && previewTimer.sF() >= 1.95 &&
+            (System::GetCommandLineArgs().contains(U"--vertical-preview-select-down") ||
+             System::GetCommandLineArgs().contains(U"--vertical-preview-select-up")))
+        {
+            KeyConfig::RequestVirtualDown(System::GetCommandLineArgs().contains(U"--vertical-preview-select-up")
+                ? kButtonUp : kButtonDown);
+            previewSelectMoved = true;
+        }
+		if (previewSettings && !previewMenuOpened && previewTimer.sF() >= 0.8)
+		{
+			KeyConfig::RequestVirtualDown(kButtonStart);
+			previewMenuOpened = true;
+		}
 
 		// ウィンドウのフォーカス状態を更新
+        ksmaudio::qa::Phase("input.focus");
 		InputUtils::UpdateWindowFocusState();
+        Vertical::OptionProbe::update();
+		Vertical::UpdateDisplayConfirmation();
+        if(Vertical::OptionProbe::active() && Vertical::OptionProbe::done()) break;
+		if (displayTestRunner && displayTestRunner->update()) break;
+		if(warpBench) {
+            const double now=previewTimer.sF();
+            if(warpFrame>=240 && warpFrame<1200) warpFrameTimes[warpFrame-240]=(now-warpPreviousTime)*1000;
+            warpPreviousTime=now;
+            if(++warpFrame>=1200) break;
+        }
+        if(warpSequence && previewTimer.sF() >= .1*warpSequenceFrame && warpSequenceFrame<30) {
+            ScreenCapture::SaveCurrentFrame(U"warp-sequence-{:02}.png"_fmt(warpSequenceFrame++));
+        }
+        if(previewPrepare && previewPrepareFrame<3 && previewTimer.sF()>=std::array<double,3>{.25,1.25,2.5}[previewPrepareFrame])
+            ScreenCapture::SaveCurrentFrame(U"vertical-prepare-stage-{}.png"_fmt(previewPrepareFrame++));
+        if (previewMode && !warpBench && !displayTest && !previewCaptured && previewTimer.sF() >= (fastPreview ? .8 : 2.0))
+		{
+			ScreenCapture::SaveCurrentFrame(previewResult ? U"vertical-result-preview.png" : previewPrepare ? U"vertical-prepare-preview.png" : previewTitle ? U"vertical-title-preview.png" :
+				(previewOptions ? U"vertical-options-preview.png" :
+				(previewLegacyOptions ? U"vertical-option-scene-preview.png" :
+				(previewSettings ? U"vertical-settings-preview.png" :
+				(previewSelect ? U"vertical-select-preview.png" : U"vertical-hud-preview.png")))));
+			previewCaptured = true;
+		}
+		if (previewMode && !warpBench && !displayTest && !Vertical::OptionProbe::active() && previewTimer.sF() >= (fastPreview ? 1.1 : 3.2)) break;
 
 #ifdef __APPLE__
 		// テキスト編集中かどうかを設定(テキスト編集中はIMEキーをブロックしない)
 		KSMPlatformMacOS_SetIsEditingText(noco::IsEditingTextBox());
 #endif
 
+        ksmaudio::qa::Phase("sceneRunner.done");
 		if (sceneRunner.done())
 		{
 			break;
 		}
 	}
 
+    if(warpBench) {
+        double sum=0; int over=0;
+        for(const double ms:warpFrameTimes) {sum+=ms; if(ms>1000.0/120) ++over;}
+        std::sort(warpFrameTimes.begin(),warpFrameTimes.end());
+        TextWriter writer{U"vertical-warp-benchmark.csv"};
+        writer.writeln(U"samples,mean_ms,p99_ms,over_8_333ms,width,height");
+        writer.writeln(U"960,{},{},{},{},{}"_fmt(sum/960,warpFrameTimes[950],over,Scene::Width(),Scene::Height()));
+    }
+	Vertical::RestorePendingDisplayChange();
+	if (previewMode) originalVerticalConfig.Save();
+    if (audioOptionsSmokeTest)
+    {
+        TextWriter smokeReport{FsUtils::GetResourcePath(U"audio-smoke-status.txt")};
+        smokeReport.writeln(U"frames={}, captureRequested={}, backend={}, driver={}"_fmt(audioSmokeFrames, audioSmokeCaptured,
+            ksmaudio::IsASIOActive() ? U"ASIO" : U"BASS", Unicode::FromUTF8(ksmaudio::GetAudioOutputStatus().driver)));
+    }
 	// config.iniを保存
-	ConfigIni::Save();
+    ksmaudio::qa::Scene("shutdown");
+    ksmaudio::qa::Event("MAIN_LOOP_EXIT");
+    ksmaudio::qa::Scope qaShutdown{"main.shutdown",true};
+    // audio_backend is the NEXT launch selection, not necessarily this process's
+    // active output. Never overwrite it with the still-running output at shutdown.
+	if (!previewMode) { AudioCalibration::Store(); ConfigIni::Save(); }
 
 #ifdef __APPLE__
 	// macOS: 英数・かなキーのイベントタップを停止
@@ -589,27 +956,57 @@ void KSMMain()
 	{
 		ksmaxis::Terminate();
 	}
-	ksmaudio::Terminate();
+	AudioOutputSettings::Log(U"BEGIN normal audio shutdown");
+	Vertical::OptionsPresentation::Reset();ksmaudio::Terminate();
+	AudioOutputSettings::Log(U"END normal audio shutdown");
 }
 
 void Main()
 {
+    ksmaudio::qa::SessionGuard qaSession;
+    if(System::GetCommandLineArgs().contains(U"--vertical-spin-test")){Vertical::RunSpinRegression();return;}
+	if (System::GetCommandLineArgs().contains(U"--vertical-menu-input-test"))
+	{
+		Vertical::RunMenuInputTest();
+		return;
+	}
+	if (System::GetCommandLineArgs().contains(U"--vertical-replay-test"))
+	{
+		Vertical::RunJudgmentReplayTest();
+		return;
+	}
+	if (System::GetCommandLineArgs().contains(U"--vertical-self-test"))
+	{
+		Vertical::RunSelfTest();
+		return;
+	}
 	try
 	{
 		KSMMain();
 	}
 	catch (const Error& e)
 	{
+        ksmaudio::qa::Event("EXCEPTION",0,0,e.what().toUTF8());
+        ksmaudio::qa::Phase("exception.audio_cleanup");
+        Vertical::OptionsPresentation::Reset();ksmaudio::Terminate();
+		if(RenderGeometryFixture::Requested()){TextWriter{FsUtils::GetResourcePath(U"render-geometry-failure.txt")}.writeln(e.what());return;}
+		if (SkinFixture::Requested()) { TextWriter{FsUtils::GetResourcePath(U"skin-test-failure.txt")}.writeln(e.what()); return; }
 		MessageBoxUtils::ShowOK(e.what(), MessageBoxStyle::Error);
 		throw;
 	}
 	catch (const std::exception& e)
 	{
+        ksmaudio::qa::Event("EXCEPTION",0,0,e.what());
+        ksmaudio::qa::Phase("exception.audio_cleanup");
+        Vertical::OptionsPresentation::Reset();ksmaudio::Terminate();
 		MessageBoxUtils::ShowOK(Unicode::FromUTF8(e.what()), MessageBoxStyle::Error);
 		throw;
 	}
 	catch (...)
 	{
+        ksmaudio::qa::Event("EXCEPTION_UNKNOWN");
+        ksmaudio::qa::Phase("exception.audio_cleanup");
+        Vertical::OptionsPresentation::Reset();ksmaudio::Terminate();
 		MessageBoxUtils::ShowOK(U"Unknown exception", MessageBoxStyle::Error);
 		throw;
 	}

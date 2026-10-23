@@ -3,6 +3,7 @@
 #include "ResultSceneArgs.hpp"
 #include "ResultNewRecordPanel.hpp"
 #include "ResultSNSShare.hpp"
+#include "Graphics/ResultBestScorePanel.hpp"
 #include "MusicGame/PlayResult.hpp"
 #include "ksmaudio/ksmaudio.hpp"
 
@@ -20,6 +21,8 @@ private:
 	ResultNewRecordPanel m_newRecordPanel;
 
 	ResultSNSShare m_snsShare;
+
+	ResultBestScoreComparison m_bestScoreComparison;
 
 	Optional<CoursePlayState> m_courseState;
 

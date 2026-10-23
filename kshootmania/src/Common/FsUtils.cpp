@@ -1,4 +1,4 @@
-﻿#include "FsUtils.hpp"
+#include "FsUtils.hpp"
 
 namespace FsUtils
 {
@@ -167,7 +167,7 @@ namespace FsUtils
 
 		if (FileSystem::Extension(jacketFilename).isEmpty())
 		{
-			return FileSystem::PathAppend(U"imgs/jacket", String{ jacketFilename } + U".jpg");
+			return SkinPreset::Resolve(U"jacket/" + String{ jacketFilename } + U".jpg");
 		}
 
 		return FileSystem::PathAppend(parentPath, jacketFilename);
@@ -182,7 +182,7 @@ namespace FsUtils
 
 		if (FileSystem::Extension(iconFilename).isEmpty())
 		{
-			return FileSystem::PathAppend(U"imgs/icon", String{ iconFilename } + U".png");
+			return SkinPreset::Resolve(U"icon/" + String{ iconFilename } + U".png");
 		}
 
 		return FileSystem::PathAppend(parentPath, iconFilename);

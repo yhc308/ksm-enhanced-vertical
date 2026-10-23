@@ -1,8 +1,11 @@
-﻿#include "Jdgoverlay3DGraphics.hpp"
+﻿#include "Graphics/GameRenderContext.hpp"
+#include "MusicGame/Graphics/ViewportGeometry.hpp"
+#include "Jdgoverlay3DGraphics.hpp"
 #include "MusicGame/Graphics/GraphicsDefines.hpp"
 #include "MusicGame/GameStatus.hpp"
 #include "MusicGame/Camera/CameraMath.hpp"
 #include "kson/Common/Common.hpp"
+#include "Vertical/VerticalLaneGeometry.hpp"
 
 namespace MusicGame::Graphics
 {
@@ -64,6 +67,8 @@ namespace MusicGame::Graphics
 		{
 		case kCritical:
 			return m_chipCriticalTexture;
+        case kPerfectCritical:
+            return m_chipPerfectCriticalTexture;
 
 		case kNearFast:
 		case kNear:
@@ -95,8 +100,14 @@ namespace MusicGame::Graphics
 
 				const int32 frameIdx = static_cast<int32>(sec / kChipAnimDurationSec * kChipAnimFrames);
 				const int32 columnIdx = chipAnimState.type == Judgment::ChipAnimType::kNearFast ? 1 : 0; // FASTの場合は列が異なる
-				const Vec2 position = Scaled(kTextureSize.x / 4 + 92 + (isBT ? 0 : 30) + (isBT ? kBTLaneDiffX : kFXLaneDiffX) * laneIdx + centerSplitShiftX, 17);
-				chipAnimTexture(chipAnimState.type)(frameIdx, columnIdx).resized(Scaled(kChipAnimSize)).draw(position);
+				Vec2 position = Scaled(kTextureSize.x / 4 + 92 + (isBT ? 0 : 30) + (isBT ? kBTLaneDiffX : kFXLaneDiffX) * laneIdx + centerSplitShiftX, 17);
+				SizeF size=Scaled(kChipAnimSize);
+                if(GameRender::VerticalEnabled()){
+                    size.x*=ViewportGeometry::ButtonScale();
+                    const double x=Vertical::ButtonWorldX(isBT,laneIdx,centerSplitShiftX*42.0/kBTLaneDiffX);
+                    position.x=Scaled(kTextureSize.x/2+x*8/.95)-size.x/2;
+                }
+                chipAnimTexture(chipAnimState.type)(frameIdx,columnIdx).resized(size).draw(position);
 			}
 		}
 	}
@@ -119,8 +130,13 @@ namespace MusicGame::Graphics
 			const auto& laneStatus = isBT ? gameStatus.btLaneStatus[laneIdx] : gameStatus.fxLaneStatus[laneIdx];
 			const int32 centerSplitShiftX = static_cast<int32>(Camera::CenterSplitShiftX(viewStatus.camStatus.centerSplit, static_cast<double>(kBTLaneDiffX)) * ((laneIdx >= numLanes / 2) ? 1 : -1));
 			const double sec = gameStatus.currentTimeSec - laneStatus.currentLongNoteAnimOffsetTimeSec;
-			const Vec2 position = Scaled(kTextureSize.x / 4 + (isBT ? 75 : 96) + (isBT ? kBTLaneDiffX : kFXLaneDiffX) * laneIdx + centerSplitShiftX, isBT ? 10 : 0);
-			const SizeF size = Scaled(isBT ? kLongAnimSizeBT : kLongAnimSizeFX);
+			Vec2 position = Scaled(kTextureSize.x / 4 + (isBT ? 75 : 96) + (isBT ? kBTLaneDiffX : kFXLaneDiffX) * laneIdx + centerSplitShiftX, isBT ? 10 : 0);
+			SizeF size = Scaled(isBT ? kLongAnimSizeBT : kLongAnimSizeFX);
+            if(GameRender::VerticalEnabled()){
+                size.x*=ViewportGeometry::ButtonScale();
+                const double x=Vertical::ButtonWorldX(isBT,laneIdx,centerSplitShiftX*42.0/kBTLaneDiffX);
+                position.x=Scaled(kTextureSize.x/2+x*8/.95)-size.x/2;
+            }
 
 			int32 frameIdx;
 			if (laneStatus.currentLongNotePulse.has_value())
@@ -164,7 +180,8 @@ namespace MusicGame::Graphics
 	void Jdgoverlay3DGraphics::drawLaserAnim(const GameStatus& gameStatus) const
 	{
 		const int32 frameIdx = static_cast<int32>(MathUtils::WrappedFmod(gameStatus.currentTimeSec / kLaserAnimLoopDurationSec, 1.0) * kLaserAnimLoopFrames);
-		const SizeF size = Scaled(kLaserAnimSize);
+		SizeF size = Scaled(kLaserAnimSize);
+        size.x*=ViewportGeometry::LaserScale();
 		for (int32 i = 0; i < kson::kNumLaserLanes; ++i)
 		{
 			const auto& laneStatus = gameStatus.laserLaneStatus[i];
@@ -180,7 +197,9 @@ namespace MusicGame::Graphics
 				continue;
 			}
 			const double cursorX = laneStatus.cursorWide ? ((cursorXOpt.value() - 0.5) * 2 + 0.5) : cursorXOpt.value();
-			const Vec2 position = Scaled(kTextureSize.x / 4 + 28 + static_cast<int32>(295 * cursorX), 17);
+			Vec2 position = Scaled(kTextureSize.x / 4 + 28 + static_cast<int32>(295 * ViewportGeometry::LaserValue(cursorX)),17);
+            if(GameRender::VerticalEnabled())position.x=Scaled(kTextureSize.x/2+Vertical::LaserWorldX(cursorX)*8/.95)-size.x/2;
+            else position.x-=Scaled(kLaserAnimSize.x)*(ViewportGeometry::LaserScale()-1)/2;
 			m_laserAnimTexture(frameIdx, i).resized(size).draw(position);
 		}
 	}
@@ -211,9 +230,12 @@ namespace MusicGame::Graphics
 					continue;
 				}
 
-				const SizeF size = Scaled(kLaserRippleAnimSize);
+				SizeF size = Scaled(kLaserRippleAnimSize);
+                size.x*=ViewportGeometry::LaserScale();
 				const double x = rippleAnimStatus.wide ? ((rippleAnimStatus.x - 0.5) * 2 + 0.5) : rippleAnimStatus.x;
-				const Vec2 position = Scaled(kTextureSize.x / 4 - 6 + static_cast<int32>(295 * x), 17);
+				Vec2 position = Scaled(kTextureSize.x / 4 - 6 + static_cast<int32>(295 * ViewportGeometry::LaserValue(x)),17);
+                if(GameRender::VerticalEnabled())position.x=Scaled(kTextureSize.x/2+Vertical::LaserWorldX(x)*8/.95)-size.x/2;
+                else position.x-=Scaled(kLaserRippleAnimSize.x)*(ViewportGeometry::LaserScale()-1)/2;
 				m_laserRippleAnimTexture(frameIdx, i).resized(size).draw(position, ColorF{ kLaserRippleAnimAlpha });
 			}
 		}
@@ -227,6 +249,12 @@ namespace MusicGame::Graphics
 				.sourceScale = SourceScale::kNoScaling,
 				.sourceSize = kChipAnimSourceSize,
 			})
+        , m_chipPerfectCriticalTexture(U"judge_p1.gif",
+            {
+                .row = kChipAnimFrames,
+                .sourceScale = SourceScale::kNoScaling,
+                .sourceSize = kChipAnimSourceSize,
+            })
 		, m_chipNearTexture(kChipNearAnimTextureFilename,
 			{
 				.row = kChipAnimFrames,
@@ -278,17 +306,21 @@ namespace MusicGame::Graphics
 		drawLaserRippleAnim(gameStatus);
 	}
 
-	void Jdgoverlay3DGraphics::draw3D(const ViewStatus& viewStatus) const
+	void Jdgoverlay3DGraphics::draw3D(const ViewStatus& viewStatus,const BasicCamera3D& camera,Float3 displayAnchor) const
 	{
-		// レンダーテクスチャを3D空間上に描画
-		const ScopedRenderStates3D blendState(BlendState::Additive);
-		const double scale = viewStatus.camStatus.useLegacyJdgScale
-			? Camera::LegacyJdgoverlayScale(viewStatus.camStatus.zoomBottom)
-			: Camera::JdgoverlayScale(viewStatus.camStatus.zoomBottom);
-		const double shiftX = viewStatus.camStatus.shiftX;
-		const Vec3 shiftXVec = Vec3::Right(shiftX);
-		const double radians = Math::ToRadians(viewStatus.camStatus.rotationDeg + viewStatus.camStatus.rotationDegHighway) + viewStatus.tiltRadians;
-		const Transformer3D transform(Mat4x4::Translate(shiftXVec) * Mat4x4::Scale(scale, kPlaneCenter) * TiltTransformMatrix(radians));
-		m_mesh.draw(m_transform, m_renderTexture);
-	}
+        // Composite feedback over the judgment bar, following the exact note hit plane.
+        const ScopedRenderStates3D state{BlendState::Additive,DepthStencilState{false,false}};
+        if(GameRender::VerticalEnabled()) {
+            const Transformer3D transform{Vertical::HighwayOrigin(viewStatus)};
+            m_mesh.draw(camera.billboard(displayAnchor,kPlaneSize),m_renderTexture);
+        } else {
+            // Preserve KSM's original landscape billboard, pivot and zoom rules.
+            const double scale=viewStatus.camStatus.useLegacyJdgScale
+                ? Camera::LegacyJdgoverlayScale(viewStatus.camStatus.zoomBottom)
+                : Camera::JdgoverlayScale(viewStatus.camStatus.zoomBottom);
+            const double radians=Math::ToRadians(viewStatus.camStatus.rotationDeg+viewStatus.camStatus.rotationDegHighway)+viewStatus.tiltRadians;
+            const Transformer3D transform(Mat4x4::Translate(Vec3::Right(viewStatus.camStatus.shiftX))*Mat4x4::Scale(scale,kPlaneCenter)*TiltTransformMatrix(radians));
+            m_mesh.draw(m_transform,m_renderTexture);
+        }
+    }
 }

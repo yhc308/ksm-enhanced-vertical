@@ -1,4 +1,5 @@
-﻿#include "SelectMenuLevelSongItem.hpp"
+﻿#include "Graphics/ExScorePanel.hpp"
+#include "SelectMenuLevelSongItem.hpp"
 #include "RuntimeConfig.hpp"
 
 SelectMenuLevelSongItem::SelectMenuLevelSongItem(
@@ -187,6 +188,7 @@ void SelectMenuLevelSongItem::setCanvasParamsCenter(const SelectMenuEventContext
 	}
 
 	const HighScoreInfo highScore = context.fnGetHighScore(m_chartInfo->chartFilePath());
+    ExScorePanel::Set(canvas,highScore.exScore(RuntimeConfig::GetGaugeType()),m_chartInfo->exMaximum());
 	const GaugeType gaugeType = RuntimeConfig::GetGaugeType();
 
 	const FilePath jacketPath = m_chartInfo->jacketFilePath();

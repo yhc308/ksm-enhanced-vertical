@@ -1,5 +1,8 @@
-﻿#include "LaserApproachIndicator.hpp"
+﻿#include "Graphics/GameRenderContext.hpp"
+#include "LaserApproachIndicator.hpp"
 #include "kson/Util/TimingUtils.hpp"
+#include "Vertical/VerticalModConfig.hpp"
+#include "Vertical/VerticalHUDLayout.hpp"
 
 namespace MusicGame::Graphics
 {
@@ -160,7 +163,7 @@ namespace MusicGame::Graphics
 		}
 	}
 
-	void LaserApproachIndicator::draw(double currentTimeSec) const
+	void LaserApproachIndicator::draw(double currentTimeSec, Optional<double> anchorY) const
 	{
 		for (std::size_t i = 0; i < kson::kNumLaserLanesSZ; ++i)
 		{
@@ -187,14 +190,24 @@ namespace MusicGame::Graphics
 				: (shouldBlinkNow ? m_textureRegionBlinkR : m_textureRegionNormalR);
 
 			const int32 xOffset = (i == 0) ? -kXOffsetFromCenter : kXOffsetFromCenter;
-			const Vec2 pos = {
-				Scene::Width() / 2 + Scaled(xOffset),
+			Vec2 pos = {
+				GameRender::Width() / 2 + Scaled(xOffset),
 				Scaled(kYPosition)
 			};
 
+			double verticalSize = 0;
+			if (GameRender::VerticalEnabled())
+			{
+				const auto viewport = Vertical::Viewport::Fit(GameRender::Width(), GameRender::Height());
+				const auto layout = Vertical::HUDDefinition()[U"laserApproach"];
+				pos = {viewport.x(layout[i == 0 ? U"leftX" : U"rightX"].get<double>()),
+					anchorY.value_or(GameRender::Height() * Vertical::ModConfig::Load().layout.judgmentLineY) -
+					layout[U"offsetY"].get<double>() * viewport.scale};
+				verticalSize = layout[U"size"].get<double>() * viewport.scale;
+			}
 			const ScopedRenderStates2D samplerState(SamplerState::ClampLinear);
 			textureRegion
-				.resized(Scaled(kIconSize))
+				.resized(verticalSize > 0 ? SizeF{verticalSize, verticalSize} : SizeF{Scaled(kIconSize)})
 				.drawAt(pos, ColorF(1.0, alpha));
 		}
 	}

@@ -1,4 +1,5 @@
-﻿#include "ComboOverlay.hpp"
+﻿#include "Graphics/GameRenderContext.hpp"
+#include "ComboOverlay.hpp"
 
 namespace MusicGame::Graphics
 {
@@ -83,10 +84,10 @@ namespace MusicGame::Graphics
 			const double shakeX = Scaled(1.0) * (MathUtils::WrappedFmod(currentTimeSec, 0.05) < 0.025 ? 0.5 : -0.5);
 
 			const TextureRegion& comboTextureRegion = m_isNoError ? m_comboTextureRegionNoError : m_comboTextureRegion;
-			comboTextureRegion.drawAt(Scene::Width() / 2 + shakeX, Scaled(300));
+			comboTextureRegion.drawAt(GameRender::Width() / 2 + shakeX, Scaled(300));
 
 			const NumberTextureFont& numberTextureFont = m_isNoError ? m_numberTextureFontNoError : m_numberTextureFont;
-			numberTextureFont.draw(m_numberLayout, { Scene::Width() / 2 + shakeX, Scaled(313) }, m_combo, ZeroPaddingYN::Yes);
+			numberTextureFont.draw(m_numberLayout, { GameRender::Width() / 2 + shakeX, Scaled(313) }, m_combo, ZeroPaddingYN::Yes);
 		}
 
 		if (isMilestoneVisible)
@@ -106,7 +107,7 @@ namespace MusicGame::Graphics
 				alpha = Max((kMilestoneDurationSec - milestoneElapsedSec) / (kMilestoneDurationSec - kMilestoneFadeOutStartSec), 0.0);
 			}
 			const int32 frame = Min(static_cast<int32>(milestoneElapsedSec / kMilestoneFrameDurationSec), kMilestoneFrameCount - 1);
-			m_milestoneTexture(frame).resized(Scaled(120, 40)).drawAt(Scene::Width() / 2.0, Scaled(339), ColorF{ 1.0, alpha });
+			m_milestoneTexture(frame).resized(Scaled(120, 40)).drawAt(GameRender::Width() / 2.0, Scaled(339), ColorF{ 1.0, alpha });
 		}
 	}
 }

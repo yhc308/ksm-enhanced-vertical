@@ -1,3 +1,5 @@
+> **Unofficial Enhanced Vertical review branch:** see [README_ENHANCED.md](README_ENHANCED.md).
+
 K-Shoot MANIA v2
 ========================
 

@@ -9,6 +9,7 @@ namespace MusicGame::Graphics
 	{
 	private:
 		const Texture m_beamTexture;
+        const Texture m_perfectBeamTexture;
 
 	public:
 		KeyBeamGraphics();

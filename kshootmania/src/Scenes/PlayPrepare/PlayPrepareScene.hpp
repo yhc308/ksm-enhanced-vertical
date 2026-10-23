@@ -22,6 +22,7 @@ private:
 	Optional<SelectSceneSearchParams> m_selectSearchParams;
 
 	std::shared_ptr<noco::Canvas> m_canvas;
+    double m_introAlpha=0;
 
 	MusicGame::HispeedSettingMenu m_hispeedMenu;
 

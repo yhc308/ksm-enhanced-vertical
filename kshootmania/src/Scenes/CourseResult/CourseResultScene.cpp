@@ -1,4 +1,5 @@
-﻿#include "CourseResultScene.hpp"
+#include "ksmaudio/Diagnostics.hpp"
+#include "CourseResultScene.hpp"
 #include "Scenes/Select/SelectScene.hpp"
 #include "Scenes/Select/SelectChartInfo.hpp"
 #include "Scenes/Common/ShowLoadingOneFrame.hpp"
@@ -49,6 +50,7 @@ CourseResultScene::CourseResultScene(const CoursePlayState& courseState, const O
 	, m_chartList(m_canvas, m_courseState)
 	, m_snsShare(BuildCourseTweetText(m_courseState))
 {
+    ksmaudio::qa::Scope qaConstruct{"CourseResultScene.construct",true};
 	// 前回までのAchievementRateを読み込んでNewRecordパネルを設定
 	const FilePath courseFilePath = m_courseState.courseInfo().filePath;
 	const KscKey kscKey = m_courseState.kscKey();
@@ -218,6 +220,8 @@ bool CourseResultScene::isClickDecideDown() const
 
 void CourseResultScene::update()
 {
+    ksmaudio::qa::Scope qaScope{"CourseResultScene.update",false};
+    ksmaudio::qa::Scene("courseresult");
 	// 画面全体がクリック可能なのでカーソルを人差し指に変更
 	Cursor::RequestStyle(CursorStyle::Hand);
 
@@ -229,6 +233,7 @@ void CourseResultScene::update()
 
 void CourseResultScene::draw() const
 {
+    ksmaudio::qa::Scope qaScope{"CourseResultScene.draw",false};
 	m_canvas->draw();
 }
 

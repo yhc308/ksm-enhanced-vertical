@@ -61,6 +61,9 @@ namespace KeyConfig
 
 	bool Down(Button button);
 
+	// Configured physical input only; excludes RequestVirtualDown.
+	bool PhysicalDown(Button button);
+
 	/// @brief 仮想的にボタンを次のフレームで1フレームだけDown扱いにする
 	void RequestVirtualDown(Button button);
 

@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Graphics/GameRenderContext.hpp"
 #include <Siv3D.hpp>
 
 inline namespace ScreenUtils
@@ -11,28 +12,28 @@ inline namespace ScreenUtils
 	[[nodiscard]]
 	inline int32 Scaled(int32 v)
 	{
-		const Size screenSize = Scene::Size();
+		const Size screenSize = GameRender::Size();
 		return v * screenSize.y / kBaseScreenHeight;
 	}
 
 	[[nodiscard]]
 	inline double Scaled(double v)
 	{
-		const Size screenSize = Scene::Size();
+		const Size screenSize = GameRender::Size();
 		return v * screenSize.y / kBaseScreenHeight;
 	}
 
 	[[nodiscard]]
 	inline int32 ScaledByWidth(int32 v)
 	{
-		const Size screenSize = Scene::Size();
+		const Size screenSize = GameRender::Size();
 		return v * screenSize.x / kBaseScreenWidth;
 	}
 
 	[[nodiscard]]
 	inline double ScaledByWidth(double v)
 	{
-		const Size screenSize = Scene::Size();
+		const Size screenSize = GameRender::Size();
 		return v * screenSize.x / kBaseScreenWidth;
 	}
 
@@ -71,7 +72,7 @@ inline namespace ScreenUtils
 	[[nodiscard]]
 	inline int32 LeftMargin()
 	{
-		const Size screenSize = Scene::Size();
+		const Size screenSize = GameRender::Size();
 		return (screenSize.x - screenSize.y * kBaseScreenWidth / kBaseScreenHeight) / 2;
 	}
 
@@ -90,14 +91,14 @@ inline namespace ScreenUtils
 	[[nodiscard]]
 	inline int32 Scaled2x(int32 v)
 	{
-		const Size screenSize = Scene::Size();
+		const Size screenSize = GameRender::Size();
 		return v * screenSize.y * kScale2xNumerator / kBaseScreenHeight / kScale2xDenominator;
 	}
 
 	[[nodiscard]]
 	inline double Scaled2x(double v)
 	{
-		const Size screenSize = Scene::Size();
+		const Size screenSize = GameRender::Size();
 		return v * screenSize.y * kScale2xNumerator / kBaseScreenHeight / kScale2xDenominator;
 	}
 
@@ -135,14 +136,14 @@ inline namespace ScreenUtils
 	[[nodiscard]]
 	inline int32 Scaled3x(int32 v)
 	{
-		const Size screenSize = Scene::Size();
+		const Size screenSize = GameRender::Size();
 		return v * screenSize.y * kScale3xNumerator / kBaseScreenHeight / kScale3xDenominator;
 	}
 
 	[[nodiscard]]
 	inline double Scaled3x(double v)
 	{
-		const Size screenSize = Scene::Size();
+		const Size screenSize = GameRender::Size();
 		return v * screenSize.y * kScale3xNumerator / kBaseScreenHeight / kScale3xDenominator;
 	}
 
@@ -181,14 +182,14 @@ inline namespace ScreenUtils
 	[[nodiscard]]
 	inline int32 ScaledL(int32 v)
 	{
-		const Size screenSize = Scene::Size();
+		const Size screenSize = GameRender::Size();
 		return v * screenSize.y * kScaleLNumerator / kBaseScreenHeight / kScaleLDenominator;
 	}
 
 	[[nodiscard]]
 	inline double ScaledL(double v)
 	{
-		const Size screenSize = Scene::Size();
+		const Size screenSize = GameRender::Size();
 		return v * screenSize.y * kScaleLNumerator / kBaseScreenHeight / kScaleLDenominator;
 	}
 

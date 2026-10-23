@@ -1,7 +1,10 @@
-﻿#pragma once
+#pragma once
 
 namespace MusicGame::Judgment
 {
+    // Supplemental input accuracy only; score/gauge judgments remain unchanged.
+    inline constexpr double kPerfectCriticalWindowMs = 21.0;
+
 	enum class JudgmentResult
 	{
 		kUnspecified,
@@ -19,6 +22,7 @@ namespace MusicGame::Judgment
 		kNearSlow,
 		kNearFast,
 		kErrorFast,
+		kPerfectCritical,
 
 		kNumBeamTypes,
 	};
@@ -30,6 +34,7 @@ namespace MusicGame::Judgment
 		kNear,
 		kNearFast,
 		kCritical,
+		kPerfectCritical,
 	};
 
 	namespace TimingWindow

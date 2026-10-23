@@ -1,4 +1,5 @@
-﻿#include "ScorePanel.hpp"
+﻿#include "Graphics/GameRenderContext.hpp"
+#include "ScorePanel.hpp"
 
 namespace MusicGame::Graphics
 {
@@ -10,7 +11,7 @@ namespace MusicGame::Graphics
 
 	ScorePanel::ScorePanel()
 		//: m_captionTexture(TextureAsset(kCaptionTextureFilename))
-		: m_captionTexture(U"imgs/" + kCaptionTextureFilename)
+		: m_captionTexture(SkinPreset::LoadTexture(kCaptionTextureFilename))
 		, m_numberTextureFont(kNumberTextureFontFilename, { 64, 64 })
 		, m_numberLayout(Scaled(24, 24), TextureFontTextLayout::Align::Right, 8, Scaled(22))
 		, m_animationTimer(kAnimationDuration, StartImmediately::No)
@@ -39,7 +40,7 @@ namespace MusicGame::Graphics
 
 	void ScorePanel::draw() const
 	{
-		m_captionTexture.resized(Scaled(240, 24)).draw(Scene::Width() / 2 + Scaled(60), Scaled(16));
-		m_numberTextureFont.draw(m_numberLayout, { Scene::Width() / 2 + Scaled(92), Scaled(42) }, m_displayedScore, ZeroPaddingYN::Yes);
+		m_captionTexture.resized(Scaled(240, 24)).draw(GameRender::Width() / 2 + Scaled(60), Scaled(16));
+		m_numberTextureFont.draw(m_numberLayout, { GameRender::Width() / 2 + Scaled(92), Scaled(42) }, m_displayedScore, ZeroPaddingYN::Yes);
 	}
 }

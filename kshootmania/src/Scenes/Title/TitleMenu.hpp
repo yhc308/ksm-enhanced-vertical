@@ -6,7 +6,10 @@
 
 enum TitleMenuItem : int32
 {
-	kStart = 0,
+	kJudgeSetting = 0,
+    kVerticalOptions,
+    kCustom,
+    kStart,
 	kOption,
 	kInputGate,
 	kExit,
@@ -18,6 +21,7 @@ class TitleMenu
 {
 private:
 	bool m_isAlreadySelected = false;
+    bool m_customRequested=false,m_judgeRequested=false;
 
 	LinearMenu m_menu;
 
@@ -26,6 +30,8 @@ private:
 	Stopwatch m_stopwatch { StartImmediately::Yes };
 
 	ksmaudio::Sample m_selectSe{ "se/title_sel.wav" };
+    ksmaudio::Sample m_hoverSe{"se/hover.wav"};
+    int32 m_lastModHover=-1;
 
 	Co::TaskFinishSource<TitleMenuItem> m_selectedMenuItemSource;
 
@@ -35,6 +41,11 @@ public:
 	explicit TitleMenu(TitleMenuItem defaultMenuitem, const std::shared_ptr<noco::Canvas>& titleSceneCanvas);
 
 	void update();
+    bool hoverAt(const Vec2& point);
+    bool focused(TitleMenuItem item) const {return m_menu.cursor()==item;}
+    bool takeJudgeRequest(){return std::exchange(m_judgeRequested,false);}
+    bool takeCustomRequest(){return std::exchange(m_customRequested,false);}
+    void setCanvas(const std::shared_ptr<noco::Canvas>& canvas) { m_titleSceneCanvas = canvas; refreshCanvasMenuCursor(); }
 
 	Co::Task<TitleMenuItem> selectedMenuItemAsync()
 	{

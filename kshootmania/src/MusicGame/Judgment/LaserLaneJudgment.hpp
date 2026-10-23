@@ -44,7 +44,8 @@ namespace MusicGame::Judgment
 	public:
 		LaserSlamJudgment(double sec, int32 direction);
 
-		double sec() const;
+		void reset(){m_result=JudgmentResult::kUnspecified;m_totalAbsDeltaCursorX=0;}
+        double sec() const;
 
 		int32 direction() const;
 
@@ -129,7 +130,9 @@ namespace MusicGame::Judgment
 		/// @param judgmentHandlerRef 判定ハンドラへの参照
 		void lockForExit(JudgmentHandler& judgmentHandlerRef);
 
-		std::size_t lineJudgmentCount() const;
+		void resetSettingsLoop();
+        void skipSettings(const kson::ByPulse<kson::LaserSection>& lane,kson::Pulse pulse,kson::Pulse drawPulse,double time,double drawTime,LaserLaneStatus& status);
+        std::size_t lineJudgmentCount() const;
 
 		std::size_t slamJudgmentCount() const;
 	};

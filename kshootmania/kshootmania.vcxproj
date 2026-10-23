@@ -61,6 +61,7 @@
     <IncludePath>$(SIV3D_0_6_16)\include;$(SIV3D_0_6_16)\include\ThirdParty;$(IncludePath);$(ProjectDir)ThirdParty</IncludePath>
     <LibraryPath>$(SIV3D_0_6_16)\lib\Windows;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
+  <PropertyGroup><TargetName>ksm-enhanced-vertical</TargetName></PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
@@ -84,10 +85,8 @@
       <SubSystem>Windows</SubSystem>
       <DelayLoadDLLs>advapi32.dll;crypt32.dll;dwmapi.dll;gdi32.dll;imm32.dll;ole32.dll;oleaut32.dll;opengl32.dll;shell32.dll;shlwapi.dll;user32.dll;winmm.dll;ws2_32.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
-    <PostBuildEvent>
-      <Command>xcopy /I /D /Y "$(OutDir)$(TargetFileName)" "$(ProjectDir)App"</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
+  <PropertyGroup><TargetName>ksm-enhanced-vertical</TargetName></PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
@@ -116,9 +115,6 @@
       <DelayLoadDLLs>advapi32.dll;crypt32.dll;dwmapi.dll;gdi32.dll;imm32.dll;ole32.dll;oleaut32.dll;opengl32.dll;shell32.dll;shlwapi.dll;user32.dll;winmm.dll;ws2_32.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>xcopy /I /D /Y "$(OutDir)$(TargetFileName)" "$(ProjectDir)App"</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ThirdParty\SQLiteCpp\sqlite3\sqlite3.c">
@@ -205,6 +201,8 @@
     <ClCompile Include="src\Input\LaserInput\KeyboardLaserInput.cpp" />
     <ClCompile Include="src\Input\LaserInput\MouseXYLaserInput.cpp" />
     <ClCompile Include="src\Input\LaserInput\SliderLaserInput.cpp" />
+    <ClCompile Include="src\Common\SkinPreset.cpp" />
+    <ClCompile Include="src\Scenes\Title\SkinOverlay.cpp" />
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\RuntimeConfig.cpp" />
     <ClCompile Include="src\TestPlayArgs.cpp" />
@@ -246,6 +244,7 @@
     <ClCompile Include="src\MusicGame\Judgment\ButtonLaneJudgment.cpp" />
     <ClCompile Include="src\MusicGame\Judgment\ComboStatus.cpp" />
     <ClCompile Include="src\MusicGame\Judgment\JudgmentHandler.cpp" />
+    <ClCompile Include="src\MusicGame\Judgment\ExScore.cpp" />
     <ClCompile Include="src\MusicGame\Judgment\JudgmentMain.cpp" />
     <ClCompile Include="src\MusicGame\Judgment\LaserLaneJudgment.cpp" />
     <ClCompile Include="src\MusicGame\Judgment\LaserSlamShake.cpp" />
@@ -428,6 +427,17 @@
     <ClInclude Include="src\I18n\I18n.hpp" />
     <ClInclude Include="src\IR\IRHash.hpp" />
     <ClInclude Include="src\Ini\ConfigIni.hpp" />
+    <ClInclude Include="src\Diagnostics\AudioTimingFixture.hpp" />
+    <ClInclude Include="src\Diagnostics\AudioEndGameFixture.hpp" />
+    <ClInclude Include="src\Diagnostics\TimingHudFixture.hpp" />
+    <ClInclude Include="src\Diagnostics\TimingHudCapture.hpp" />
+    <ClInclude Include="src\MusicGame\TimingFeedback.hpp" />
+    <ClInclude Include="src\MusicGame\Graphics\HUD\TimingOverlay.hpp" />
+    <ClInclude Include="src\MusicGame\Graphics\HUD\TimingTextStyle.hpp" />
+    <ClInclude Include="src\MusicGame\Graphics\HUD\PlayJudgeIndicator.hpp" />
+    <ClInclude Include="src\MusicGame\Judgment\InputTimingStats.hpp" />
+    <ClInclude Include="src\Diagnostics\PlayJudgeIndicatorFixture.hpp" />
+    <ClInclude Include="src\Ini\AudioCalibration.hpp" />
     <ClInclude Include="src\Ini\FolderConfIni.hpp" />
     <ClInclude Include="src\Ini\KSMIniData.hpp" />
     <ClInclude Include="src\Input\FXButtonUpDetection.hpp" />
@@ -449,6 +459,7 @@
     <ClInclude Include="src\MusicGame\Audio\AudioEffectMain.hpp" />
     <ClInclude Include="src\MusicGame\Audio\AudioEffectUtils.hpp" />
     <ClInclude Include="src\MusicGame\Audio\BGM.hpp" />
+    <ClInclude Include="src\MusicGame\Audio\AudioTailClock.hpp" />
     <ClInclude Include="src\MusicGame\Audio\FXChipSE.hpp" />
     <ClInclude Include="src\MusicGame\Audio\LaserSlamSE.hpp" />
     <ClInclude Include="src\MusicGame\Camera\CameraMath.hpp" />
@@ -482,11 +493,16 @@
     <ClInclude Include="src\MusicGame\HispeedUtils.hpp" />
     <ClInclude Include="src\MusicGame\Judgment\ButtonLaneJudgment.hpp" />
     <ClInclude Include="src\MusicGame\Judgment\ComboStatus.hpp" />
+    <ClInclude Include="src\MusicGame\Judgment\DetailedJudgmentStats.hpp" />
     <ClInclude Include="src\MusicGame\Judgment\JudgmentDefines.hpp" />
     <ClInclude Include="src\MusicGame\GameDefines.hpp" />
     <ClInclude Include="src\MusicGame\GameMain.hpp" />
     <ClInclude Include="src\MusicGame\GameStatus.hpp" />
     <ClInclude Include="src\MusicGame\Judgment\JudgmentHandler.hpp" />
+    <ClInclude Include="src\MusicGame\Judgment\ExScore.hpp" />
+    <ClInclude Include="src\Graphics\ExScorePanel.hpp" />
+    <ClInclude Include="src\Graphics\ResultBestScorePanel.hpp" />
+    <ClInclude Include="src\Diagnostics\ExScoreFixture.hpp" />
     <ClInclude Include="src\MusicGame\Judgment\JudgmentMain.hpp" />
     <ClInclude Include="src\MusicGame\Judgment\LaserLaneJudgment.hpp" />
     <ClInclude Include="src\MusicGame\Judgment\LaserSlamShake.hpp" />

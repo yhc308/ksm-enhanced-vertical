@@ -1,7 +1,8 @@
-﻿#pragma once
+#pragma once
 #include "MusicGame/GameDefines.hpp"
 #include "JudgmentDefines.hpp"
 #include "ComboStatus.hpp"
+#include "NormalGaugeState.hpp"
 
 namespace MusicGame::Judgment
 {
@@ -19,7 +20,11 @@ namespace MusicGame::Judgment
 		int32 m_uncappedGaugeValue;
 		int32 m_gaugeValueNormal = 0; // NORMAL基準ゲージ値(HARDのGrade計算用)
 
-		ComboStatus m_comboStatus;
+        NormalGaugeState m_apsNormal;
+        const bool m_apsEnabled;
+        bool m_apsTriggered = false;
+
+        ComboStatus m_comboStatus;
 
 		ComboStats m_chipOrLaserSlamStats;
 
@@ -34,7 +39,11 @@ namespace MusicGame::Judgment
 		double calcGaugePercentageFromValue(int32 gaugeValue, GaugeType gaugeType) const;
 
 	public:
-		ScoringStatus(int32 scoreValueMax, int32 gaugeValueMax, GaugeType gaugeType, const Optional<CourseContinuation>& courseContinuation, GameMode gameMode);
+		ScoringStatus(int32 scoreValueMax, int32 gaugeValueMax, GaugeType gaugeType, const Optional<CourseContinuation>& courseContinuation, GameMode gameMode, bool apsEnabled = false);
+        GaugeType effectiveGaugeType() const { return m_apsTriggered ? GaugeType::kNormalGauge : m_gaugeType; }
+        bool apsProtected() const { return m_apsEnabled && !m_apsTriggered; }
+        bool tryActivateAps();
+        const NormalGaugeState& apsNormal() const { return m_apsNormal; }
 
 		void onChipOrLaserSlamJudgment(Judgment::JudgmentResult result);
 

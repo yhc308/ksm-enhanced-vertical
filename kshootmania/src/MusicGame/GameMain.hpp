@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Graphics/GameRenderContext.hpp"
 #include "Course/CoursePlayState.hpp"
 #include "GameStatus.hpp"
 #include "PlayOption.hpp"
@@ -44,6 +45,7 @@ namespace MusicGame
 
 	class GameMain
 	{
+        GameRender::Context m_renderContext=GameRender::Current();
 	public:
 		using StartFadeOutYN = YesNo<struct StartFadeOutYN_tag>;
 
@@ -70,9 +72,10 @@ namespace MusicGame
 
 		// プレイオプション
 		const PlayOption m_playOption;
+        double m_settingsChartOffset=0;
 
 		// 判定
-		Judgment::JudgmentMain m_judgmentMain;
+		std::unique_ptr<Judgment::JudgmentMain> m_judgmentMain;
 
 		// 視点制御
 		Camera::HighwayTilt m_highwayTilt; // 傾き
@@ -95,7 +98,10 @@ namespace MusicGame
 		HispeedSettingMenu m_hispeedSettingMenu; // ハイスピード設定メニュー
 
 		// グラフィックス
-		Graphics::GraphicsMain m_graphicsMain;
+		std::unique_ptr<Graphics::GraphicsMain> m_graphicsMain;
+        Optional<std::pair<int32, double>> m_previewResetValues;
+        GaugePresentation m_gaugePresentation;
+        bool m_apsJustTriggered = false;
 
 		// 状態
 		GameStatus m_gameStatus;
@@ -104,13 +110,15 @@ namespace MusicGame
 
 		// Backボタンによる途中終了かどうか(未判定ノーツが残った状態でlockForExitが呼ばれた場合にtrue)
 		bool m_isAborted = false;
+        bool m_inputFeedbackLocked = false;
 
 		// 再生制御
 		bool m_isPaused = false;
 		Stopwatch m_fastForwardStopwatch;
 		Stopwatch m_syncAdjustStopwatch;
 
-		void updateStatus();
+		double currentChartTime() const;
+        void updateStatus();
 
 		void updateHighwayScroll();
 
@@ -127,6 +135,17 @@ namespace MusicGame
 	public:
 		explicit GameMain(const GameCreateInfo& createInfo);
 
+        void reloadPreviewGraphics();
+        void resetPreview(double chartTime = 0.0);
+        void resetJudgeSettingLoop(double musicTime=0);
+        double settingsMusicTime() const {return m_bgm.posSec().count()-(m_playOption.judgeSetting?m_playOption.judgeSetting->values.visual/1000.0:0.0);}
+        void pauseJudgeSetting(bool paused);
+        GameRender::Context renderContext() const{return m_renderContext;}
+        Array<double> geometrySignature() const{const GameRender::Scope scope{m_renderContext};return m_graphicsMain->geometrySignature(m_viewStatus);}
+        HispeedSetting settingsHispeed() const{return m_hispeedSettingMenu.hispeedSetting();}
+        int32 settingsEffectiveHispeed() const{return m_highwayScroll.currentHispeed();}
+        double previewTime() const { return m_gameStatus.currentTimeSec; }
+        const ViewStatus& previewView() const { return m_viewStatus; }
 		void start();
 
 		StartFadeOutYN update();

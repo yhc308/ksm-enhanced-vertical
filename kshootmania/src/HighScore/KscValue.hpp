@@ -20,6 +20,7 @@ struct KscValue
 	int32 fullComboCount = 0;
 
 	int32 perfectCount = 0;
+    Optional<int64> exScore; // Additional file only; never serialized into the original nine fields.
 
 	/// @brief プレイ結果を反映後のKscValueを返す
 	/// @param playResult プレイ結果

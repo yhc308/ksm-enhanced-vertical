@@ -1,4 +1,5 @@
-﻿#include "PlayScene.hpp"
+#include "ksmaudio/Diagnostics.hpp"
+#include "PlayScene.hpp"
 #include "Input/InputUtils.hpp"
 #include "Scenes/Select/SelectScene.hpp"
 #include "Scenes/PlayPrepare/PlayPrepareScene.hpp"
@@ -61,6 +62,7 @@ namespace
 				.gameMode = courseState.has_value() ? MusicGame::GameMode::kCourseMode : MusicGame::GameMode::kNormal,
 				.isAutoPlay = isAutoPlay,
 				.gaugeType = RuntimeConfig::GetGaugeType(),
+                .apsEnabled = RuntimeConfig::GetApsEnabled(),
 				.turnMode = RuntimeConfig::GetTurnMode(),
 				.playbackSpeed = RuntimeConfig::GetPlaybackSpeed(),
 				.btJudgmentPlayMode = RuntimeConfig::GetJudgmentPlayModeBT(),
@@ -78,7 +80,8 @@ namespace
 					return noteSkinStr == U"note" ? NoteSkinType::kNote : NoteSkinType::kDefault;
 				}(),
 				.autoSyncMode = static_cast<AutoSyncMode>(ConfigIni::GetInt(ConfigIni::Key::kAutoSync, static_cast<int32>(AutoSyncMode::kOff))),
-				.fastSlowMode = static_cast<FastSlowMode>(ConfigIni::GetInt(ConfigIni::Key::kShowFastSlow, static_cast<int32>(FastSlowMode::kHide))),
+				.fastSlowMode = RuntimeConfig::LoadFastSlowModeFromConfigIni(),
+                .timingHud = RuntimeConfig::LoadTimingHudSettingsFromConfigIni(),
 				.availableHispeedTypes = LoadAvailableHispeedTypesFromConfigIni(),
 				.hispeedSetting = LoadHispeedSettingFromConfigIni(),
 				.movieEnabled = ConfigIni::GetInt(ConfigIni::Key::kBGMovie, static_cast<int32>(MovieMode::kOn)) == static_cast<int32>(MovieMode::kOn),
@@ -121,6 +124,8 @@ PlayScene::PlayScene(FilePathView chartFilePath, MusicGame::IsAutoPlayYN isAutoP
 	, m_selectSearchParams(selectSearchParams)
 	, m_commonOverlay(kBackButtonClickHoldDuration)
 {
+    ksmaudio::qa::Scene("play");
+    ksmaudio::qa::Event("PLAY_START",0,0,FileSystem::FileName(chartFilePath).toUTF8());
 	m_gameMain.start();
 
 	// Playシーンではウィンドウのフォーカスが外れていてもミュートしない
@@ -132,6 +137,7 @@ PlayScene::PlayScene(FilePathView chartFilePath, MusicGame::IsAutoPlayYN isAutoP
 
 PlayScene::~PlayScene()
 {
+    ksmaudio::qa::Scope qaScope{"PlayScene.destroy",true};
 	m_gameMain.terminate();
 
 	KeyConfig::SetRightClickAsBackSuppressed(false);
@@ -139,6 +145,7 @@ PlayScene::~PlayScene()
 
 void PlayScene::update()
 {
+    ksmaudio::qa::Scope qaScope{"PlayScene.update",false};
 	// マウスカーソル非表示設定
 	if (ConfigIni::GetInt(ConfigIni::Key::kHideMouseCursor, ConfigIni::Value::HideMouseCursor::kPlayOnly) != ConfigIni::Value::HideMouseCursor::kOff)
 	{
@@ -154,6 +161,7 @@ void PlayScene::update()
 
 	if (startFadeOut)
 	{
+        ksmaudio::qa::Event("PLAY_FINISH_REQUEST");
 		// 譜面終了時にリザルト画面に遷移
 		m_fadeOutDuration = kPlayFinishFadeOutDuration;
 
@@ -172,7 +180,7 @@ void PlayScene::update()
 				.playResult = m_gameMain.playResult(),
 				.selectSearchParams = m_selectSearchParams,
 			};
-			requestNextScene<ResultScene>(args);
+			{ ksmaudio::qa::Scope transition{"request.ResultScene",true}; requestNextScene<ResultScene>(args); }
 		}
 		else if (m_isAutoPlay)
 		{
@@ -192,7 +200,7 @@ void PlayScene::update()
 			else
 			{
 				// 次の曲がない場合は選曲画面へ
-				requestNextScene<SelectScene>(m_selectSearchParams);
+				{ ksmaudio::qa::Scope transition{"request.SelectScene",true}; requestNextScene<SelectScene>(m_selectSearchParams); }
 			}
 		}
 		else
@@ -205,13 +213,14 @@ void PlayScene::update()
 				.courseState = m_courseState,
 				.selectSearchParams = m_selectSearchParams,
 			};
-			requestNextScene<ResultScene>(args);
+			{ ksmaudio::qa::Scope transition{"request.ResultScene",true}; requestNextScene<ResultScene>(args); }
 		}
 	}
 }
 
 void PlayScene::processBackButtonInput()
 {
+    ksmaudio::qa::Scope qaScope{"PlayScene.back",false};
 	if (!KeyConfig::Down(kButtonBack))
 	{
 		return;
@@ -241,11 +250,11 @@ void PlayScene::processBackButtonInput()
 			.playResult = m_gameMain.playResult(),
 			.selectSearchParams = m_selectSearchParams,
 		};
-		requestNextScene<ResultScene>(args);
+		{ ksmaudio::qa::Scope transition{"request.ResultScene",true}; requestNextScene<ResultScene>(args); }
 	}
 	else if (m_isAutoPlay)
 	{
-		requestNextScene<SelectScene>(m_selectSearchParams);
+		{ ksmaudio::qa::Scope transition{"request.SelectScene",true}; requestNextScene<SelectScene>(m_selectSearchParams); }
 	}
 	else
 	{
@@ -257,12 +266,13 @@ void PlayScene::processBackButtonInput()
 			.courseState = m_courseState,
 			.selectSearchParams = m_selectSearchParams,
 		};
-		requestNextScene<ResultScene>(args);
+		{ ksmaudio::qa::Scope transition{"request.ResultScene",true}; requestNextScene<ResultScene>(args); }
 	}
 }
 
 void PlayScene::updateFadeOut()
 {
+    ksmaudio::qa::Scope qaScope{"PlayScene.fadeOut.update",false};
 	m_commonOverlay.update(noco::HitTestEnabledYN::No);
 
 	// フェードアウト中もゲームの更新は継続
@@ -274,6 +284,7 @@ void PlayScene::updateFadeOut()
 
 void PlayScene::draw() const
 {
+    ksmaudio::qa::Scope qaScope{"PlayScene.draw",false};
 	m_gameMain.draw();
 	m_commonOverlay.draw();
 }
@@ -385,6 +396,7 @@ namespace
 
 void PlayScene::showAutoSyncSaveDialog()
 {
+    ksmaudio::qa::Scope qaScope{"AutoSync.saveDialog",true};
 	const int32 offsetMs = m_gameMain.timingAdjustOffsetMs();
 	if (offsetMs == 0 || m_isAutoPlay || m_testPlayOption.has_value())
 	{
@@ -397,6 +409,7 @@ void PlayScene::showAutoSyncSaveDialog()
 	const String offsetStr = U"{:+}"_fmt(offsetMs);
 	const String message = I18n::Get(I18n::Play::AutoSyncSaveConfirm, offsetStr, currentOffset, newOffset);
 
+    ksmaudio::qa::Scope dialog{"dialog.AutoSync.YES_NO",true};
 	const auto result = MessageBoxUtils::ShowYesNo(message, MessageBoxStyle::Question);
 	if (result == MessageBoxResult::OK)
 	{
@@ -414,6 +427,7 @@ void PlayScene::showAutoSyncSaveDialog()
 
 Co::Task<void> PlayScene::fadeOut()
 {
+    ksmaudio::qa::Scope qaScope{"PlayScene.fadeOut",true};
 	// フェードアウト中もBack入力を受け付けるため、updateFadeOutを実行
 	const auto updateRunner = Co::UpdaterTask([this] { updateFadeOut(); }).runScoped();
 

@@ -440,3 +440,37 @@ kshootmania/AppWeb/songs_default/*
 # Distribution files
 dist_scripts/kshootmania_v2/
 dist_scripts/*.zip
+
+# Enhanced Vertical local development and private runtime data
+/build/
+/releases/
+/play-test/
+/test-runs/
+/reference/
+/imgs/
+/.codex/
+/.agents/
+*.psd
+*.psb
+*.mp4
+*.ksc
+*.zip
+*.partial
+.env
+.env.*
+/kshootmania/App/config.ini
+/kshootmania/App/skin_preset.json
+/kshootmania/App/songs/
+/kshootmania/App/score/
+/kshootmania/App/score_backup/
+/kshootmania/App/cache/
+/kshootmania/App/log/
+/kshootmania/App/Screenshot/
+/kshootmania/App/audio_calibration_profiles.json
+/kshootmania/App/ksm-enhanced-vertical.exe
+/kshootmania/App/bassasio.dll
+/kshootmania/App/bassmix.dll
+
+# Public review documentation
+!/README_ENHANCED.md
+!/REVIEW.md

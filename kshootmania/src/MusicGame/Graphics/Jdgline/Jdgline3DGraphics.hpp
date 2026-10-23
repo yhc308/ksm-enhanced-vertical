@@ -14,6 +14,6 @@ namespace MusicGame::Graphics
 	public:
 		Jdgline3DGraphics();
 
-		void draw3D(const ViewStatus& viewStatus) const;
+		void draw3D(const ViewStatus& viewStatus, double widthScale = 1.0) const;
 	};
 }

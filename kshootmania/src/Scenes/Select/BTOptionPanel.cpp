@@ -4,6 +4,8 @@
 #include "I18n/I18n.hpp"
 #include "Ini/ConfigIni.hpp"
 #include "RuntimeConfig.hpp"
+#include "MusicGame/TimingFeedback.hpp"
+#include "Diagnostics/TimingHudCapture.hpp"
 #include "Input/Cursor/CursorInput.hpp"
 #include "MusicGame/HispeedUtils.hpp"
 
@@ -32,16 +34,10 @@ namespace
 	};
 
 	// BT-Cメニューの項目
-	enum class BTCMenuItem : int32
-	{
-		kAssistTick = 0,
-		kAutoSync,
-		kFastSlow,
-		kNoteSkin,
-		kMovie,
-
-		kCount,
-	};
+    enum class BTCMenuItem : int32 {
+        kJudgeColor=0,kTimingMsColor,kTimingMsDisplay,kTimingPosition,
+        kAssistTick,kAutoSync,kFastSlow,kNoteSkin,kMovie,kCount
+    };
 
 	// ハイスピード値の範囲
 	constexpr int32 kHispeedXModMin = 1; // x-modの最小値(x0.1)
@@ -143,7 +139,8 @@ namespace
 		switch (assistTick)
 		{
 		case AssistTickMode::kOff: return I18n::Get(I18n::Select::AssistTickOff);
-		case AssistTickMode::kOn: return I18n::Get(I18n::Select::AssistTickOn);
+		case AssistTickMode::kAuto: return I18n::Get(I18n::Select::AssistTickAuto);
+		case AssistTickMode::kInput: return I18n::Get(I18n::Select::AssistTickInput);
 		default: return U"";
 		}
 	}
@@ -165,7 +162,8 @@ namespace
 		switch (display)
 		{
 		case FastSlowMode::kHide: return I18n::Get(I18n::Select::FastSlowHide);
-		case FastSlowMode::kShow: return I18n::Get(I18n::Select::FastSlowShow);
+		case FastSlowMode::kOrigin: return I18n::Get(I18n::Select::FastSlowShow);
+        case FastSlowMode::kNew: return I18n::Get(I18n::Select::FastSlowNew);
 		default: return U"";
 		}
 	}
@@ -275,7 +273,7 @@ BTOptionPanel::BTOptionPanel(std::shared_ptr<noco::Canvas> canvas)
 			.buttonFlags = CursorButtonFlags::kArrowOrLaser,
 		},
 		.cursorMin = static_cast<int32>(GaugeType::kEasyGauge),
-		.cursorMax = static_cast<int32>(GaugeType::kHardGauge),
+		.cursorMax = static_cast<int32>(GaugeType::kHardGauge) + 1,
 		.cyclic = IsCyclicMenuYN::No,
 	})
 	, m_turnMode(LinearMenu::CreateInfoWithEnumCount{
@@ -324,6 +322,22 @@ BTOptionPanel::BTOptionPanel(std::shared_ptr<noco::Canvas> canvas)
 		.enumCount = static_cast<int32>(FastSlowMode::kCount),
 		.cyclic = IsCyclicMenuYN::No,
 	})
+    , m_judgeColor(LinearMenu::CreateInfoWithEnumCount{
+        .cursorInputCreateInfo={.type=CursorInput::Type::Horizontal,.buttonFlags=CursorButtonFlags::kArrowOrLaser},
+        .enumCount=2,.cyclic=IsCyclicMenuYN::No,
+    })
+    , m_timingPosition(LinearMenu::CreateInfoWithEnumCount{
+        .cursorInputCreateInfo = {.type = CursorInput::Type::Horizontal, .buttonFlags = CursorButtonFlags::kArrowOrLaser},
+        .enumCount = static_cast<int32>(TimingPosition::kCount), .cyclic = IsCyclicMenuYN::No,
+    })
+    , m_timingMsDisplay(LinearMenu::CreateInfoWithEnumCount{
+        .cursorInputCreateInfo = {.type = CursorInput::Type::Horizontal, .buttonFlags = CursorButtonFlags::kArrowOrLaser},
+        .enumCount = static_cast<int32>(TimingMsDisplay::kCount), .cyclic = IsCyclicMenuYN::No,
+    })
+    , m_timingMsColor(LinearMenu::CreateInfoWithEnumCount{
+        .cursorInputCreateInfo = {.type = CursorInput::Type::Horizontal, .buttonFlags = CursorButtonFlags::kArrowOrLaser},
+        .enumCount = static_cast<int32>(TimingMsColor::kCount), .cyclic = IsCyclicMenuYN::No,
+    })
 	, m_noteSkin(LinearMenu::CreateInfoWithEnumCount{
 		.cursorInputCreateInfo = {
 			.type = CursorInput::Type::Horizontal,
@@ -367,6 +381,7 @@ BTOptionPanel::BTOptionPanel(std::shared_ptr<noco::Canvas> canvas)
 {
 	// ConfigIniから設定値を読み込み
 	loadFromConfigIni();
+    m_btCMenu.setCursor(4);
 }
 
 Optional<Button> BTOptionPanel::getCurrentSingleBTButton() const
@@ -426,14 +441,14 @@ String BTOptionPanel::generateBTAMenuText() const
 
 String BTOptionPanel::generateBTBMenuText() const
 {
-	const auto gaugeType = m_gaugeType.cursorAs<GaugeType>();
+	const auto gaugeType = static_cast<GaugeType>(Min(m_gaugeType.cursor(), static_cast<int32>(GaugeType::kHardGauge)));
 	const auto turnMode = m_turnMode.cursorAs<TurnMode>();
 	const int32 playbackSpeedCursor = m_playbackSpeed.cursor();
 
 	const auto currentItem = m_btBMenu.cursorAs<BTBMenuItem>();
 
 	String text = U"";
-	text += FormatMenuLine(I18n::Get(I18n::Select::EffRate), GaugeTypeToI18nKey(gaugeType), currentItem == BTBMenuItem::kEffRate, m_gaugeType.cursor(), static_cast<int32>(GaugeType::kEasyGauge), static_cast<int32>(GaugeType::kHardGauge));
+	text += FormatMenuLine(I18n::Get(I18n::Select::EffRate), (m_gaugeType.cursor() > static_cast<int32>(GaugeType::kHardGauge) ? String{U"HARD+APS"} : GaugeTypeToI18nKey(gaugeType)), currentItem == BTBMenuItem::kEffRate, m_gaugeType.cursor(), static_cast<int32>(GaugeType::kEasyGauge), static_cast<int32>(GaugeType::kHardGauge) + 1);
 	text += U"\n";
 	text += FormatMenuLine(I18n::Get(I18n::Select::Turn), TurnModeToI18nKey(turnMode), currentItem == BTBMenuItem::kTurn, m_turnMode.cursor(), 0, static_cast<int32>(TurnMode::kCount) - 1);
 	text += U"\n";
@@ -442,28 +457,49 @@ String BTOptionPanel::generateBTBMenuText() const
 	return text;
 }
 
-String BTOptionPanel::generateBTCMenuText() const
-{
-	const auto assistTick = m_assistTick.cursorAs<AssistTickMode>();
-	const auto autoSync = m_autoSync.cursorAs<AutoSyncMode>();
-	const auto fastSlow = m_fastSlow.cursorAs<FastSlowMode>();
-	const auto noteSkin = m_noteSkin.cursorAs<NoteSkinType>();
-	const auto movie = m_movie.cursorAs<MovieMode>();
-
-	const auto currentItem = m_btCMenu.cursorAs<BTCMenuItem>();
-
-	String text = U"";
-	text += FormatMenuLine(I18n::Get(I18n::Select::AssistTick), AssistTickModeToI18nKey(assistTick), currentItem == BTCMenuItem::kAssistTick, m_assistTick.cursor(), 0, static_cast<int32>(AssistTickMode::kCount) - 1);
-	text += U"\n";
-	text += FormatMenuLine(I18n::Get(I18n::Select::AutoSync), AutoSyncModeToI18nKey(autoSync), currentItem == BTCMenuItem::kAutoSync, m_autoSync.cursor(), 0, static_cast<int32>(AutoSyncMode::kCount) - 1);
-	text += U"\n";
-	text += FormatMenuLine(I18n::Get(I18n::Select::FastSlow), FastSlowModeToI18nKey(fastSlow), currentItem == BTCMenuItem::kFastSlow, m_fastSlow.cursor(), 0, static_cast<int32>(FastSlowMode::kCount) - 1);
-	text += U"\n";
-	text += FormatMenuLine(I18n::Get(I18n::Select::NoteSkin), NoteSkinTypeToI18nKey(noteSkin), currentItem == BTCMenuItem::kNoteSkin, m_noteSkin.cursor(), 0, static_cast<int32>(NoteSkinType::kCount) - 1);
-	text += U"\n";
-	text += FormatMenuLine(I18n::Get(I18n::Select::Movie), MovieModeToI18nKey(movie), currentItem == BTCMenuItem::kMovie, m_movie.cursor(), 0, static_cast<int32>(MovieMode::kCount) - 1);
-
-	return text;
+String BTOptionPanel::generateBTCMenuText() const {
+    const auto selected=m_btCMenu.cursorAs<BTCMenuItem>();String text;
+    const auto row=[&](StringView title,StringView value,BTCMenuItem item,const LinearMenu& menu,int maximum){
+        if(!text.isEmpty())text+=U"\n";
+        text+=FormatMenuLine(title,value,selected==item,menu.cursor(),0,maximum);
+    };
+    row(I18n::Get(I18n::Select::AssistTick),AssistTickModeToI18nKey(m_assistTick.cursorAs<AssistTickMode>()),BTCMenuItem::kAssistTick,m_assistTick,2);
+    row(I18n::Get(I18n::Select::AutoSync),AutoSyncModeToI18nKey(m_autoSync.cursorAs<AutoSyncMode>()),BTCMenuItem::kAutoSync,m_autoSync,3);
+    row(I18n::Get(I18n::Select::FastSlow),FastSlowModeToI18nKey(m_fastSlow.cursorAs<FastSlowMode>()),BTCMenuItem::kFastSlow,m_fastSlow,2);
+    row(I18n::Get(I18n::Select::NoteSkin),NoteSkinTypeToI18nKey(m_noteSkin.cursorAs<NoteSkinType>()),BTCMenuItem::kNoteSkin,m_noteSkin,1);
+    row(I18n::Get(I18n::Select::Movie),MovieModeToI18nKey(m_movie.cursorAs<MovieMode>()),BTCMenuItem::kMovie,m_movie,1);
+    return text;
+}
+void BTOptionPanel::updateBTCMenuRows() {
+    const bool enabled=m_fastSlow.cursorAs<FastSlowMode>()==FastSlowMode::kNew;
+    m_btCMenu.setCursorMinMax(enabled?0:4,8);
+    m_btCMenu.setCursor(MusicGame::TimingMenuCursor(m_btCMenu.cursor(),0,enabled));
+    if(enabled!=m_extendedEnabled){
+        m_extendedEnabled=enabled;
+        m_extendedFadeStart=Scene::Time();
+        m_extendedFadeFrom=m_extendedAlpha;
+    }
+    const double progress=Clamp((Scene::Time()-m_extendedFadeStart)/.15,0.0,1.0);
+    m_extendedAlpha=m_extendedFadeFrom+((enabled?1.0:0.0)-m_extendedFadeFrom)*progress;
+    const uint8 alpha=static_cast<uint8>(Round(m_extendedAlpha*255));
+    const auto palette=m_judgeColor.cursorAs<JudgeColor>();
+    const auto tint=[&](Color c){c.a=alpha;return c;};
+    m_canvas->setParamValues({{U"overlay_btOptionPanelText_C",generateBTCMenuText()},
+        {U"newPlusVisible",m_extendedAlpha>0},{U"newPlusColor",Color{255,255,255,alpha}},
+        {U"judgeFastColor",tint(MusicGame::JudgeDirectionColor(palette,true))},
+        {U"judgeSlowColor",tint(MusicGame::JudgeDirectionColor(palette,false))},
+        {U"judgeLeft",m_btCMenu.cursor()==0 && m_judgeColor.cursor()>0?U"<":U""},
+        {U"judgeRight",m_btCMenu.cursor()==0 && m_judgeColor.cursor()<1?U">":U""}});
+    const std::array<StringView,4> positions{U"UPPER+",U"UPPER",U"STANDARD",U"LOWER"};
+    const auto& displays=MusicGame::kTimingDisplayLabels;
+    const auto& colors=MusicGame::kTimingColorLabels;
+    const std::array<String,3> labels{String{I18n::Get(I18n::Select::TimingMsColor)},String{I18n::Get(I18n::Select::TimingMsDisplay)},String{I18n::Get(I18n::Select::TimingPosition)}};
+    const std::array<StringView,3> values{colors[m_timingMsColor.cursor()],displays[m_timingMsDisplay.cursor()],positions[m_timingPosition.cursor()]};
+    const std::array<const LinearMenu*,3> menus{&m_timingMsColor,&m_timingMsDisplay,&m_timingPosition};
+    for(int i=0;i<3;++i){const auto prefix=U"timingMenu{}"_fmt(i+1);
+        m_canvas->setParamValue(prefix+U"Label",labels[i].trimmed());
+        m_canvas->setParamValue(prefix+U"Value",FormatMenuLine(U"",values[i],enabled && m_btCMenu.cursor()==i+1,menus[i]->cursor(),0,3));
+    }
 }
 
 String BTOptionPanel::generateBTDMenuText() const
@@ -481,7 +517,29 @@ String BTOptionPanel::generateBTDMenuText() const
 
 bool BTOptionPanel::update(double currentChartStdBPM)
 {
+    if(TimingHudCapture::Enabled() && TimingHudCapture::IsMenu()) {
+        TimingHudCapture::Begin();
+        m_isVisible=true;
+        for(StringView letter:{U"A",U"B",U"C",U"D"})
+            m_canvas->setParamValue(U"overlay_btOptionPanelVisible_"+String{letter},letter==U"C");
+        m_fastSlow.setCursor(TimingHudCapture::Choices()?2:2-TimingHudCapture::Stage());m_btCMenu.setCursor(TimingHudCapture::Choices()?1:6);
+        if(TimingHudCapture::Choices()){
+            m_timingMsDisplay.setCursor(TimingHudCapture::Stage());m_timingMsColor.setCursor(TimingHudCapture::Stage());
+            static int32 savedStage=-1;
+            if(savedStage!=TimingHudCapture::Stage()){
+                saveToConfigIni();ConfigIni::Save();ConfigIni::Load();
+                const auto loaded=RuntimeConfig::LoadTimingHudSettingsFromConfigIni();
+                if(MusicGame::TimingDisplayCursor(loaded.display)!=TimingHudCapture::Stage() || static_cast<int32>(loaded.color)!=TimingHudCapture::Stage())throw Error{U"Timing menu choice persistence mismatch"};
+                savedStage=TimingHudCapture::Stage();
+            }
+        }
+        updateBTCMenuRows();
+        static TextWriter trace{FsUtils::GetResourcePath(U"timing-captures/menu-fade.csv")};
+        trace.writeln(TimingHudCapture::Clock().sF(),U",",m_fastSlow.cursor(),U",",m_extendedAlpha);
+        return false;
+    }
 	const auto currentButton = getCurrentSingleBTButton();
+    if(currentButton!=kButtonBT_C){m_extendedAlpha=0;m_extendedEnabled=false;m_canvas->setParamValue(U"newPlusVisible",false);}
 
 	// ハイスコア再読み込みが必要な変更があったか
 	bool needsHighScoreReload = false;
@@ -544,7 +602,7 @@ bool BTOptionPanel::update(double currentChartStdBPM)
 				valueChanged = m_gaugeType.deltaCursor() != 0;
 				if (valueChanged)
 				{
-					RuntimeConfig::SetGaugeType(m_gaugeType.cursorAs<GaugeType>());
+					RuntimeConfig::SetGaugeSelection(m_gaugeType.cursor());
 				}
 			}
 			else if (currentItem == BTBMenuItem::kTurn)
@@ -576,7 +634,10 @@ bool BTOptionPanel::update(double currentChartStdBPM)
 		}
 		else if (currentButton == kButtonBT_C)
 		{
-			m_btCMenu.update();
+            m_btCMenu.setCursorMinMax(m_fastSlow.cursorAs<FastSlowMode>()==FastSlowMode::kNew?0:4,8);
+            m_btCMenu.update();
+            m_btCMenu.setCursor(MusicGame::TimingMenuCursor(m_btCMenu.cursor(), m_btCMenu.deltaCursor(),
+                m_fastSlow.cursorAs<FastSlowMode>()==FastSlowMode::kNew));
 
 			// 現在選択されている項目の値変更用LinearMenuを更新
 			const auto currentItem = m_btCMenu.cursorAs<BTCMenuItem>();
@@ -597,6 +658,16 @@ bool BTOptionPanel::update(double currentChartStdBPM)
 				m_fastSlow.update();
 				valueChanged = m_fastSlow.deltaCursor() != 0;
 			}
+            else if (currentItem == BTCMenuItem::kJudgeColor) {m_judgeColor.update();valueChanged=m_judgeColor.deltaCursor()!=0;}
+            else if (currentItem == BTCMenuItem::kTimingPosition) {
+                m_timingPosition.update(); valueChanged=m_timingPosition.deltaCursor()!=0;
+            }
+            else if (currentItem == BTCMenuItem::kTimingMsDisplay) {
+                m_timingMsDisplay.update(); valueChanged=m_timingMsDisplay.deltaCursor()!=0;
+            }
+            else if (currentItem == BTCMenuItem::kTimingMsColor) {
+                m_timingMsColor.update(); valueChanged=m_timingMsColor.deltaCursor()!=0;
+            }
 			else if (currentItem == BTCMenuItem::kNoteSkin)
 			{
 				m_noteSkin.update();
@@ -613,7 +684,7 @@ bool BTOptionPanel::update(double currentChartStdBPM)
 				saveToConfigIni();
 			}
 
-			m_canvas->setParamValue(U"overlay_btOptionPanelText_C", generateBTCMenuText());
+			updateBTCMenuRows();
 		}
 		else if (currentButton == kButtonBT_D)
 		{
@@ -702,6 +773,7 @@ bool BTOptionPanel::isVisible() const
 void BTOptionPanel::hide()
 {
 	m_isVisible = false;
+    m_extendedAlpha=0;m_extendedEnabled=false;m_canvas->setParamValue(U"newPlusVisible",false);
 	m_canvas->setParamValue(U"overlay_btOptionPanelVisible_A", false);
 	m_canvas->setParamValue(U"overlay_btOptionPanelVisible_B", false);
 	m_canvas->setParamValue(U"overlay_btOptionPanelVisible_C", false);
@@ -717,7 +789,7 @@ void BTOptionPanel::loadFromConfigIni()
 	m_judgmentModeLaser.setCursor(static_cast<int32>(RuntimeConfig::GetJudgmentPlayModeLaser()));
 
 	// BT-Bメニューの設定(config.iniには保存しない)
-	m_gaugeType.setCursor(static_cast<int32>(RuntimeConfig::GetGaugeType()));
+	m_gaugeType.setCursor(RuntimeConfig::GetGaugeSelection());
 	m_turnMode.setCursor(static_cast<int32>(RuntimeConfig::GetTurnMode()));
 	m_playbackSpeed.setCursor(static_cast<int32>(Round(RuntimeConfig::GetPlaybackSpeed() * 100.0)));
 
@@ -726,6 +798,10 @@ void BTOptionPanel::loadFromConfigIni()
 
 	m_autoSync.setCursor(ConfigIni::GetInt(ConfigIni::Key::kAutoSync, static_cast<int32>(AutoSyncMode::kOff)));
 	m_fastSlow.setCursor(ConfigIni::GetInt(ConfigIni::Key::kShowFastSlow, static_cast<int32>(FastSlowMode::kHide)));
+    m_judgeColor.setCursor(ConfigIni::GetInt(ConfigIni::Key::kJudgeColor,0)==1?1:0);
+    m_timingPosition.setCursor(ConfigIni::GetInt(ConfigIni::Key::kTimingPosition,0));
+    m_timingMsDisplay.setCursor(MusicGame::TimingDisplayCursor(RuntimeConfig::LoadTimingHudSettingsFromConfigIni().display));
+    m_timingMsColor.setCursor(ConfigIni::GetInt(ConfigIni::Key::kTimingMsColor,2));
 
 	// noteskinは文字列として保存される
 	const StringView noteSkinStr = ConfigIni::GetString(ConfigIni::Key::kNoteSkin, U"default");
@@ -764,7 +840,7 @@ void BTOptionPanel::saveToConfigIni()
 	RuntimeConfig::SetJudgmentPlayModeLaser(m_judgmentModeLaser.cursorAs<JudgmentPlayMode>());
 
 	// BT-Bメニューの設定(config.iniには保存しない)
-	RuntimeConfig::SetGaugeType(m_gaugeType.cursorAs<GaugeType>());
+	RuntimeConfig::SetGaugeSelection(m_gaugeType.cursor());
 	RuntimeConfig::SetTurnMode(m_turnMode.cursorAs<TurnMode>());
 	RuntimeConfig::SetPlaybackSpeed(m_playbackSpeed.cursor() / 100.0);
 
@@ -773,6 +849,10 @@ void BTOptionPanel::saveToConfigIni()
 
 	ConfigIni::SetInt(ConfigIni::Key::kAutoSync, m_autoSync.cursor());
 	ConfigIni::SetInt(ConfigIni::Key::kShowFastSlow, m_fastSlow.cursor());
+    ConfigIni::SetInt(ConfigIni::Key::kJudgeColor,m_judgeColor.cursor());
+    ConfigIni::SetInt(ConfigIni::Key::kTimingPosition,m_timingPosition.cursor());
+    ConfigIni::SetInt(ConfigIni::Key::kTimingMsDisplay,static_cast<int32>(MusicGame::TimingDisplayChoice(m_timingMsDisplay.cursor())));
+    ConfigIni::SetInt(ConfigIni::Key::kTimingMsColor,m_timingMsColor.cursor());
 
 	// noteskinは文字列として保存
 	if (m_noteSkin.cursorAs<NoteSkinType>() == NoteSkinType::kNote)

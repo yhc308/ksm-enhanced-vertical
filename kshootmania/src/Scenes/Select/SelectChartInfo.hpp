@@ -8,6 +8,7 @@ private:
 	FilePath m_chartFilePath;
 
 	kson::MetaChartData m_chartData;
+    int64 m_exMaximum=0;
 
 	FolderConfIni m_folderConfIni;
 
@@ -17,12 +18,13 @@ private:
 	FilePath toFullPath(const std::string& u8Filename) const;
 
 public:
+    int64 exMaximum() const{return m_exMaximum;}
 	[[nodiscard]]
 	static kson::MetaChartData LoadMetaChartData(FilePathView chartFilePath);
 
 	explicit SelectChartInfo(FilePathView chartFilePath);
 
-	SelectChartInfo(FilePathView chartFilePath, const kson::MetaChartData& chartData, const FolderConfIni& folderConfIni);
+	SelectChartInfo(FilePathView chartFilePath, const kson::MetaChartData& chartData, const FolderConfIni& folderConfIni,int64 exMaximum=0);
 
 	[[nodiscard]]
 	String title() const;

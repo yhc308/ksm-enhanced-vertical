@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "kson/ChartData.hpp"
 #include "MusicGame/PlayOption.hpp"
 #include "MusicGame/PlayResult.hpp"
@@ -16,10 +16,15 @@ namespace MusicGame::Judgment
 		const PlayOption m_playOption;
 
 		const int32 m_totalCombo;
+        int64 m_exScore=0,m_exMaximum=0;
 
 		bool m_isLockedForExit = false;
 
+        TimingFeedbackState m_timingFeedback;
+
 		ScoringStatus m_scoringStatus;
+
+        DetailedJudgmentStats m_detailedStats;
 
 		LaserSlamShake m_laserSlamShakeStatus;
 
@@ -28,9 +33,7 @@ namespace MusicGame::Judgment
 		// タイミング調整オフセット(秒)
 		double m_timingAdjustOffsetSec = 0.0;
 
-		double m_timingDiffSumMs = 0.0;
-
-		int32 m_timingDiffCount = 0;
+        InputTimingStats m_inputTiming;
 
 		// 前回ViewStatus反映時のコンボ数(100コンボ毎のアニメーションの検知に使用)
 		int32 m_prevDisplayCombo = 0;
@@ -77,7 +80,11 @@ namespace MusicGame::Judgment
 		void applyToViewStatus(ViewStatus& viewStatusRef, double currentTimeSec, kson::Pulse currentPulse);
 
 		/// @brief プレイ終了のために判定処理をロック
+        bool tryActivateAps(ViewStatus& view);
 		void lockForExit();
+
+        void clearTimingFeedback() { m_timingFeedback.clear(); }
+        void resetSettingsLoop(){m_timingFeedback.clear();m_detailedStats={};m_inputTiming={};m_exScore=0;m_laserSlamShakeStatus={};}
 
 		/// @brief 全てのコンボを判定済みかどうかを取得
 		bool isFinished() const;

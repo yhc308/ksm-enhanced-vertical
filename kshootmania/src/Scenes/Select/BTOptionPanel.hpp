@@ -31,6 +31,13 @@ private:
 	LinearMenu m_assistTick;
 	LinearMenu m_autoSync;
 	LinearMenu m_fastSlow;
+    double m_extendedAlpha=0;
+    double m_extendedFadeStart=0, m_extendedFadeFrom=0;
+    bool m_extendedEnabled=false;
+    LinearMenu m_judgeColor;
+    LinearMenu m_timingPosition;
+    LinearMenu m_timingMsDisplay;
+    LinearMenu m_timingMsColor;
 	LinearMenu m_noteSkin;
 	LinearMenu m_movie;
 
@@ -58,6 +65,7 @@ private:
 	// BT-Cメニューの表示テキスト生成
 	[[nodiscard]]
 	String generateBTCMenuText() const;
+    void updateBTCMenuRows();
 
 	// BT-Dメニューの表示テキスト生成
 	[[nodiscard]]

@@ -19,8 +19,9 @@ namespace MusicGame::Judgment
 
 	private:
 		const JudgmentPlayMode m_judgmentPlayMode;
+        const bool m_skinPreview;
 		const GaugeType m_gaugeType;
-		const FastSlowMode m_fastSlowMode;
+		FastSlowMode m_fastSlowMode;
 		const Button m_keyConfigButton;
 		const std::map<kson::Pulse, double> m_pulseToSec;
 
@@ -32,8 +33,10 @@ namespace MusicGame::Judgment
 		kson::Pulse m_prevPulse = kPastPulse;
 
 		kson::ByPulse<kson::Interval>::const_iterator m_passedNoteCursor;
+        kson::ByPulse<kson::Interval>::const_iterator m_settingsSkipNoteCursor;
 		kson::ByPulse<LongNoteJudgment>::iterator m_passedLongJudgmentCursor;
 
+        void finishChipVisual(kson::Pulse pulse,ChipAnimType type,double time,double drawTime,ButtonLaneStatus& status);
 		double errorWindowSec() const;
 
 		void processKeyDown(const kson::ChartData& chartData, const kson::ByPulse<kson::Interval>& lane, kson::Pulse currentPulse, double currentTimeSec, double currentTimeSecForDraw, ButtonLaneStatus& laneStatusRef, JudgmentHandler& judgmentHandlerRef);
@@ -43,11 +46,15 @@ namespace MusicGame::Judgment
 		void processPassedNoteJudgment(const kson::ByPulse<kson::Interval>& lane, kson::Pulse currentPulse, double currentTimeSec, double currentTimeSecForDraw, ButtonLaneStatus& laneStatusRef, JudgmentHandler& judgmentHandlerRef, IsAutoPlayYN isAutoPlay);
 
 	public:
-		ButtonLaneJudgment(JudgmentPlayMode judgmentPlayMode, GaugeType gaugeType, FastSlowMode fastSlowMode, Button keyConfigButton, const kson::ByPulse<kson::Interval>& lane, const kson::BeatInfo& beatInfo, const kson::TimingCache& timingCache);
+		ButtonLaneJudgment(JudgmentPlayMode judgmentPlayMode, GaugeType gaugeType, FastSlowMode fastSlowMode, Button keyConfigButton, const kson::ByPulse<kson::Interval>& lane, const kson::BeatInfo& beatInfo, const kson::TimingCache& timingCache,bool skinPreview=false);
 
 		void update(const kson::ChartData& chartData, const kson::ByPulse<kson::Interval>& lane, kson::Pulse currentPulse, kson::Pulse currentPulseForDraw, double currentTimeSec, double currentTimeSecForDraw, ButtonLaneStatus& laneStatusRef, JudgmentHandler& judgmentHandlerRef);
 
-		std::size_t chipJudgmentCount() const;
+        bool applyPreviewChip(kson::Pulse pulse,JudgmentResult result,double exampleMs,double time,double drawTime,ButtonLaneStatus& status,JudgmentHandler& handler);
+		void resetSettingsLoop(const kson::ByPulse<kson::Interval>& lane);
+        void skipSettings(const kson::ByPulse<kson::Interval>& lane,kson::Pulse pulse,ButtonLaneStatus& status);
+        void setFastSlowMode(FastSlowMode mode){m_fastSlowMode=mode;}
+        std::size_t chipJudgmentCount() const;
 
 		std::size_t longJudgmentCount() const;
 

@@ -4,6 +4,7 @@
 #include "Input/InputUtils.hpp"
 #include "NocoExtensions/NocoUtils.hpp"
 #include "Scenes/Common/ShowLoadingOneFrame.hpp"
+#include "Vertical/VerticalModConfig.hpp"
 
 namespace
 {
@@ -26,6 +27,7 @@ Co::Task<Optional<String>> SearchInputDialog::start()
 		co_return none;
 	}
 
+	if (Vertical::ModConfig::Load().enabled) m_canvas->setAutoFitMode(noco::AutoFitMode::Contain);
 	const auto searchBoxNode = NocoUtils::GetNodeByPath(m_canvas, { U"SearchDialog", U"SearchBox" });
 	if (!searchBoxNode)
 	{

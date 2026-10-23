@@ -21,11 +21,14 @@
 #include "RuntimeConfig.hpp"
 #include "SelectMenuCacheDb.hpp"
 #include "UI/MouseMenuUtils.hpp"
+#include "Vertical/VerticalModConfig.hpp"
 
 namespace
 {
 	// 押下された項目のSubCanvasタグと項目の相対位置の対応関係
 	const HashTable<String, int32> kSubCanvasTagToItemDelta = {
+		{ U"top6", -6 },
+		{ U"top5", -5 },
 		{ U"top4", -4 },
 		{ U"top3", -3 },
 		{ U"top2", -2 },
@@ -33,6 +36,8 @@ namespace
 		{ U"bottom1", 1 },
 		{ U"bottom2", 2 },
 		{ U"bottom3", 3 },
+		{ U"bottom4", 4 }, { U"bottom5", 5 }, { U"bottom6", 6 },
+		{ U"bottom7", 7 }, { U"bottom8", 8 },
 	};
 
 	/// @brief 上下の項目の押下イベントから相対移動量を取得(発火していない場合は0)
@@ -629,17 +634,19 @@ void SelectMenu::refreshContentCanvasParams()
 	}
 
 	// 上の項目のパラメータを反映
-	for (int32 i = 0; i < kNumTopItems; ++i)
+	const int32 topCount = Vertical::ModConfig::Load().enabled ? 6 : kNumTopItems;
+	for (int32 i = 0; i < topCount; ++i)
 	{
-		if (const auto pItem = m_menu.atCyclic(m_menu.cursor() - kNumTopItems + i).get())
+		if (const auto pItem = m_menu.atCyclic(m_menu.cursor() - topCount + i).get())
 		{
-			const int32 topIdx = kNumTopItems - i;
+			const int32 topIdx = topCount - i;
 			pItem->setCanvasParamsTopBottom(m_eventContext, *m_selectSceneCanvas, difficultyIdx, U"top{}"_fmt(topIdx));
 		}
 	}
 
 	// 下の項目のパラメータを反映
-	for (int32 i = 0; i < kNumBottomItems; ++i)
+	const int32 bottomCount = Vertical::ModConfig::Load().enabled ? 7 : kNumBottomItems;
+	for (int32 i = 0; i < bottomCount; ++i)
 	{
 		if (const auto pItem = m_menu.atCyclic(m_menu.cursor() + 1 + i).get())
 		{
@@ -647,6 +654,13 @@ void SelectMenu::refreshContentCanvasParams()
 			pItem->setCanvasParamsTopBottom(m_eventContext, *m_selectSceneCanvas, difficultyIdx, U"bottom{}"_fmt(bottomIdx));
 		}
 	}
+    if(System::GetCommandLineArgs().contains(U"--vertical-preview-select")){
+        JSON state;state[U"cursor"]=m_menu.cursor();state[U"count"]=m_menu.size();
+        const auto chart=m_menu.cursorValue()?m_menu.cursorValue()->chartInfoPtr(difficultyIdx):nullptr;
+        state[U"chart"]=chart?String{chart->chartFilePath()}:U"";
+        state.save(FsUtils::GetResourcePath(U"select-preview-state.json"));
+    }
+
 }
 
 void SelectMenu::refreshSongPreview()
@@ -828,6 +842,23 @@ SelectMenu::SelectMenu(
 		openDirectory(U"", PlaySeYN::No);
 	}
 
+    // Preview uses the real menu and chart metadata, with no settings save.
+    const auto previewArgs = System::GetCommandLineArgs();
+    if (previewArgs.contains(U"--vertical-preview-select"))
+        for (size_t i = 0; i + 1 < previewArgs.size(); ++i)
+            if (previewArgs[i] == U"--vertical-preview-chart")
+            {
+                const FilePath path = previewArgs[i + 1];
+                openDirectory(FileSystem::ParentPath(FileSystem::ParentPath(path)), PlaySeYN::No);
+                setCursorByChartFilePath(path);
+            }
+
+    if (!m_menu.empty() && previewArgs.contains(U"--vertical-preview-select"))
+    {
+        if (previewArgs.contains(U"--vertical-preview-select-first")) m_menu.setCursor(0);
+        if (previewArgs.contains(U"--vertical-preview-select-last")) m_menu.setCursor(static_cast<int32>(m_menu.size()) - 1);
+    }
+
 	resetSongInfoTextDisplayTimer();
 	refreshContentCanvasParams();
 	refreshSongPreview();
@@ -891,6 +922,13 @@ void SelectMenu::update(SongPreviewOnlyYN songPreviewOnly)
 			playShakeUpTween();
 		}
 		refreshContentCanvasParams();
+        if (System::GetCommandLineArgs().contains(U"--vertical-preview-select"))
+        {
+            TextWriter report{U"vertical-select-preview-state.csv"};
+            report.writeln(U"cursor,delta,chart");
+            report.writeln(U"{},{},{}"_fmt(m_menu.cursor(), deltaCursor, currentChartFilePath().value_or(U"")));
+        }
+
 		refreshSongPreview();
 	}
 

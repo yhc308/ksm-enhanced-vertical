@@ -1,4 +1,7 @@
-﻿#include "BGM.hpp"
+﻿#include "AudioTailClock.hpp"
+#include "ksmaudio/Diagnostics.hpp"
+#include "BGM.hpp"
+#include "ksmaudio/ksmaudio.hpp"
 
 namespace MusicGame::Audio
 {
@@ -329,13 +332,54 @@ namespace MusicGame::Audio
 		m_legacyAudioFPStream.load(chartData, parentPath, volume, offset, playbackSpeed);
 	}
 
+    ksmaudio::AudioClockSnapshot BGM::clockSnapshot() const {
+        auto clock = m_clock;
+        clock.valid = clock.valid && m_isStreamStarted && !m_isPaused;
+        return clock;
+    }
+    SecondsF BGM::renderPosSec() const {
+        // FX changes target the current render head. Scheduled sounds instead use
+        // the cached clock paired with this frame's judgment/reference time.
+        const auto clock = m_stream.clockSnapshot();
+        if (m_tailOutputFrame && m_clock.valid && !m_isPaused) return SecondsF{m_clock.renderPositionSec};
+        return clock.valid && m_isStreamStarted ? SecondsF{clock.renderPositionSec} - m_offset : posSec();
+    }
+
+    void BGM::setSettingsOffset(SecondsF offset) {
+        const auto delta=offset-m_offset;m_offset=offset;m_timeSec-=delta;
+        m_stopwatch.set(m_stopwatch.elapsed()-delta);
+        if(m_clock.valid){m_clock.renderPositionSec-=delta.count();m_clock.audiblePositionSec-=delta.count();}
+        m_tailRenderTimeSec-=delta.count();
+    }
+    void BGM::restartAtChartTime(SecondsF timeSec) {
+        ksmaudio::OutputBatchLock boundary;
+        pause();
+        m_stream.stop();
+        for(auto& value:m_switchAudioStreamsFX)value->stream.stop();
+        for(auto& value:m_switchAudioStreamsLaser)value->stream.stop();
+        m_legacyAudioFPStream.stop();
+        m_isStreamStarted=false;m_clock.valid=false;m_tailOutputFrame.reset();m_qaReportedNotPlaying=false;
+        m_activeSwitchAudioIdxFX.reset();m_activeSwitchAudioIdxLaser.reset();
+        m_pAudioEffectBusFX->rewind(static_cast<float>(timeSec.count()));
+        m_pAudioEffectBusLaser->rewind(static_cast<float>(timeSec.count()));
+        for(auto& value:m_switchAudioStreamsFX)value->pAudioEffectBusLaser->rewind(static_cast<float>(timeSec.count()));
+        for(auto& value:m_switchAudioStreamsLaser)value->pAudioEffectBusLaser->rewind(static_cast<float>(timeSec.count()));
+        if(m_legacyAudioFPStream.pAudioEffectBusLaserForF)m_legacyAudioFPStream.pAudioEffectBusLaserForF->rewind(static_cast<float>(timeSec.count()));
+        m_timeSec=timeSec;m_stopwatch.set(timeSec);m_manualUpdateStopwatch.restart();
+        // Remain paused until GameMain finishes restoring state outside this lock.
+    }
+
 	void BGM::update()
 	{
+    ksmaudio::qa::Scope qaScope{"BGM.update",false};
 		if (m_isPaused)
 		{
 			return;
 		}
 
+        if (ksmaudio::IsASIOActive() && !m_isStreamStarted && m_stopwatch.elapsed() + m_offset >= m_duration) {
+            m_timeSec = m_stopwatch.elapsed(); m_clock.valid = false; return;
+        }
 		if (m_isStreamStarted)
 		{
 			if (m_manualUpdateStopwatch.elapsed() >= kManualUpdateInterval)
@@ -352,9 +396,43 @@ namespace MusicGame::Audio
 				m_legacyAudioFPStream.updateManually();
 				m_manualUpdateStopwatch.restart();
 			}
-			m_timeSec = m_stream.posSec() - m_offset;
+            if (ksmaudio::IsASIOActive()) {
+                ksmaudio::qa::Phase("BGM.clockSnapshot");
+                m_clock = m_stream.clockSnapshot();
+                if (!m_qaReportedNotPlaying && !m_clock.playing) {
+                    ksmaudio::qa::Event("BGM_STREAM_NOT_PLAYING",m_clock.outputFrame,
+                        static_cast<std::uint64_t>(Max(0.0,m_clock.renderPositionSec)*1000000));
+                    m_qaReportedNotPlaying = true;
+                }
+                m_clock.renderPositionSec -= m_offset.count();
+                m_clock.audiblePositionSec -= m_offset.count();
+                const auto latency = ksmaudio::GetAudioLatencySnapshot();
+                // A mixer/tempo decoder can stop a few samples before its advertised length.
+                // EOF is authoritative; a length-only test can freeze the result transition.
+                const bool usableClock=m_clock.valid && latency.output.sampleRate>0;
+                const bool reachedEnd=usableClock &&
+                    m_clock.renderPositionSec+m_offset.count()>=m_duration.count()-1.0/latency.output.sampleRate;
+                if (!m_tailOutputFrame && ShouldStartTailClock(m_clock,m_duration.count()-m_offset.count(),latency.output.sampleRate)) {
+                    ksmaudio::qa::Event("BGM_TAIL_CLOCK_BEGIN",m_clock.outputFrame,static_cast<std::uint64_t>(m_duration.count()*1000000));
+                    m_tailOutputFrame = m_clock.outputFrame;
+                    m_tailRenderTimeSec = Max(m_clock.renderPositionSec,
+                        Max(m_clock.audiblePositionSec,m_timeSec.count())+latency.output.latencySec);
+                    m_tailGeneration=m_clock.generation;
+                    ksmaudio::qa::Event("BGM_TAIL_CLOCK_REASON",!m_clock.playing,reachedEnd);
+                }
+                if (m_tailOutputFrame && usableClock) {
+                    // Re-anchor on output replacement/reset instead of unsigned frame underflow.
+                    if(m_tailGeneration!=m_clock.generation || m_clock.outputFrame<*m_tailOutputFrame)
+                        m_tailRenderTimeSec=m_timeSec.count()+latency.output.latencySec;
+                    else m_tailRenderTimeSec+=(m_clock.outputFrame-*m_tailOutputFrame)/latency.output.sampleRate;
+                    m_tailOutputFrame=m_clock.outputFrame;m_tailGeneration=m_clock.generation;
+                    m_clock.renderPositionSec=m_tailRenderTimeSec;
+                    m_clock.audiblePositionSec=m_clock.renderPositionSec-latency.output.latencySec;
+                }
+                if(usableClock) m_timeSec = SecondsF{m_clock.audiblePositionSec};
+            } else m_timeSec = m_stream.posSec() - m_offset;
 
-			if (m_timeSec + m_offset < m_duration - kBlendTime)
+			if (m_timeSec + m_offset < m_duration - kBlendTime || (ksmaudio::IsASIOActive() && m_timeSec + m_offset < m_duration))
 			{
 				// ストップウォッチの時間を同期
 				m_stopwatch.set(SecondsF{ m_timeSec });
@@ -366,6 +444,7 @@ namespace MusicGame::Audio
 
 			if (m_timeSec + m_offset >= 0s)
 			{
+                ksmaudio::OutputBatchLock batch;
 				m_stream.seekPosSec(m_timeSec + m_offset);
 				m_stream.play();
 				for (auto& switchAudio : m_switchAudioStreamsFX)
@@ -381,6 +460,13 @@ namespace MusicGame::Audio
 				m_legacyAudioFPStream.seekPosSec(m_timeSec + m_offset);
 				m_legacyAudioFPStream.play();
 				m_isStreamStarted = true;
+                if (ksmaudio::IsASIOActive()) {
+                    ksmaudio::qa::Phase("BGM.clockSnapshot");
+                m_clock = m_stream.clockSnapshot();
+                    m_clock.renderPositionSec -= m_offset.count();
+                    m_clock.audiblePositionSec -= m_offset.count();
+                    m_timeSec = SecondsF{m_clock.audiblePositionSec};
+                }
 			}
 		}
 	}
@@ -423,6 +509,17 @@ namespace MusicGame::Audio
 
 	void BGM::play()
 	{
+        m_qaReportedNotPlaying = false;
+    ksmaudio::qa::Scope qaScope{"BGM.play",true};
+        if(ksmaudio::IsASIOActive() && m_tailOutputFrame){
+            const auto output=ksmaudio::GetAudioLatencySnapshot();
+            m_tailOutputFrame=output.outputFrame;
+            m_tailRenderTimeSec=m_timeSec.count()+output.output.latencySec;
+            m_tailGeneration=m_stream.clockSnapshot().generation;
+            m_stopwatch.start();m_isStreamStarted=true;m_isPaused=false;
+            return;
+        }
+        m_tailOutputFrame.reset();
 		m_stopwatch.start();
 		m_isStreamStarted = false;
 		m_isPaused = false;
@@ -430,6 +527,9 @@ namespace MusicGame::Audio
 
 	void BGM::pause()
 	{
+    ksmaudio::qa::Scope qaScope{"BGM.pause",true};
+        ksmaudio::OutputBatchLock batch;
+        if (ksmaudio::IsASIOActive()) ksmaudio::CancelScheduledSounds();
 		if (m_isStreamStarted)
 		{
 			m_stream.pause();
@@ -443,13 +543,20 @@ namespace MusicGame::Audio
 			}
 			m_legacyAudioFPStream.pause();
 		}
+        if(ksmaudio::IsASIOActive()) m_stopwatch.set(m_timeSec);
 		m_stopwatch.pause();
 		m_isPaused = true;
+        m_clock.valid = false;
 	}
 
 	void BGM::seekPosSec(SecondsF posSec)
 	{
-		if (posSec < 0s)
+        ksmaudio::OutputBatchLock batch;
+        if (ksmaudio::IsASIOActive()) ksmaudio::CancelScheduledSounds();
+        m_tailOutputFrame.reset();m_qaReportedNotPlaying=false;
+        const bool asio = ksmaudio::IsASIOActive();
+        const SecondsF sourcePosition = asio ? posSec + m_offset : posSec;
+		if (sourcePosition < 0s || (asio && sourcePosition >= m_duration))
 		{
 			m_stream.stop();
 			for (auto& switchAudio : m_switchAudioStreamsFX)
@@ -461,26 +568,35 @@ namespace MusicGame::Audio
 				switchAudio->stream.stop();
 			}
 			m_legacyAudioFPStream.stop();
+            if (asio) m_isStreamStarted = false;
 		}
 		else
 		{
-			m_stream.seekPosSec(posSec);
+			m_stream.seekPosSec(sourcePosition);
 			for (auto& switchAudio : m_switchAudioStreamsFX)
 			{
-				switchAudio->stream.seekPosSec(posSec);
+				switchAudio->stream.seekPosSec(sourcePosition);
 			}
 			for (auto& switchAudio : m_switchAudioStreamsLaser)
 			{
-				switchAudio->stream.seekPosSec(posSec);
+				switchAudio->stream.seekPosSec(sourcePosition);
 			}
-			m_legacyAudioFPStream.seekPosSec(posSec);
+			m_legacyAudioFPStream.seekPosSec(sourcePosition);
+            if (asio && !m_isPaused && !m_isStreamStarted) {
+                m_stream.play();
+                for (auto& track : m_switchAudioStreamsFX) track->stream.play();
+                for (auto& track : m_switchAudioStreamsLaser) track->stream.play();
+                m_legacyAudioFPStream.play(); m_isStreamStarted = true;
+            }
 		}
 		m_timeSec = posSec;
 		m_stopwatch.set(posSec);
+        m_clock.valid = false;
 	}
 
 	SecondsF BGM::posSec() const
 	{
+        if (ksmaudio::IsASIOActive()) return m_timeSec;
 		// 開始・終了地点でノーツの動きが一瞬止まるのを防ぐため、最初と最後は再生位置に対してストップウォッチの時間を混ぜる
 		// TODO: うまく効いていないようなので見直す
 		if (m_isStreamStarted)

@@ -1,4 +1,5 @@
-﻿#include "AchievementPanel.hpp"
+﻿#include "Graphics/GameRenderContext.hpp"
+#include "AchievementPanel.hpp"
 
 namespace MusicGame::Graphics
 {
@@ -60,7 +61,7 @@ namespace MusicGame::Graphics
 		const double scaleYRate = Min(sec / kScaleYDurationSec, 1.0);
 		const double sizeY = Math::Lerp(Scaled(kSizeYStart), Scaled(kSizeYFinish), scaleYRate);
 		const int32 row = GetAchievementRow(playFinishStatus.achievement);
-		const Point pos = Scene::Center() - Scaled(0, 40);
+		const Point pos = GameRender::Center() - Scaled(0, 40);
 		m_texture(row).resized(sizeX, sizeY).drawAt(pos, ColorF(1.0, alpha));
 	}
 }

@@ -89,7 +89,8 @@ enum class JudgmentPlayMode : int32
 enum class AssistTickMode : int32
 {
 	kOff = 0,
-	kOn,
+	kAuto = 1,
+	kInput = 2,
 
 	kCount,
 };
@@ -107,10 +108,17 @@ enum class AutoSyncMode : int32
 enum class FastSlowMode : int32
 {
 	kHide = 0,
-	kShow,
+	kOrigin = 1,
+	kNew = 2,
 
 	kCount,
 };
+
+enum class JudgeColor : int32 { kFastBlue = 0, kFastRed, kCount };
+
+enum class TimingPosition : int32 { kUpperPlus = 0, kUpper, kStandard, kLower, kCount };
+enum class TimingMsDisplay : int32 { kOff = 0, kAll, kNear, kCrit, kCount };
+enum class TimingMsColor : int32 { kOff = 0, kNear, kCrit, kSixteenMs, kCount };
 
 enum class NoteSkinType : int32
 {

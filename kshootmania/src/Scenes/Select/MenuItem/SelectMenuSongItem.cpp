@@ -1,4 +1,5 @@
-﻿#include "SelectMenuSongItem.hpp"
+﻿#include "Graphics/ExScorePanel.hpp"
+#include "SelectMenuSongItem.hpp"
 #include "Graphics/FontUtils.hpp"
 #include "Scenes/Select/SelectDifficultyMenu.hpp"
 #include "RuntimeConfig.hpp"
@@ -186,6 +187,7 @@ void SelectMenuSongItem::setCanvasParamsCenter(const SelectMenuEventContext& con
 	if (pChartInfo != nullptr)
 	{
 		const HighScoreInfo highScoreInfo = context.fnGetHighScore(pChartInfo->chartFilePath());
+        ExScorePanel::Set(canvas,highScoreInfo.exScore(RuntimeConfig::GetGaugeType()),pChartInfo->exMaximum());
 
 		const GaugeType gaugeType = RuntimeConfig::GetGaugeType();
 

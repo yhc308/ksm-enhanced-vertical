@@ -1,4 +1,5 @@
-﻿#include "SelectChartInfo.hpp"
+﻿#include "MusicGame/Judgment/ExScore.hpp"
+#include "SelectChartInfo.hpp"
 #include "Ini/ConfigIni.hpp"
 #include "kson/IO/KshIO.hpp"
 
@@ -30,6 +31,7 @@ kson::MetaChartData SelectChartInfo::LoadMetaChartData(FilePathView chartFilePat
 SelectChartInfo::SelectChartInfo(FilePathView chartFilePath)
 	: m_chartFilePath(chartFilePath)
 	, m_chartData(LoadMetaChartData(chartFilePath))
+    , m_exMaximum(MusicGame::Judgment::LoadChartExMaximum(chartFilePath))
 	, m_folderConfIni(FolderConfIni::Load(chartFilePath))
 	{
 		// 検索用文字列をあらかじめ用意
@@ -42,9 +44,10 @@ SelectChartInfo::SelectChartInfo(FilePathView chartFilePath)
 			songFolderName).lowercased();
 	}
 
-SelectChartInfo::SelectChartInfo(FilePathView chartFilePath, const kson::MetaChartData& chartData, const FolderConfIni& folderConfIni)
+SelectChartInfo::SelectChartInfo(FilePathView chartFilePath, const kson::MetaChartData& chartData, const FolderConfIni& folderConfIni,int64 exMaximum)
 	: m_chartFilePath(chartFilePath)
 	, m_chartData(chartData)
+    , m_exMaximum(exMaximum)
 	, m_folderConfIni(folderConfIni)
 {
 	const String songFolderName = FsUtils::DirectoryNameByDirectoryPath(FileSystem::ParentPath(chartFilePath));

@@ -1,5 +1,8 @@
-﻿#include "HighwayRenderTexture.hpp"
+﻿#include "Graphics/GameRenderContext.hpp"
+#include "MusicGame/Graphics/ViewportGeometry.hpp"
+#include "HighwayRenderTexture.hpp"
 #include "MusicGame/Graphics/GraphicsDefines.hpp"
+#include "Vertical/VerticalLaneGeometry.hpp"
 #include "MusicGame/Camera/CameraMath.hpp"
 
 namespace MusicGame::Graphics
@@ -19,7 +22,16 @@ namespace MusicGame::Graphics
 			{
 				const ScopedRenderTarget2D renderTarget(texture);
 				const ScopedRenderStates2D samplerState(SamplerState::ClampNearest);
-				textureAsset(kHighwayTextureSize.x * column, 0, kHighwayTextureSize).draw(kHighwayTextureOffsetX, 0);
+				if (!GameRender::VerticalEnabled()) {
+                    textureAsset(kHighwayTextureSize.x * column,0,kHighwayTextureSize).draw(kHighwayTextureOffsetX,0);
+                } else {
+                    const std::array<double,4> from{0,44,212,256};
+                    const double rail=256*Vertical::kLaserRailWidthRatio;
+                    const std::array<double,4> to{0,rail,256-rail,256};
+                    for(int i=0;i<3;++i)
+                        textureAsset(column*256+from[i],0,from[i+1]-from[i],1024)
+                            .resized(to[i+1]-to[i],1024).draw(kHighwayTextureOffsetX+to[i],0);
+                }
 			}
 
 			return texture;
@@ -57,36 +69,34 @@ namespace MusicGame::Graphics
 		return m_invMultiplyTexture;
 	}
 
-	void HighwayRenderTexture::drawBaseTexture(double centerSplit) const
-	{
-		if (MathUtils::AlmostEquals(centerSplit, 0.0)) [[likely]]
-		{
-			// center_splitが0の場合は一発で描画
-			Shader::Copy(m_additiveBaseTexture, m_additiveTexture);
-			Shader::Copy(m_invMultiplyBaseTexture, m_invMultiplyTexture);
-			return;
-		}
-
-		const double centerSplitShiftX = Camera::CenterSplitShiftX(centerSplit);
-		constexpr double xOffset = (kHighwayTextureSizeWide.x - kHighwayTextureSize.x) / 2;
-		constexpr SizeF halfHighwayTextureSize{ kHighwayTextureSize.x / 2, kHighwayTextureSize.y };
-
-		const ScopedRenderStates2D samplerState{ SamplerState::ClampNearest };
-
-		// center_splitが指定されている場合は左右別々に描画
-
-		m_additiveTexture.clear(Palette::Black);
-		{
-			const ScopedRenderTarget2D renderTarget(m_additiveTexture);
-			m_additiveBaseTexture(xOffset, 0, halfHighwayTextureSize).draw(xOffset - centerSplitShiftX, 0); // 左側
-			m_additiveBaseTexture(xOffset + halfHighwayTextureSize.x, 0, halfHighwayTextureSize).draw(xOffset + halfHighwayTextureSize.x + centerSplitShiftX, 0); // 右側
-		}
-
-		m_invMultiplyTexture.clear(Palette::Black);
-		{
-			const ScopedRenderTarget2D renderTarget(m_invMultiplyTexture);
-			m_invMultiplyBaseTexture(xOffset, 0, halfHighwayTextureSize).draw(xOffset - centerSplitShiftX, 0); // 左側
-			m_invMultiplyBaseTexture(xOffset + halfHighwayTextureSize.x, 0, halfHighwayTextureSize).draw(xOffset + halfHighwayTextureSize.x + centerSplitShiftX, 0); // 右側
-		}
-	}
+    void HighwayRenderTexture::drawBaseTexture(double centerSplit) const
+    {
+        if (MathUtils::AlmostEquals(centerSplit, 0.0) && MathUtils::AlmostEquals(ViewportGeometry::RailScale(), 1.0))
+        {
+            Shader::Copy(m_additiveBaseTexture, m_additiveTexture);
+            Shader::Copy(m_invMultiplyBaseTexture, m_invMultiplyTexture);
+            return;
+        }
+        const double shift = Camera::CenterSplitShiftX(centerSplit);
+        const double offset = kHighwayTextureOffsetX;
+        const ScopedRenderStates2D sampler{SamplerState::ClampNearest};
+        const auto drawParts = [&](const RenderTexture& source, const RenderTexture& target)
+        {
+            const ScopedRenderTarget2D renderTarget{target.clear(Palette::Black)};
+            const auto part = [&](double from, double to, double split)
+            {
+                const double left=ViewportGeometry::RailX(from), right=ViewportGeometry::RailX(to);
+                source(offset+from,0,to-from,kHighwayTextureSize.y)
+                    .resized(right-left,kHighwayTextureSize.y).draw(offset+left+split,0);
+            };
+            // Fixed center lane, independently stretched rails, including both blend columns.
+            const double left=ViewportGeometry::CoreLeft(),right=256-left;
+            part(0,left,-shift);
+            part(left,128,-shift);
+            part(128,right,shift);
+            part(right,256,shift);
+        };
+        drawParts(m_additiveBaseTexture,m_additiveTexture);
+        drawParts(m_invMultiplyBaseTexture,m_invMultiplyTexture);
+    }
 }

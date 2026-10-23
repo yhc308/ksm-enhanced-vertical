@@ -473,7 +473,7 @@ namespace MusicGame::Audio
 	{
 		// TODO: SecondsFに統一
 		const double currentTimeSec = bgm.posSec().count();
-		const double currentTimeSecForAudio = (currentTimeSec - m_audioProcDelaySec) + bgm.latency().count(); // Note: In BASS v2.4.13 and later, for unknown reasons, the effects are out of sync even after adding this latency.
+		const double currentTimeSecForAudio = ksmaudio::IsASIOActive() ? bgm.renderPosSec().count() - m_audioProcDelaySec : (currentTimeSec - m_audioProcDelaySec) + bgm.latency().count(); // Note: In BASS v2.4.13 and later, for unknown reasons, the effects are out of sync even after adding this latency.
 		const kson::Pulse currentPulseForAudio = kson::SecToPulse(currentTimeSecForAudio, chartData.beat, timingCache);
 		const double currentBPMForAudio = kson::TempoAt(currentPulseForAudio, chartData.beat);
 

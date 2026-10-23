@@ -1,9 +1,18 @@
-﻿#include "OptionScene.hpp"
+#include "ksmaudio/Diagnostics.hpp"
+#include "OptionScene.hpp"
 #include "Common/FrameRateLimit.hpp"
 #include "Common/IMEUtils.hpp"
 #include "RuntimeConfig.hpp"
 #include "Scenes/Title/TitleScene.hpp"
 #include "Input/InputUtils.hpp"
+#include "Vertical/VerticalDisplay.hpp"
+#include "Vertical/VerticalResources.hpp"
+#include "Vertical/ModOptionsScene.hpp"
+#include "Ini/AudioCalibration.hpp"
+#include "Ini/KSMIniData.hpp"
+#include "Common/AudioOutputSettings.hpp"
+#include <fstream>
+#include <filesystem>
 
 // TODO: TextureIdxまわりどうにかする
 
@@ -13,7 +22,7 @@ namespace
 
 	FilePath GetOptionSceneUIFilePath()
 	{
-		return FsUtils::GetResourcePath(U"ui/scene/option.noco");
+		return Vertical::UIPath(U"ui/scene/option.noco");
 	}
 
 	std::shared_ptr<noco::Canvas> LoadOptionSceneCanvas()
@@ -50,12 +59,35 @@ std::unique_ptr<std::array<OptionMenu, OptionScene::kOptionMenuTypeEnumCount>> O
 		availableLanguageStrPairs.emplace_back(language, language);
 	}
 
+	const bool verticalEnabled = Vertical::ModConfig::Load().enabled;
+	Array<StrPair> verticalResolutions;
+	for (const auto resolution : Vertical::kPresets)
+		verticalResolutions.emplace_back(U"{},{}"_fmt(resolution.width, resolution.height), U"{}x{}"_fmt(resolution.width, resolution.height));
+    Array<StrPair> audioOutputs{
+        StrPair{String{ConfigIni::Value::AudioBackend::kDefault}, I18n::Get(I18n::Option::AudioBackendDefault)},
+        StrPair{String{ConfigIni::Value::AudioBackend::kDirectSound}, I18n::Get(I18n::Option::AudioBackendDirectSound)},
+        StrPair{U"asio", U"ASIO"},
+    };
+#ifdef _WIN32
+    for (const auto& driver : ksmaudio::GetASIODrivers())
+    {
+        const auto name = Unicode::FromUTF8(driver);
+        audioOutputs.emplace_back(U"asio:" + name, U"ASIO: " + name);
+    }
+    const String savedOutput{ConfigIni::GetString(ConfigIni::Key::kAudioBackend)};
+    if (savedOutput.starts_with(U"asio:") && !audioOutputs.any([&](const StrPair& item){ return item.first == savedOutput; }))
+        audioOutputs.emplace_back(savedOutput, savedOutput + U" (unavailable)");
+#endif
+
 	return std::make_unique<std::array<OptionMenu, kOptionMenuTypeEnumCount>>(std::array<OptionMenu, kOptionMenuTypeEnumCount>{
 		OptionMenu({
+			verticalEnabled ? CreateInfo::Enum(U"VERTICAL DISPLAY", U"vertical_display_mode", Array<IntStrPair>{
+				{0, U"WINDOWED"}, {2, U"BORDERLESS FULLSCREEN"}}) :
 			CreateInfo::Enum(I18n::Get(I18n::Option::ItemScreenMode), ConfigIni::Key::kFullScreen, Array<StringView>{
 				I18n::Get(I18n::Option::FullscreenOff),
 				I18n::Get(I18n::Option::FullscreenOn),
 			}),
+			verticalEnabled ? CreateInfo::Enum(U"VERTICAL RENDER PIXELS", U"vertical_resolution", verticalResolutions).setDefaultValue(1) :
 			CreateInfo::Enum(I18n::Get(I18n::Option::ItemScreenResolutionWindow), ConfigIni::Key::kWindowResolution, Array<StrPair>{
 				StrPair{ U"320,240", U"320x240" },
 				StrPair{ U"480,320", U"480x320" },
@@ -71,6 +103,7 @@ std::unique_ptr<std::array<OptionMenu, OptionScene::kOptionMenuTypeEnumCount>> O
 				StrPair{ U"1920,1080", U"1920x1080" },
 				StrPair{ U"1920,1200", U"1920x1200" },
 			}),
+			verticalEnabled ? CreateInfo::Enum(U"BORDERLESS OUTPUT", U"vertical_borderless_info", Array<StringView>{U"ASPECT FIT / BLACK LETTERBOX"}) :
 			CreateInfo::Enum(I18n::Get(I18n::Option::ItemScreenResolutionFullscreen), ConfigIni::Key::kFullScreenResolution, Array<StrPair>{
 				StrPair{ U"640,480", U"640x480" },
 				StrPair{ U"800,600", U"800x600" },
@@ -109,7 +142,8 @@ std::unique_ptr<std::array<OptionMenu, OptionScene::kOptionMenuTypeEnumCount>> O
 			}),
 			CreateInfo::Enum(I18n::Get(I18n::Option::ItemAssistTick), ConfigIni::Key::kAssistTick, Array<StringView>{
 				I18n::Get(I18n::Option::AssistTickOff),
-				I18n::Get(I18n::Option::AssistTickOn),
+				I18n::Get(I18n::Option::AssistTickAuto),
+				I18n::Get(I18n::Option::AssistTickInput),
 			}),
 			CreateInfo::Enum(I18n::Get(I18n::Option::ItemAutoPlaySE), ConfigIni::Key::kAutoPlaySE, Array<StringView>{
 				I18n::Get(I18n::Option::Off),
@@ -122,10 +156,7 @@ std::unique_ptr<std::array<OptionMenu, OptionScene::kOptionMenuTypeEnumCount>> O
 					ksmaudio::SetMasterVolume(volume / 100.0);
 				}),
 #ifdef _WIN32
-			CreateInfo::Enum(I18n::Get(I18n::Option::ItemAudioBackend), ConfigIni::Key::kAudioBackend, Array<StrPair>{
-				StrPair{ String{ ConfigIni::Value::AudioBackend::kDefault }, I18n::Get(I18n::Option::AudioBackendDefault) },
-				StrPair{ String{ ConfigIni::Value::AudioBackend::kDirectSound }, I18n::Get(I18n::Option::AudioBackendDirectSound) },
-			}),
+            CreateInfo::Enum(I18n::Get(I18n::Option::ItemAudioBackend), ConfigIni::Key::kAudioBackend, audioOutputs),
 #endif
 			CreateInfo::Enum(I18n::Get(I18n::Option::ItemVsync), ConfigIni::Key::kVsync, Array<StrPair>{
 				StrPair{ U"0;120", I18n::Get(I18n::Option::VsyncOffWithFps, 120) },
@@ -261,16 +292,68 @@ std::unique_ptr<std::array<OptionMenu, OptionScene::kOptionMenuTypeEnumCount>> O
 	});
 }
 
-OptionScene::OptionScene()
+OptionScene::OptionScene(bool displayShortcut)
 	: m_canvas(LoadOptionSceneCanvas())
 	, m_optionMenus(makeOptionMenus())
+    , m_returnToVertical(displayShortcut)
 {
+    ksmaudio::qa::Scope qaConstruct{"OptionScene.construct",true};
+    const auto& activeOutput = ksmaudio::GetAudioOutputStatus();
+    m_activeOutputSelection = activeOutput.backend == ksmaudio::AudioBackend::ASIO ? U"asio:" + Unicode::FromUTF8(activeOutput.driver) :
+        (activeOutput.backend == ksmaudio::AudioBackend::DirectSound ? U"direct_sound" : U"default");
+	if(displayShortcut) {m_currentOptionMenuIdx=kDisplaySound;createSettingItemNodes();}
 	m_bgmStream.play();
 	AutoMuteAddon::SetEnabled(true);
+    const auto installedDrivers = ksmaudio::GetASIODrivers();
+    if (!installedDrivers.empty()) m_genericASIOSelection = U"asio:" + Unicode::FromUTF8(installedDrivers.front());
+    m_savedOutputSelection = String{ConfigIni::GetString(ConfigIni::Key::kAudioBackend, U"default")};
+    m_switchSmokeASIO = m_savedOutputSelection;
+    m_switchSmokeTargets = {U"default", U"direct_sound", m_switchSmokeASIO};
+    for (const auto& arg : System::GetCommandLineArgs()) {
+        if (!arg.starts_with(U"--audio-switch-pair=")) continue;
+        if (!FileSystem::Exists(FsUtils::GetResourcePath(U"audio-test-fixture"))) throw Error{U"Pair test requires fixture directory"};
+        const auto pair = arg.substr(20).split(U'|');
+        if (pair.size() != 2) throw Error{U"Pair test expects source|target"};
+        m_switchSmokeTargets = pair;
+    }
+    if (System::GetCommandLineArgs().contains(U"--audio-options-smoke-test"))
+    {
+        m_currentOptionMenuIdx = kDisplaySound;
+        auto& menu = (*m_optionMenus)[kDisplaySound];
+        const auto items = menu.getSettingItemParamsList();
+        for (std::size_t i = 0; i < items.size(); ++i)
+            if (items[i].name == I18n::Get(I18n::Option::ItemAudioBackend)) menu.setCursor(static_cast<int32>(i));
+        createSettingItemNodes();
+    }
+
+
 }
 
 void OptionScene::update()
 {
+    if(m_returnToVertical && Vertical::OptionProbe::active() && Vertical::OptionProbe::stage==3 && !isFadingIn()) {
+        Vertical::OptionProbe::record(U"display_shortcut_opens_existing_section",m_currentOptionMenuIdx==kDisplaySound);
+        Vertical::OptionProbe::advance(4);exitScene();return;
+    }
+    ksmaudio::qa::Scope qaScope{"OptionScene.update",false};
+    ksmaudio::qa::Scene("option");
+    if (System::GetCommandLineArgs().contains(U"--audio-output-switch-smoke-test") && m_switchSmokeClock.sF() > 0.2 &&
+        m_switchSmokeStage <= static_cast<int32>(m_switchSmokeTargets.size())) {
+        if (!FileSystem::Exists(FileSystem::PathAppend(FsUtils::AppDataDirectoryPath(),U"audio-test-fixture"))) throw Error{U"Switch test requires fixture directory"};
+        if (m_switchSmokeStage < static_cast<int32>(m_switchSmokeTargets.size())) {
+            m_currentOptionMenuIdx = kDisplaySound;
+            ConfigIni::SetString(ConfigIni::Key::kAudioBackend,m_switchSmokeTargets[m_switchSmokeStage]);
+            ++m_switchSmokeStage;saveOutputSelection();m_switchSmokeClock.restart();
+            m_switchSmokeHistory += U"requested={} active={} saved={} bgm={} calibration={}\n"_fmt(
+                ConfigIni::GetString(ConfigIni::Key::kAudioBackend), m_activeOutputSelection, m_savedOutputSelection,
+                m_bgmStream.isPlaying(), AudioCalibration::active);
+        } else {
+            TextWriter report{FileSystem::PathAppend(FsUtils::AppDataDirectoryPath(),U"audio-switch-smoke-status.txt")};
+            report.writeln(U"stages={}, error={}, BGMPlaying={}, active={}"_fmt(m_switchSmokeStage,m_outputError,m_bgmStream.isPlaying(),m_activeOutputSelection));
+            report.writeln(m_switchSmokeHistory);
+            m_currentOptionMenuIdx = kDisplaySound;createSettingItemNodes();++m_switchSmokeStage;
+        }
+    }
 	// フェード中はクリックやホバーが効かないようヒットテスト無効
 	const noco::HitTestEnabledYN hitTestEnabled{ !isFadingIn() && !isFadingOut() && InputUtils::IsUIMouseInputEnabled() };
 
@@ -301,7 +384,9 @@ void OptionScene::update()
 			}
 			else
 			{
-				m_currentOptionMenuIdx = none;
+                if (m_currentOptionMenuIdx == kDisplaySound) saveOutputSelection();
+                if(m_returnToVertical) {exitScene();return;}
+                m_currentOptionMenuIdx = none;
 			}
 		}
 	}
@@ -364,12 +449,113 @@ void OptionScene::update()
 	m_topMenu.updateUI(m_canvas.get());
 	m_keyConfigMenu.updateUI(m_canvas.get());
 	m_canvas->update(hitTestEnabled);
+    updateAudioSelectionLog();
 }
 
-void OptionScene::draw() const
-{
-	m_canvas->draw();
-	m_commonOverlay.draw();
+void OptionScene::saveOutputSelection() {
+    if (!Vertical::SettingsPersistence()) return;
+#ifdef _WIN32
+    const String selected{ConfigIni::GetString(ConfigIni::Key::kAudioBackend, U"default")};
+    if (selected == m_savedOutputSelection) return;
+    // Only persist the requested output. Never touch streams, output gain, or the
+    // active calibration profile while this process continues to play.
+    AudioCalibration::Store();
+    ConfigIni::Save();
+    const KSMIniData saved{FsUtils::GetResourcePath(U"config.ini")};
+    const bool success = saved.getString(ConfigIni::Key::kAudioBackend) == selected;
+    if (!success) {
+        ConfigIni::SetString(ConfigIni::Key::kAudioBackend, m_savedOutputSelection);
+        m_outputError = I18n::Get(I18n::Mod::AudioSaveFailed);
+        AudioOutputSettings::Log(U"output selection save failed: {}"_fmt(selected));
+        logAudioOutput(m_outputError, true, false);
+        refreshOptionMenusForLanguageChange();
+        return;
+    }
+    m_savedOutputSelection = selected;
+    m_outputError.clear();
+    m_audioLog.clear();
+    const bool pending = AudioOutputSettings::NeedsRestart(selected, m_activeOutputSelection, m_genericASIOSelection);
+    logAudioOutput(String{pending?I18n::Get(I18n::Mod::AudioSavedNext):I18n::Get(I18n::Mod::AudioCurrentAgain)}, false, !pending);
+    AudioOutputSettings::Log(U"output saved for next launch: requested={}, active={} (no live switch)"_fmt(
+        selected, m_activeOutputSelection));
+#endif
+}
+
+void OptionScene::logAudioOutput(const String& title, bool error, bool includeMetrics) {
+    AudioLogEntry entry{{title}, Scene::Time(), error};
+    if (includeMetrics) {
+        const auto metrics = ksmaudio::GetAudioLatencySnapshot();
+        const auto& output = metrics.output;
+        const String backend = output.backend == ksmaudio::AudioBackend::ASIO ? U"ASIO" :
+            output.backend == ksmaudio::AudioBackend::DirectSound ? U"DirectSound" : U"Default / WASAPI";
+        entry.lines.push_back(U"{} | {} | {} Hz"_fmt(backend, Unicode::FromUTF8(output.driver), output.sampleRate));
+        if (metrics.reportedValid) {
+            String latency = (output.backend == ksmaudio::AudioBackend::ASIO ? U"{} frames | "_fmt(output.bufferSamples) : U"") + String{I18n::Get(I18n::Mod::ReportedLatency)} + U"{:.2f}ms"_fmt(output.latencySec * 1000);
+            if (metrics.predictionValid) latency += U" | {:.2f}~{:.2f}ms (avg {:.2f})"_fmt(
+                metrics.predictedMinSec*1000, metrics.predictedMaxSec*1000, metrics.predictedMeanSec*1000);
+            entry.lines.push_back(latency);
+            entry.lines.push_back(String{I18n::Get(I18n::Mod::LatencyEstimate)});
+        }
+    }
+    m_audioLog.push_back(std::move(entry));
+    while (m_audioLog.size() > 2) m_audioLog.erase(m_audioLog.begin());
+}
+
+void OptionScene::updateAudioSelectionLog() {
+    bool focused = false;
+    String selectionLabel;
+    if (m_currentOptionMenuIdx == kDisplaySound) {
+        const auto& menu = (*m_optionMenus)[kDisplaySound];
+        const auto items = menu.getSettingItemParamsList();
+        const auto cursor = menu.cursor();
+        focused = 0 <= cursor && static_cast<std::size_t>(cursor) < items.size() &&
+            items[cursor].name == I18n::Get(I18n::Option::ItemAudioBackend);
+        if (focused) selectionLabel = items[cursor].value;
+    }
+    saveOutputSelection();
+    const String selected{ConfigIni::GetString(ConfigIni::Key::kAudioBackend, U"default")};
+    if (focused && (!m_audioRowFocused || selected != m_loggedAudioSelection)) {
+        const bool pending = AudioOutputSettings::NeedsRestart(selected, m_activeOutputSelection, m_genericASIOSelection);
+            logAudioOutput(pending ? String{I18n::Get(I18n::Mod::NextLaunchOutput)}+selectionLabel : String{I18n::Get(I18n::Mod::CurrentAudioOutput)}, false, !pending);
+    }
+    m_audioRowFocused = focused;
+    m_loggedAudioSelection = selected;
+}
+
+void OptionScene::drawAudioLog() const {
+    const auto font=AssetManagement::SystemFont();
+    const double scale = Clamp(Scene::Height() / 720.0, 0.7, 1.5);
+    const double size = 14 * scale, margin = 16 * scale;
+    const double width = Min(620 * scale, Scene::Width() - 2 * margin);
+    const double lineHeight = 19 * scale;
+    double bottom = Scene::Height() - 48 * scale;
+    for (auto it = m_audioLog.rbegin(); it != m_audioLog.rend(); ++it) {
+        const double age = Scene::Time() - it->createdAt;
+        const double duration = it->error ? 8.0 : 5.0;
+        if (age >= duration) continue;
+        const double alpha = Min(1.0, duration-age);
+        const double height = it->lines.size() * lineHeight + 16 * scale;
+        const double left = Scene::Width() - width - margin, top = bottom - height;
+        RectF{left,top,width,height}.draw(ColorF{0.015,0.025,0.03,0.88*alpha});
+        RectF{left,top,3*scale,height}.draw(it->error ? ColorF{1.0,0.45,0.4,alpha} : ColorF{0.35,0.85,0.65,alpha});
+        for (std::size_t i=0;i<it->lines.size();++i) {
+            String text = it->lines[i];
+            const double maxWidth = width-24*scale;
+            if (font(text).region(size).w > maxWidth) {
+                while (!text.isEmpty() && font(text + U"…").region(size).w > maxWidth) text.pop_back();
+                text += U"…";
+            }
+            font(text).draw(size,left+12*scale,top+8*scale+i*lineHeight,ColorF{0.93,alpha});
+        }
+        bottom = top - 6 * scale;
+    }
+}
+
+void OptionScene::draw() const {
+    ksmaudio::qa::Scope qaScope{"OptionScene.draw",false};
+    m_canvas->draw();
+    m_commonOverlay.draw();
+    drawAudioLog();
 }
 
 Co::Task<void> OptionScene::fadeIn()
@@ -391,7 +577,10 @@ Co::Task<void> OptionScene::fadeOut()
 
 void OptionScene::exitScene()
 {
-	ConfigIni::Save();
+	const auto candidateVerticalConfig = Vertical::ModConfig::Load();
+	if (m_originalVerticalConfig.enabled) m_originalVerticalConfig.Save();
+    if (Vertical::SettingsPersistence()) AudioCalibration::Store();
+	Vertical::SaveOptionsConfiguration();
 
 	// Vsync設定を反映("0;120"または"1"の形式)
 	const Array<String> vsyncParts = String{ ConfigIni::GetString(ConfigIni::Key::kVsync, U"0;300") }.split(U';');
@@ -404,10 +593,18 @@ void OptionScene::exitScene()
 	Addon::GetAddon<FrameRateLimit>(FrameRateLimit::kAddonName)->setTargetFPS(frameRateLimit);
 
 	// 画面サイズ反映
-	ApplyScreenSizeConfig();
+	if (m_originalVerticalConfig.enabled) {
+        const bool changed=candidateVerticalConfig.displayMode!=m_originalVerticalConfig.displayMode ||
+            candidateVerticalConfig.monitorId!=m_originalVerticalConfig.monitorId ||
+            candidateVerticalConfig.windowSize.width!=m_originalVerticalConfig.windowSize.width ||
+            candidateVerticalConfig.windowSize.height!=m_originalVerticalConfig.windowSize.height;
+        if(changed) Vertical::BeginDisplayChange(candidateVerticalConfig);
+    }
+	else ApplyScreenSizeConfig();
 
 	// シーン遷移
-	requestNextScene<TitleScene>(TitleMenuItem::kOption);
+	if(m_returnToVertical) requestNextScene<ModOptionsScene>(0,1);
+    else requestNextScene<TitleScene>(TitleMenuItem::kOption);
 }
 
 void OptionScene::refreshOptionMenusForLanguageChange()
@@ -448,7 +645,7 @@ void OptionScene::createSettingItemNodes()
 	for (const auto& params : (*m_optionMenus)[*m_currentOptionMenuIdx].getSettingItemParamsList())
 	{
 		containerNode->addSubCanvasNodeAsChild(
-			U"ui/parts/option_setting_item.noco",
+			Vertical::UIPath(U"ui/parts/option_setting_item.noco"),
 			{
 				{ U"name", params.name },
 				{ U"value", params.value },

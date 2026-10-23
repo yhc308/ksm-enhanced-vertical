@@ -1,5 +1,8 @@
-﻿#include "MoviePanel.hpp"
+﻿#include "Graphics/GameRenderContext.hpp"
+#include "MoviePanel.hpp"
 #include "MusicGame/Graphics/GraphicsDefines.hpp"
+#include "Vertical/VerticalModConfig.hpp"
+#include "Vertical/VerticalHUDLayout.hpp"
 
 #ifdef _WIN32
 #include <mfapi.h>
@@ -202,15 +205,22 @@ namespace MusicGame::Graphics
 			return;
 		}
 
-		const double baseX = Scene::Width() / 2 + ScreenUtils::Scaled(kVideoOffsetFromCenterX);
+		const double baseX = GameRender::Width() / 2 + ScreenUtils::Scaled(kVideoOffsetFromCenterX);
 		const double baseY = ScreenUtils::Scaled(kVideoBaseY);
-		const Vec2 basePos{ baseX, baseY };
-		const Vec2 targetSize = ScreenUtils::Scaled(Vec2{ kVideoWidth, kVideoHeight });
+		Vec2 basePos{ baseX, baseY };
+		Vec2 targetSize = ScreenUtils::Scaled(Vec2{ kVideoWidth, kVideoHeight });
+		const bool verticalEnabled = GameRender::VerticalEnabled();
+		if (verticalEnabled)
+		{
+			const auto rect = Vertical::HUDRect(U"Movie");
+			basePos = rect.pos;
+			targetSize = rect.size;
+		}
 
 		// 外枠描画
 		{
 			const ScopedRenderStates2D blend(BlendState::Additive);
-			const Vec2 frameSize = ScreenUtils::Scaled(Vec2{ kFrameWidth, kFrameHeight });
+			const Vec2 frameSize = verticalEnabled ? targetSize : ScreenUtils::Scaled(Vec2{ kFrameWidth, kFrameHeight });
 			const Vec2 frameCenter = basePos + Vec2{ targetSize.x / 2, targetSize.y / 2 };
 			const Vec2 framePos = frameCenter - frameSize / 2;
 			RectF{ framePos, frameSize }.draw(ColorF{ Palette::White, kFrameAlpha });

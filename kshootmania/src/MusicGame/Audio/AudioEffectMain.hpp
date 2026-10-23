@@ -41,7 +41,7 @@ namespace MusicGame::Audio
 		const kson::FXLane<Optional<AudioEffectInvocation>> m_longFXNoteInvocations;
 		const kson::ByPulse<Optional<AudioEffectInvocation>> m_laserPulseInvocations;
 
-		const double m_audioProcDelaySec;
+		double m_audioProcDelaySec;
 		const double m_peakingFilterDelaySec;
 
 		std::array<bool, kson::kNumFXLanesSZ> m_longFXPressedPrev = { false, false };
@@ -55,6 +55,8 @@ namespace MusicGame::Audio
 		const Optional<AudioEffectInvocation>& getActiveLaserAudioEffectInvocation(kson::Pulse currentPulseForAudio) const;
 		
 	public:
+        void setSettingsDelay(double seconds){m_audioProcDelaySec=seconds;}
+        void resetPreviewPlayback(){m_longFXPressedPrev.fill(false);m_lastPressedLongFXNoteLaneIdx=0;m_activeAudioEffectDictFX.clear();}
 		AudioEffectMain(BGM& bgm, const kson::ChartData& chartData, const kson::TimingCache& timingCache, const FilePath& parentPath, double audioProcDelaySec, double bgmVolume);
 
 		/// @param fxNoteLanesForAudio 音声エフェクト用のFXノーツ(S-RANDOM時は配置適用前のFXノーツを渡す)

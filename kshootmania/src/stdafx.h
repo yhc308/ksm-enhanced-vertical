@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 //# define NO_S3D_USING
 #include <Siv3D.hpp>
 #include <CoTaskLib.hpp>
@@ -9,6 +9,7 @@
 #include "Common/AssetManagement.hpp"
 #include "Common/MathUtils.hpp"
 #include "Common/FsUtils.hpp"
+#include "Common/SkinPreset.hpp"
 #include "Common/MessageBoxUtils.hpp"
 #include "Addon/AutoMuteAddon.hpp"
 #include "Addon/CommonSEAddon.hpp"

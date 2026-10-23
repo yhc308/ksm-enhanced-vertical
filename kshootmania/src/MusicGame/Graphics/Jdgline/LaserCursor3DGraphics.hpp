@@ -14,6 +14,6 @@ namespace MusicGame::Graphics
 	public:
 		LaserCursor3DGraphics();
 
-		void draw3D(const GameStatus& gameStatus, const ViewStatus& viewStatus, const BasicCamera3D& camera) const;
+		void draw3D(const GameStatus& gameStatus, const ViewStatus& viewStatus, const BasicCamera3D& camera, Float3 displayAnchor = Float3{0,0,0}) const;
 	};
 }

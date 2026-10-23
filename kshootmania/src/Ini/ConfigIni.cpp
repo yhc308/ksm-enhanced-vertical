@@ -1,4 +1,8 @@
-﻿#include "ConfigIni.hpp"
+﻿#include "ksmaudio/Diagnostics.hpp"
+#include "ConfigIni.hpp"
+#ifdef _WIN32
+#include <Siv3D/Windows/Windows.hpp>
+#endif
 #include "KSMIniData.hpp"
 #include "Input/KeyConfig.hpp"
 #include "MusicGame/Scroll/HispeedSetting.hpp"
@@ -27,7 +31,7 @@ fullscrsize=1920,1080
 ; フレームのスキップ数(0～9)
 frameskip=0
 
-; ASSIST TICK機能の有効/無効 (1:有効 0:無効)
+; ASSIST TICK (0:OFF 1:AUTO 2:INPUT)
 assisttick=0
 
 playtype=2
@@ -51,6 +55,9 @@ backgroundmovie=1
 noteskin=default
 
 viewtiming=0
+timing_position=0
+timing_ms_display=3
+timing_ms_color=2
 
 currentplayer=PLAYER
 
@@ -98,7 +105,7 @@ inputdelay=0
 editor_loopplayback=1
 
 vsync=0;300
-esckey_bt3=1
+esckey_bt3=0
 twitter_token=
 twitter_token_secret1=
 twitter_token_secret2=
@@ -133,7 +140,7 @@ fullscrsize=1920,1080
 ; フレームのスキップ数(0～9)
 frameskip=0
 
-; ASSIST TICK機能の有効/無効 (1:有効 0:無効)
+; ASSIST TICK (0:OFF 1:AUTO 2:INPUT)
 assisttick=0
 
 playtype=2
@@ -157,6 +164,9 @@ backgroundmovie=1
 noteskin=default
 
 viewtiming=0
+timing_position=0
+timing_ms_display=3
+timing_ms_color=2
 
 currentplayer=PLAYER
 
@@ -204,7 +214,7 @@ inputdelay=0
 editor_loopplayback=1
 
 vsync=0;300
-esckey_bt3=1
+esckey_bt3=0
 twitter_token=
 twitter_token_secret1=
 twitter_token_secret2=
@@ -284,7 +294,30 @@ void ConfigIni::Load()
 
 void ConfigIni::Save()
 {
+    ksmaudio::qa::Scope qaScope{"ConfigIni.save",true};
 	s_configIniData.save(GetConfigIniFilePath());
+}
+
+bool ConfigIni::SaveSelectedIntegers(const Array<std::pair<String,int32>>& values)
+{
+    const FilePath path=GetConfigIniFilePath(),temp=path+U".judge-setting.tmp";
+    auto candidate=s_configIniData;
+    for(const auto& [key,value]:values)candidate.setInt(key,value);
+    if(FileSystem::Exists(temp))FileSystem::Remove(temp);
+    if(FileSystem::Exists(path) && !FileSystem::Copy(path,temp)){Logger<<U"[judge setting] Cannot prepare temporary settings file";return false;}
+    candidate.save(temp);
+    if(!FileSystem::IsFile(temp)){Logger<<U"[judge setting] Temporary settings file missing";return false;}
+    KSMIniData verified{temp};
+    if(!(verified==candidate)){Logger<<U"[judge setting] Incomplete settings write";return false;}
+    for(const auto& [key,value]:values)if(!verified.hasValue(key) || verified.getInt(key)!=value)return false;
+#ifdef _WIN32
+    const bool ok=::MoveFileExW(temp.toWstr().c_str(),path.toWstr().c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=0;
+#else
+    const bool ok=std::rename(temp.toUTF8().c_str(),path.toUTF8().c_str())==0;
+#endif
+    if(ok)s_configIniData=std::move(candidate);
+    else Logger<<U"[judge setting] Could not replace settings file";
+    return ok;
 }
 
 bool ConfigIni::HasValue(StringView key)

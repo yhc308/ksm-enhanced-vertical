@@ -1,4 +1,5 @@
-﻿#include "SelectMenuCacheDb.hpp"
+﻿#include "MusicGame/Judgment/ExScore.hpp"
+#include "SelectMenuCacheDb.hpp"
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <filesystem>
 #include "Common/Encoding.hpp"
@@ -6,7 +7,7 @@
 
 namespace
 {
-	constexpr int32 kSchemaVersion = 2;
+	constexpr int32 kSchemaVersion = 3;
 	constexpr StringView kDbFileName = U"cache.sqlite3";
 
 	struct SourceFileInfo
@@ -30,6 +31,7 @@ namespace
 		String songSortKey;
 		FilePath chartFileRelativePath;
 		kson::MetaChartData chartData;
+        int64 exMaximum=0;
 		FolderConfIni folderConfIni;
 	};
 
@@ -271,6 +273,7 @@ namespace
 				.songSortKey = FsUtils::DirectoryNameByDirectoryPath(songDirPath).lowercased(),
 				.chartFileRelativePath = FileSystem::RelativePath(chartFilePath, baseDirectoryPath),
 				.chartData = chartData,
+                .exMaximum=MusicGame::Judgment::LoadChartExMaximum(chartFilePath),
 				.folderConfIni = FolderConfIni::Load(chartFilePath),
 			});
 			chartExists = true;
@@ -330,7 +333,8 @@ namespace
 		db.exec("CREATE TABLE IF NOT EXISTS source_files (relative_path TEXT PRIMARY KEY, mtime_ms INTEGER NOT NULL, size INTEGER NOT NULL)");
 		db.exec(
 			"CREATE TABLE IF NOT EXISTS charts ("
-			"chart_path TEXT PRIMARY KEY,"
+			"ex_maximum INTEGER NOT NULL,"
+            "chart_path TEXT PRIMARY KEY,"
 			"song_dir TEXT NOT NULL,"
 			"section_dir TEXT NOT NULL,"
 			"section_display_name TEXT,"
@@ -461,20 +465,21 @@ namespace
 		{
 			SQLite::Statement query(db,
 				"INSERT INTO charts("
-				"chart_path, song_dir, section_dir, section_display_name, skip_section_heading,"
+				"ex_maximum, chart_path, song_dir, section_dir, section_display_name, skip_section_heading,"
 				"visible_in_directory_name_sort, visible_in_all_name_sort, section_directory_index, song_directory_index, chart_file_index, song_sort_key,"
 				"difficulty_idx, level,"
 				"title, title_translit, title_img_filename, artist, artist_translit, artist_img_filename, chart_author,"
 				"disp_bpm, std_bpm, jacket_filename, jacket_author, icon_filename, information,"
 				"bgm_filename, bgm_vol, preview_offset, preview_duration, folder_volume_scale, folder_offset_ms, folder_tweet_option"
-				") VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				") VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
 			for (const auto& row : chartRows)
 			{
 				const auto& meta = row.chartData.meta;
 				const auto& bgm = row.chartData.audio.bgm;
 				int32 columnIndex = 1;
-				query.bind(columnIndex++, row.chartFileRelativePath.toUTF8());
+				query.bind(columnIndex++, static_cast<long long>(row.exMaximum));
+                query.bind(columnIndex++, row.chartFileRelativePath.toUTF8());
 				query.bind(columnIndex++, row.songDirectoryRelativePath.toUTF8());
 				query.bind(columnIndex++, row.sectionDirectoryRelativePath.toUTF8());
 				if (row.sectionDisplayName)
@@ -580,7 +585,7 @@ namespace
 			const FilePath sectionDirRel = Unicode::FromUTF8(query.getColumn("section_dir").getString());
 
 			rows.push_back(ChartRowResult{
-				.chartInfo = std::make_shared<SelectChartInfo>(chartPath, chartData, folderConfIni),
+				.chartInfo = std::make_shared<SelectChartInfo>(chartPath, chartData, folderConfIni,query.getColumn("ex_maximum").getInt64()),
 				.difficultyIdx = meta.difficulty.idx,
 				.songSortKey = Unicode::FromUTF8(query.getColumn("song_sort_key").getString()),
 				.songDirectoryPath = FileSystem::PathAppend(baseDirectoryPath, songDirRel),

@@ -1,6 +1,9 @@
-﻿#include "LaserNoteGraphics.hpp"
+﻿#include "Graphics/GameRenderContext.hpp"
+#include "MusicGame/Graphics/ViewportGeometry.hpp"
+#include "LaserNoteGraphics.hpp"
 #include "NoteGraphicsUtils.hpp"
 #include "MusicGame/Graphics/GraphicsDefines.hpp"
+#include "Vertical/VerticalLaneGeometry.hpp"
 
 namespace MusicGame::Graphics
 {
@@ -12,7 +15,8 @@ namespace MusicGame::Graphics
 		constexpr StringView kLaserNoteRightStartTextureFilename = U"laserr_0.gif";
 
 		constexpr Size kLaserTextureSize = { 48, 48 };
-		constexpr int32 kLaserLineWidth = kLaserTextureSize.x;
+        double LaserLineWidth() { return ViewportGeometry::LaserWidth(); }
+        double LaserScale() { return ViewportGeometry::LaserScale(); }
 		constexpr int32 kLaserSlamHeightMax = kLaserTextureSize.y;
 		constexpr kson::RelPulse kLaserSlamHeightPulse = kson::kResolution4 / 32; // 32分長
 		constexpr int32 kLaserTailHeightMax = 80;
@@ -34,19 +38,19 @@ namespace MusicGame::Graphics
 			kError,
 		};
 
-		constexpr Quad LaserLineQuad(const Vec2& positionStart, const Vec2& positionEnd)
+		Quad LaserLineQuad(const Vec2& positionStart, const Vec2& positionEnd)
 		{
 			return {
-				positionStart + Vec2{ kLaserLineWidth / 2, 0.0 },
-				positionStart + Vec2{ -kLaserLineWidth / 2, 0.0 },
-				positionEnd + Vec2{ -kLaserLineWidth / 2, 0.0 },
-				positionEnd + Vec2{ kLaserLineWidth / 2, 0.0 }
+				positionStart + Vec2{ LaserLineWidth() / 2, 0.0 },
+				positionStart + Vec2{ -LaserLineWidth() / 2, 0.0 },
+				positionEnd + Vec2{ -LaserLineWidth() / 2, 0.0 },
+				positionEnd + Vec2{ LaserLineWidth() / 2, 0.0 }
 			};
 		}
 
-		constexpr double LaserPointX(double v, int32 xScale)
+		double LaserPointX(double v, int32 xScale)
 		{
-			return (v * (kHighwayTextureSize.x - kLaserLineWidth) + kLaserLineWidth / 2) * xScale;
+			return ViewportGeometry::LaserCenter(v, xScale);
 		}
 
 		void DrawLaserLine(int32 laneIdx, int32 positionY, const kson::GraphPoint& point, int32 slamHeight, int32 nextPositionY, const kson::GraphPoint& nextPoint, const Texture& laserNoteTexture, int32 laserNoteTextureRow, int32 xScale, double startXShift)
@@ -102,7 +106,7 @@ namespace MusicGame::Graphics
 		double ClampSlamTopShift(double startX, double endX, double topShiftX)
 		{
 			const double slamWidth = Abs(endX - startX);
-			const double innerWidth = Max(slamWidth - kLaserLineWidth, 0.0);
+			const double innerWidth = Max(slamWidth - LaserLineWidth(), 0.0);
 			if (endX >= startX)
 			{
 				return Max(topShiftX, -innerWidth);
@@ -112,7 +116,7 @@ namespace MusicGame::Graphics
 
 		Quad LaserSlamLineQuad(const Vec2& positionStart, const Vec2& positionEnd, int32 slamHeight, double topShiftX)
 		{
-			if (Abs(positionEnd.x - positionStart.x) <= kLaserLineWidth)
+			if (Abs(positionEnd.x - positionStart.x) <= LaserLineWidth())
 			{
 				// 左右が近すぎて直角レーザーの横線が描画できない場合はゼロを返す
 				return { Vec2::Zero(), Vec2::Zero(), Vec2::Zero(), Vec2::Zero() };
@@ -124,20 +128,20 @@ namespace MusicGame::Graphics
 			{
 				// scroll_speedが正の場合、奥方向(上)に太さを持つ
 				return {
-					positionStart + Vec2{ diffXSign * kLaserLineWidth / 2, -slamHeight },
-					positionEnd + Vec2{ -diffXSign * kLaserLineWidth / 2 + topShiftX, -slamHeight },
-					positionEnd + Vec2{ -diffXSign * kLaserLineWidth / 2, 0 },
-					positionStart + Vec2{ diffXSign * kLaserLineWidth / 2, 0 }
+					positionStart + Vec2{ diffXSign * LaserLineWidth() / 2, -slamHeight },
+					positionEnd + Vec2{ -diffXSign * LaserLineWidth() / 2 + topShiftX, -slamHeight },
+					positionEnd + Vec2{ -diffXSign * LaserLineWidth() / 2, 0 },
+					positionStart + Vec2{ diffXSign * LaserLineWidth() / 2, 0 }
 				};
 			}
 			else
 			{
 				// scroll_speedが負の場合、手前方向(下)に太さを持つ
 				return {
-					positionStart + Vec2{ diffXSign * kLaserLineWidth / 2, 0 },
-					positionEnd + Vec2{ -diffXSign * kLaserLineWidth / 2, 0 },
-					positionEnd + Vec2{ -diffXSign * kLaserLineWidth / 2 + topShiftX, -slamHeight },
-					positionStart + Vec2{ diffXSign * kLaserLineWidth / 2, -slamHeight }
+					positionStart + Vec2{ diffXSign * LaserLineWidth() / 2, 0 },
+					positionEnd + Vec2{ -diffXSign * LaserLineWidth() / 2, 0 },
+					positionEnd + Vec2{ -diffXSign * LaserLineWidth() / 2 + topShiftX, -slamHeight },
+					positionStart + Vec2{ diffXSign * LaserLineWidth() / 2, -slamHeight }
 				};
 			}
 		}
@@ -163,19 +167,19 @@ namespace MusicGame::Graphics
 			if (slamHeight > 0)
 			{
 				// scroll_speedが正の場合、奥方向(上)に太さを持つ
-				laserNoteTexture(kLaserTextureSize.x * laneIdx, kLaserTextureSize.y * laserNoteTextureRow, kLaserTextureSize).mirrored(isLeftToRight).scaled(1.0, yScale).drawAt(positionStart + Vec2{ 0, yOffset });
+				laserNoteTexture(kLaserTextureSize.x * laneIdx, kLaserTextureSize.y * laserNoteTextureRow, kLaserTextureSize).mirrored(isLeftToRight).scaled(LaserScale(), yScale).drawAt(positionStart + Vec2{ 0, yOffset });
 			}
 			else
 			{
 				// scroll_speedが負の場合、手前方向(下)に太さを持つ(上下反転)
-				laserNoteTexture(kLaserTextureSize.x * laneIdx, kLaserTextureSize.y * laserNoteTextureRow, kLaserTextureSize).mirrored(isLeftToRight).flipped().scaled(1.0, yScale).drawAt(positionStart + Vec2{ 0, yOffset });
+				laserNoteTexture(kLaserTextureSize.x * laneIdx, kLaserTextureSize.y * laserNoteTextureRow, kLaserTextureSize).mirrored(isLeftToRight).flipped().scaled(LaserScale(), yScale).drawAt(positionStart + Vec2{ 0, yOffset });
 			}
 
 			const double slamWidth = Abs(positionEnd.x - positionStart.x);
-			const double innerWidth = Max(slamWidth - kLaserLineWidth, 0.0);
+			const double innerWidth = Max(slamWidth - LaserLineWidth(), 0.0);
 			if (topShiftX * (positionEnd.x - positionStart.x) > 0.0 && Abs(topShiftX) > innerWidth)
 			{
-				const double innerX = positionEnd.x + (isLeftToRight ? -kLaserLineWidth / 2 : kLaserLineWidth / 2);
+				const double innerX = positionEnd.x + (isLeftToRight ? -LaserLineWidth() / 2 : LaserLineWidth() / 2);
 				const Vec2 innerTop{ innerX, positionY - slamHeight };
 				const Vec2 shiftedInnerTop{ innerX + topShiftX, positionY - slamHeight };
 				const Vec2 innerBottom{ innerX, positionY };
@@ -187,10 +191,10 @@ namespace MusicGame::Graphics
 			// 終点側(vf)の角テクスチャ(直角レーザーの曲線描画時の変形のためにQuadで描画)
 			{
 				const double endX = positionEnd.x;
-				const Vec2 junctionLeft{ endX - kLaserLineWidth / 2 + topShiftX, positionY - slamHeight };
-				const Vec2 junctionRight{ endX + kLaserLineWidth / 2 + topShiftX, positionY - slamHeight };
-				const Vec2 barLeft{ endX - kLaserLineWidth / 2, positionY };
-				const Vec2 barRight{ endX + kLaserLineWidth / 2, positionY };
+				const Vec2 junctionLeft{ endX - LaserLineWidth() / 2 + topShiftX, positionY - slamHeight };
+				const Vec2 junctionRight{ endX + LaserLineWidth() / 2 + topShiftX, positionY - slamHeight };
+				const Vec2 barLeft{ endX - LaserLineWidth() / 2, positionY };
+				const Vec2 barRight{ endX + LaserLineWidth() / 2, positionY };
 
 				const auto textureRegion = laserNoteTexture(kLaserTextureSize.x * laneIdx, kLaserTextureSize.y * laserNoteTextureRow, kLaserTextureSize);
 
@@ -302,11 +306,11 @@ namespace MusicGame::Graphics
 						// scroll_speedが正の場合は下方向、負の場合は上方向にテクスチャを配置
 						if (isScrollSpeedPositive)
 						{
-							laserStartTexture.draw(Arg::topCenter = positionStart);
+							laserStartTexture.scaled(LaserScale(),1.0).draw(Arg::topCenter = positionStart);
 						}
 						else
 						{
-							laserStartTexture.flipped().draw(Arg::bottomCenter = positionStart);
+							laserStartTexture.flipped().scaled(LaserScale(),1.0).draw(Arg::bottomCenter = positionStart);
 						}
 					}
 				}

@@ -1,4 +1,5 @@
-﻿#include "SelectScene.hpp"
+﻿#include "ksmaudio/Diagnostics.hpp"
+#include "SelectScene.hpp"
 #include "Scenes/PlayPrepare/PlayPrepareScene.hpp"
 #include "Scenes/Title/TitleScene.hpp"
 #include "Ini/ConfigIni.hpp"
@@ -13,6 +14,8 @@
 #include "Input/InputUtils.hpp"
 #include "NocoExtensions/NocoUtils.hpp"
 #include "SearchInputDialog.hpp"
+#include "Vertical/VerticalResources.hpp"
+#include "Diagnostics/TimingHudCapture.hpp"
 
 namespace
 {
@@ -22,7 +25,7 @@ namespace
 
 	FilePath GetSelectSceneUIFilePath()
 	{
-		return FsUtils::GetResourcePath(U"ui/scene/select.noco");
+		return Vertical::UIPath(U"ui/scene/select.noco");
 	}
 
 	std::shared_ptr<noco::Canvas> LoadSelectSceneCanvas()
@@ -33,6 +36,7 @@ namespace
 		{
 			throw Error{ U"Failed to load '{}'"_fmt(uiFilePath) };
 		}
+		if (Vertical::ModConfig::Load().enabled) canvas->setAutoFitMode(noco::AutoFitMode::Contain);
 		return canvas;
 	}
 
@@ -367,7 +371,9 @@ SelectScene::SelectScene(const Optional<SelectSceneSearchParams>& initialSearchP
 	, m_btOptionPanel(m_canvas)
 	, m_playStatsPanel(m_canvas)
 {
+    ksmaudio::qa::Scope qaConstruct{"SelectScene.construct",true};
 	AutoMuteAddon::SetEnabled(true);
+	if (Vertical::ModConfig::Load().enabled) m_commonOverlay.setModScreenLayout();
 
 	// 検索結果表示ノードを取得
 	m_searchResultNode = NocoUtils::GetNodeByPath(m_canvas, { U"SearchResult" });
@@ -434,6 +440,8 @@ SelectScene::SelectScene(const Optional<SelectSceneSearchParams>& initialSearchP
 
 void SelectScene::update()
 {
+    ksmaudio::qa::Scope qaScope{"SelectScene.update",false};
+    ksmaudio::qa::Scene("select");
 	const noco::HitTestEnabledYN hitTestEnabled{ !isFadingIn() && !isFadingOut() && InputUtils::IsUIMouseInputEnabled() };
 
 	// ダイアログ表示中は必要な更新のみ実行
@@ -446,6 +454,8 @@ void SelectScene::update()
 	}
 
 	// 共通オーバーレイを更新
+    if(Scene::Height()>Scene::Width())m_commonOverlay.setModScreenLayout();
+    if(TimingHudCapture::Enabled()&&System::GetCommandLineArgs().contains(U"--back-button-capture"))m_commonOverlay.setBackButtonFocused(true);
 	m_commonOverlay.update(hitTestEnabled);
 
 	// BTオプションパネル更新
@@ -728,6 +738,8 @@ void SelectScene::openFavoriteDialogForCursor()
 
 void SelectScene::draw() const
 {
+    ksmaudio::qa::Scope qaScope{"SelectScene.draw",false};
+	if (Vertical::ModConfig::Load().enabled) Scene::Rect().draw(Palette::Black);
 	m_canvas->draw();
 	m_commonOverlay.draw();
 }

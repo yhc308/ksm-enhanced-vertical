@@ -10,6 +10,7 @@ namespace MusicGame::Graphics
 		const RenderTexture m_renderTexture;
 
 		const TiledTexture m_chipCriticalTexture;
+        const TiledTexture m_chipPerfectCriticalTexture;
 		const TiledTexture m_chipNearTexture;
 		const TiledTexture m_chipErrorTexture;
 
@@ -45,6 +46,6 @@ namespace MusicGame::Graphics
 
 		void draw2D(const GameStatus& gameStatus, const ViewStatus& viewStatus) const;
 
-		void draw3D(const ViewStatus& viewStatus) const;
+		void draw3D(const ViewStatus& viewStatus,const BasicCamera3D& camera,Float3 displayAnchor) const;
 	};
 }

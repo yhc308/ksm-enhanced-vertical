@@ -66,7 +66,7 @@ void KSMIniData::save(FilePathView path) const
 		while (reader.readLine(line))
 		{
 			// Skip comments
-			if (line[0] == U';' || line.substrView(0, 2) == U"//")
+			if (line.isEmpty() || line[0] == U';' || line.substrView(0, 2) == U"//")
 			{
 				ini += line;
 				ini += U'\n';

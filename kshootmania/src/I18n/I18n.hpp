@@ -43,6 +43,67 @@ namespace I18n
 		Option,
 		IR,
 		InputGate,
+		Mod,
+	};
+
+	// Enhanced menu descriptions. Key and menu names remain unchanged.
+	enum class Mod
+	{
+		Play,
+		Select,
+		Change,
+		Enter,
+		PlayStop,
+		Edit,
+		TypeNumber,
+		ImageDefault,
+		SaveReturn,
+		ItemSelect,
+		ValueAdjust,
+		GroupItemMove,
+		Close,
+		Apply,
+		Cancel,
+		Keep,
+		Restore,
+		StrengthRange,
+		NumberInput,
+		Defaults,
+		ResetAll,
+		SaveQuestion,
+		JudgeExitQuestion,
+		SaveExit,
+		DiscardExit,
+		SaveFailed,
+		JudgeChartMissing,
+		PreviewChartMissing,
+		SkinSaveFailed,
+		Background1Brightness,
+		Background2Brightness,
+		LaserWidth,
+		NoteHeight,
+		MissingImageLabel,
+		IndicatorLabel,
+		DepthLabel,
+        NotImplemented,
+		KeyBeamLabel,
+		DepthTitle,
+		CustomOther,
+		AuthorLabel,
+		NumberHint,
+		NumberRange,
+		InvalidPercent,
+		DisplayFailed,
+		SkinReadError,
+		DefaultSkinMissing,
+		SkinImageUnreadable,
+		AudioSaveFailed,
+		AudioSavedNext,
+		AudioCurrentAgain,
+		ReportedLatency,
+		LatencyEstimate,
+		NextLaunchOutput,
+		CurrentAudioOutput,
 	};
 
 	/// @brief 共通/起動時テキストのキー名
@@ -74,7 +135,8 @@ namespace I18n
 		PlaybackSpeed,
 		AssistTick,
 		AssistTickOff,
-		AssistTickOn,
+		AssistTickAuto,
+		AssistTickInput,
 		AutoSync,
 		AutoSyncOnHigh,
 		AutoSyncOnMid,
@@ -83,6 +145,10 @@ namespace I18n
 		FastSlow,
 		FastSlowHide,
 		FastSlowShow,
+        FastSlowNew,
+        TimingPosition,
+        TimingMsDisplay,
+        TimingMsColor,
 		NoteSkin,
 		NoteSkinDefault,
 		NoteSkinNote,
@@ -179,7 +245,8 @@ namespace I18n
 		LaserInputTypeSlider,
 		LaserInputTypeAnalogStickXY,
 		AssistTickOff,
-		AssistTickOn,
+		AssistTickAuto,
+		AssistTickInput,
 		DisableIMEOff,
 		DisableIMEOnLow,
 		DisableIMEOnMid,
@@ -299,6 +366,10 @@ namespace I18n
 		else if constexpr (std::is_same_v<T, IR>)
 		{
 			return GetByCategoryAndKey(EnumUtils::EnumToString(Category::IR), EnumUtils::EnumToString(key));
+		}
+		else if constexpr (std::is_same_v<T, Mod>)
+		{
+			return GetByCategoryAndKey(EnumUtils::EnumToString(Category::Mod), EnumUtils::EnumToString(key));
 		}
 		else if constexpr (std::is_same_v<T, InputGate>)
 		{

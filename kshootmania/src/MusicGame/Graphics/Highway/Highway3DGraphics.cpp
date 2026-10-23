@@ -1,7 +1,9 @@
-﻿#include "Highway3DGraphics.hpp"
+﻿#include "Graphics/GameRenderContext.hpp"
+#include "Highway3DGraphics.hpp"
 #include "MusicGame/Graphics/GraphicsDefines.hpp"
 #include "MusicGame/Camera/CameraMath.hpp"
 #include "Note/NoteGraphicsUtils.hpp"
+#include "Vertical/VerticalLaneGeometry.hpp"
 
 namespace MusicGame::Graphics
 {
@@ -53,6 +55,7 @@ namespace MusicGame::Graphics
 		, m_barLineTexture(TextureAsset(kBarLineTextureFilename))
 		, m_meshData(MeshData::Grid({ 0.0, 0.0, 0.0 }, kHighwayPlaneSizeWide, 1, 1, { 1.0f - kUVShrinkX, 1.0f - kUVShrinkY }, { kUVShrinkX / 2, kUVShrinkY / 2 }))
 		, m_mesh(m_meshData) // DynamicMesh::fill()で頂点データの配列サイズが動的に変更される訳ではないのでこの初期化は必須
+	    , m_verticalMesh(MeshData::Grid(kHighwayPlaneSizeWide,1,2))
 	{
 	}
 
@@ -111,7 +114,31 @@ namespace MusicGame::Graphics
 			}
 		}
 
-		m_mesh.fill(m_meshData);
+        m_mesh.fill(m_meshData);
+        const double hitT=(Vertical::kJudgeTextureT-kUVShrinkY/2)/(1-kUVShrinkY);
+        m_displayNoteAnchor=((m_meshData.vertices[0].pos+m_meshData.vertices[1].pos)*.5f)+
+            ((m_meshData.vertices[2].pos+m_meshData.vertices[3].pos-m_meshData.vertices[0].pos-m_meshData.vertices[1].pos)*.5f)*static_cast<float>(hitT);
+        if (GameRender::VerticalEnabled()) {
+            const auto camera=Vertical::MakeCamera(GameRender::Size(),Vertical::ModConfig::Load().layout);
+            const auto span=Vertical::DisplayLaneSpan(m_meshData,camera,viewStatus);
+            auto display=Vertical::DisplayHighwayMesh(m_meshData,span);
+            m_displayNoteAnchor=(display.vertices[2].pos+display.vertices[3].pos)*.5f;
+            if(System::GetCommandLineArgs().contains(U"--vertical-preview-geometry")) {
+                static bool written=false;
+                if(!written) {
+                    written=true;
+                    const auto transform=Vertical::HighwayOrigin(viewStatus);
+                    const auto anchor=camera.worldToScreenPoint(transform.transformPoint(m_displayNoteAnchor));
+                    const auto bar=camera.worldToScreenPoint(Vertical::BarWorldCenter(viewStatus));
+                    const auto end=camera.worldToScreenPoint(transform.transformPoint((display.vertices[4].pos+display.vertices[5].pos)*.5f));
+                    TextWriter writer{U"vertical-lane-preview-geometry.csv"};
+                    writer.writeln(U"anchor_x,anchor_y,bar_x,bar_y,end_y,anchor_error,tail_pixels,ray_valid");
+                    writer.writeln(U"{},{},{},{},{},{},{},{}"_fmt(anchor.x,anchor.y,bar.x,bar.y,end.y,(anchor-bar).length(),(end.y-bar.y)*1280/GameRender::Height(),span.rayValid));
+                }
+            }
+            if(m_trianglesFlipped) display.flipTriangles();
+            m_verticalMesh.fill(display);
+        }
 	}
 
 	void Highway3DGraphics::draw2D(const kson::ChartData& chartData, const std::array<HashSet<kson::Pulse>, kson::kNumLaserLanesSZ>& laserCurvedPulses, const PlayOption& playOption, const kson::TimingCache& timingCache, const GameStatus& gameStatus, const ViewStatus& viewStatus, const Scroll::HighwayScrollContext& highwayScrollContext) const
@@ -120,7 +147,8 @@ namespace MusicGame::Graphics
 
 		{
 			const ScopedRenderTarget2D renderTarget(m_renderTexture.additiveTexture());
-			const ScopedRenderStates2D renderState(BlendState::Additive);
+            const ScopedRenderStates2D renderState(BlendState::Additive);
+            const Transformer2D layout{Mat3x2::Scale(GameRender::VerticalEnabled() ? Vertical::kButtonWidthScale : 1.0,1.0,Vec2{static_cast<double>(kHighwayTextureWideCenterX),0})};
 
 			const bool isCenterSplitUsed = !MathUtils::AlmostEquals(viewStatus.camStatus.centerSplit, 0.0);
 			const double centerSplitShiftX = isCenterSplitUsed ? Camera::CenterSplitShiftX(viewStatus.camStatus.centerSplit) : 0.0;
@@ -184,7 +212,8 @@ namespace MusicGame::Graphics
 			}
 		}
 
-		// BT/FXノーツの描画
+		const ScopedColorMul2D settingsOpacity{ColorF{1.0,playOption.judgeSetting && !playOption.judgeSetting->enabled()?.5:1.0}};
+        // BT/FXノーツの描画
 		m_buttonNoteGraphics.draw(chartData, gameStatus, viewStatus, playOption, highwayScrollContext, m_renderTexture);
 
 		// キービームの描画
@@ -199,7 +228,7 @@ namespace MusicGame::Graphics
 		// レンダーテクスチャを3D空間上へ描画
 		const double radians = Math::ToRadians(viewStatus.camStatus.rotationDeg + viewStatus.camStatus.rotationDegHighway) + viewStatus.tiltRadians;
 		const double shiftX = viewStatus.camStatus.shiftX;
-		const Transformer3D transform(Camera::CamShiftXMatrix(shiftX) * TiltTransformMatrix(radians));
-		m_renderTexture.draw3D(m_mesh);
+		const Transformer3D transform(Camera::CamShiftXMatrix(shiftX) * GearTiltTransformMatrix(radians));
+		m_renderTexture.draw3D(GameRender::VerticalEnabled() ? m_verticalMesh : m_mesh);
 	}
 }
