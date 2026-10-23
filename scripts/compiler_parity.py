@@ -20,7 +20,8 @@ CPP = {".cpp", ".hpp", ".h"}
 def tokens(data):
     text = data.decode("utf-8-sig").replace("\r\n", "\n")
     # An unsaved translation unit avoids opening project headers or SDKs.
-    unit = INDEX.parse("review-input.cpp", args=["-x", "c++", "-std=c++20", "-nostdinc", "-nostdinc++"],
+    unit = INDEX.parse("review-input.cpp", args=["-x", "c++", "-std=c++20", "--target=x86_64-pc-windows-msvc",
+                       "-fms-extensions", "-fms-compatibility", "-nostdinc", "-nostdinc++"],
                        unsaved_files=[("review-input.cpp", text)],
                        options=TranslationUnit.PARSE_INCOMPLETE | TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
     result = [(token.kind.value, token.spelling, token.extent.start.offset, token.extent.end.offset)
