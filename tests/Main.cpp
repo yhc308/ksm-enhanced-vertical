@@ -1,14 +1,10 @@
 ﻿#define CATCH_CONFIG_RUNNER
 #include <Siv3D.hpp>
-
-// Siv3Dが依存しているDirectXMathのマクロがGCCで標準ライブラリヘッダと衝突するのを回避
 #ifdef __pre
 #undef __pre
 #endif
-
 #include <catch2/catch.hpp>
-
-// Linux環境でのみヘッドレスモードを使用
+#include <cstdlib>
 #ifdef __linux__
 SIV3D_SET(EngineOption::Renderer::Headless)
 #endif
@@ -16,36 +12,20 @@ SIV3D_SET(EngineOption::Renderer::Headless)
 void Main()
 {
 	Catch::Session session;
-
-	// コマンドライン引数を取得
-	const Array<String> args = System::GetCommandLineArgs();
-
-	// argc, argvに変換
-	std::vector<char*> argv;
-	std::vector<std::string> argStrings;
-
-	for (const auto& arg : args)
+#ifdef _WIN32
+	char* report = nullptr;
+	size_t length = 0;
+	_dupenv_s(&report, &length, "KSM_TEST_REPORT");
+#else
+	const char* report = std::getenv("KSM_TEST_REPORT");
+#endif
+	if (report)
 	{
-		argStrings.push_back(arg.toUTF8());
+		session.configData().reporterName = "junit";
+		session.configData().outputFilename = report;
 	}
-
-	for (auto& argString : argStrings)
-	{
-		argv.push_back(const_cast<char*>(argString.c_str()));
-	}
-
-	int32 argc = static_cast<int32>(argv.size());
-
-	// Catchにコマンドライン引数を渡す
-	session.applyCommandLine(argc, argv.data());
-
-	int32 numFailed = session.run();
-	if (numFailed == 0)
-	{
-		Console << U"All tests passed!";
-	}
-	else
-	{
-		Console << U"Tests failed: " << numFailed;
-	}
+#ifdef _WIN32
+	std::free(report);
+#endif
+	session.run();
 }

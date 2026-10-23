@@ -88,8 +88,7 @@ TEST_CASE("Achievement from gauge and combo for EASY/NORMAL gauge", "[PlayResult
 	result.playOption.gaugeType = GaugeType::kNormalGauge;
 
 	// ゲージが70%以上で全てCRITICAL判定ならPerfect
-	result.comboStats = ComboStats
-	{
+	result.comboStats = ComboStats{
 		.critical = 1000,
 		.nearFast = 0,
 		.nearSlow = 0,
@@ -103,8 +102,7 @@ TEST_CASE("Achievement from gauge and combo for EASY/NORMAL gauge", "[PlayResult
 	REQUIRE(result.achievement() == Achievement::kPerfect);
 
 	// ゲージが70%以上でコンボが途切れなければFullCombo
-	result.comboStats = ComboStats
-	{
+	result.comboStats = ComboStats{
 		.critical = 999,
 		.nearFast = 1,
 		.nearSlow = 0,
@@ -118,8 +116,7 @@ TEST_CASE("Achievement from gauge and combo for EASY/NORMAL gauge", "[PlayResult
 	REQUIRE(result.achievement() == Achievement::kFullCombo);
 
 	// ゲージが70%以上ならコンボ継続に関わらずクリア
-	result.comboStats = ComboStats
-	{
+	result.comboStats = ComboStats{
 		.critical = 998,
 		.nearFast = 1,
 		.nearSlow = 0,
@@ -153,8 +150,7 @@ TEST_CASE("Achievement from gauge and combo for HARD gauge", "[PlayResult][Achie
 	result.playOption.gaugeType = GaugeType::kHardGauge;
 
 	// ゲージが0%より大きく全てCRITICAL判定ならPerfect
-	result.comboStats = ComboStats
-	{
+	result.comboStats = ComboStats{
 		.critical = 1000,
 		.nearFast = 0,
 		.nearSlow = 0,
@@ -168,8 +164,7 @@ TEST_CASE("Achievement from gauge and combo for HARD gauge", "[PlayResult][Achie
 	REQUIRE(result.achievement() == Achievement::kPerfect);
 
 	// ゲージが0%より大きくコンボが途切れなければFullCombo
-	result.comboStats = ComboStats
-	{
+	result.comboStats = ComboStats{
 		.critical = 999,
 		.nearFast = 1,
 		.nearSlow = 0,
@@ -183,8 +178,7 @@ TEST_CASE("Achievement from gauge and combo for HARD gauge", "[PlayResult][Achie
 	REQUIRE(result.achievement() == Achievement::kFullCombo);
 
 	// ゲージが0%より大きければコンボ継続に関わらずクリア
-	result.comboStats = ComboStats
-	{
+	result.comboStats = ComboStats{
 		.critical = 998,
 		.nearFast = 1,
 		.nearSlow = 0,
@@ -216,8 +210,7 @@ TEST_CASE("Achievement when play is aborted", "[PlayResult][Achievement]")
 	result.isAborted = true;
 
 	// プレイ中断の場合はゲージに関わらずNone
-	result.comboStats = ComboStats
-	{
+	result.comboStats = ComboStats{
 		.critical = 500,
 		.nearFast = 0,
 		.nearSlow = 0,
@@ -228,8 +221,7 @@ TEST_CASE("Achievement when play is aborted", "[PlayResult][Achievement]")
 	REQUIRE(result.achievement() == Achievement::kNone);
 
 	// プレイ中断の場合はゲージに関わらずNone
-	result.comboStats = ComboStats
-	{
+	result.comboStats = ComboStats{
 		.critical = 100,
 		.nearFast = 0,
 		.nearSlow = 0,
@@ -241,8 +233,7 @@ TEST_CASE("Achievement when play is aborted", "[PlayResult][Achievement]")
 
 	// isAbortedがfalseなら最後までプレイ
 	result.isAborted = false;
-	result.comboStats = ComboStats
-	{
+	result.comboStats = ComboStats{
 		.critical = 1000,
 		.nearFast = 0,
 		.nearSlow = 0,

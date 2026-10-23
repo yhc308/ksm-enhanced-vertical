@@ -1,4 +1,4 @@
-#include <catch2/catch.hpp>
+﻿#include <catch2/catch.hpp>
 #include "MusicGame/Scroll/HighwayScroll.hpp"
 #include "MusicGame/GameStatus.hpp"
 
@@ -96,8 +96,10 @@ TEST_CASE("HighwayScroll integrates partial scroll_speed interpolation across ze
 	const int32 posY_480 = highwayScroll.getPositionY(480, chartData.beat, timingCache, gameStatus);
 	const int32 posY_720 = highwayScroll.getPositionY(720, chartData.beat, timingCache, gameStatus);
 
-	REQUIRE(posY_240 > posY_480);
-	REQUIRE(posY_480 > posY_720);
-	REQUIRE(posY_240 - posY_480 == posY_480 - posY_720);
-	REQUIRE(posY_240 - posY_480 == 33);
+	// For speed -1 + pulse/480, the signed integrals from the zero-speed
+	// origin (480) to 240 and 720 are both +60 pulse units. Both notes
+	// therefore have the same screen displacement above the judgment line.
+	REQUIRE(posY_240 == posY_720);
+	REQUIRE(posY_480 > posY_240);
+	REQUIRE(posY_480 - posY_240 == 33);
 }

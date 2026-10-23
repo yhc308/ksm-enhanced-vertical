@@ -136,13 +136,15 @@ TEST_CASE("MakeSRandomNoteLanes generates valid assignment", "[TurnUtil]")
 {
 	// ロングノーツと同時押しを含む譜面で複数回生成し、常に妥当な配置になることを確認
 	kson::ChartData chartData;
+	chartData.beat.bpm.emplace(0, 120.0); // Pulse-to-time conversion requires a BPM at the origin.
+
 	chartData.note.bt[0].emplace(0, kson::Interval{ .length = 480 }); // ロング(0〜480)
 	chartData.note.bt[1].emplace(0, kson::Interval{ .length = 0 });
-	chartData.note.fx[0].emplace(0, kson::Interval{ .length = 240 }); // FXロング(0〜240)
-	chartData.note.bt[1].emplace(240, kson::Interval{ .length = 0 }); // ロング中のチップ
-	chartData.note.bt[2].emplace(240, kson::Interval{ .length = 0 }); // ロング中のチップ
+	chartData.note.fx[0].emplace(0, kson::Interval{ .length = 240 });	// FXロング(0〜240)
+	chartData.note.bt[1].emplace(240, kson::Interval{ .length = 0 });	// ロング中のチップ
+	chartData.note.bt[2].emplace(240, kson::Interval{ .length = 0 });	// ロング中のチップ
 	chartData.note.fx[1].emplace(240, kson::Interval{ .length = 120 }); // ロング中のFXロング
-	chartData.note.bt[0].emplace(480, kson::Interval{ .length = 0 }); // ロング終端と同時のチップ
+	chartData.note.bt[0].emplace(480, kson::Interval{ .length = 0 });	// ロング終端と同時のチップ
 	chartData.note.fx[0].emplace(600, kson::Interval{ .length = 0 });
 
 	const auto originalNotes = AllNotes(chartData);
