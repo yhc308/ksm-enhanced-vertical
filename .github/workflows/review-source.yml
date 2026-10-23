@@ -22,6 +22,8 @@ jobs:
         run: python scripts/VerifyReviewSource.py
       - name: Test the compiler-token restoration safeguards
         run: python -m unittest discover -s tests -p 'test_compiler_parity.py' -v
+      - name: Test preview clock sampling against unchanged-reference frame gaps
+        run: python -m unittest discover -s tests -p 'test_preview_trace_rules.py' -v
       - name: Check added C++ style while preserving original formatting
         run: python scripts/CheckReviewCppStyle.py
       - name: Compile production rolling-window tests directly from this source tree
