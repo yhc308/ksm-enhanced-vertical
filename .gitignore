@@ -490,3 +490,7 @@ dist_scripts/*.zip
 __pycache__/
 *.pyc
 /test-logs/
+
+# Installer and release source documentation
+!/docs/MOD_INSTALLER*.md
+!/docs/RELEASE_0.5.1-beta1.md
