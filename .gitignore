@@ -485,3 +485,8 @@ dist_scripts/*.zip
 !/docs/REFACTOR_VALIDATION.md
 
 !/docs/FRAME_PACING_FIX.md
+
+# Generated Python caches and retained local-only test evidence
+__pycache__/
+*.pyc
+/test-logs/

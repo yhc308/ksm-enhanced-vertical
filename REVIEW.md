@@ -1,8 +1,8 @@
 # Enhanced Vertical: upstream review
 
 This branch is a full-source review view of the existing mod, based directly on
-K-Shoot MANIA 2.1.0 `41bfdaa7331808aff7239a9ec283cdba01b3b406`. Its game behavior is frozen at private mod commit
-`d7fa0f09a15a124609269d97f093eb2befa84a76`. This is not a new feature release or a merge of newer upstream work.
+K-Shoot MANIA 2.1.0 `41bfdaa7331808aff7239a9ec283cdba01b3b406`. Its game behavior is frozen at mod commit
+`d7fa0f09a15a124609269d97f093eb2befa84a76`. The game implementation is unchanged; the release branch additionally includes the native installer. No newer upstream game implementation is merged.
 The original upstream license, source paths and six submodule revisions remain.
 
 ## Comparisons and reading order
