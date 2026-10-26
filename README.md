@@ -1,20 +1,57 @@
-> **Unofficial Enhanced Vertical review branch:** see [README_ENHANCED.md](README_ENHANCED.md).
+# KSM Enhanced Vertical Mod (Windows x64 専用)
 
-K-Shoot MANIA v2
-========================
+**K-Shoot Mania 2.1.0を縦画面でも楽しめるように拡張する非公式Modです。**
+縦画面プレイ、スキンプリセット、画面のカスタマイズ、EXスコア、HARD+APS、判定タイミング設定、一部のASIO機能を提供します。
 
-## ビルドに必要な環境 / Build Requirements
+[独立Modリポジトリ](https://github.com/yhc308/ksm-enhanced-vertical-mod) · [ダウンロード](https://github.com/yhc308/ksm-enhanced-vertical-mod/releases/tag/v0.5.1-beta1) · [開発ガイド](REVIEW.md) · [原作のビルド・貢献案内](docs/UPSTREAM_README.md)
 
-- Visual Studio 2022
-    - Visual Studio Installer上で「C++ によるデスクトップ開発」にチェックを付けてインストールしてください /  
-      Install "Desktop development with C++" from the Visual Studio Installer
-- OpenSiv3D 0.6.16 (installed to Visual Studio 2022)
-    - 下記からインストーラをダウンロードして実行してください / Download and run the installer below
-        - https://github.com/Siv3D/OpenSiv3D#downloads
+このフォークは、原作のGit履歴を保持したModの全体ソースを提供します。インストーラーの配布と利用者向けの案内は、[独立Modリポジトリ](https://github.com/yhc308/ksm-enhanced-vertical-mod)をご覧ください。最新の統合ソースは `enhanced-vertical` ブランチにあります。
 
-## Contributionについて
+## 主な機能
 
-本プロジェクトは個人プロジェクトであり、オープンソース主導の開発プロジェクトではありません。  
-そのため、機能実装についてのPull Requestは基本的にマージできない場合が多いです。機能追加のご提案はIssueまたはK-Shoot MANIA掲示板( https://bbs.kshootmania.com )よりお願いいたします。
+### ◆ 縦画面プレイ
 
-既存処理の不具合修正に関するContributionについては、Pull Requestにて歓迎いたします。
+縦画面に合わせたレーンとHUDの配置でプレイできます。従来の横画面プレイにも対応しており、Vertical Optionで画面関連の設定を調整できます。
+縦画面向けに用意したUI画像と追加機能も、横画面モードに対応しています。
+
+### ◆ 判定カウンター
+
+横画面・縦画面それぞれに合わせた配置の判定インジケーターを提供します。
+
+### ◆ P-CRITICAL判定とEXスコア
+
+P-CRITICAL判定、EXスコア、リザルト表示、追加記録の保存に対応しています。EX記録は既存のゲーム記録とは別に保存され、譜面のEXスコア理論値も記録されます。
+
+### ◆ ビューポートのカスタマイズ / ユーザースキン
+
+ゲーム画面のプレビューを見ながら、背景の明るさ、レーンやノーツの太さ、判定インジケーター、スキンなどを調整できます。
+
+標準画像は `imgs/`、ユーザースキンは `skins/<skin name>/` から読み込みます。Viewport Customでスキンを選び、プレビューで確認できます。
+スキンに不足している画像は `imgs/` の標準画像で補えるため、すべての画像を置き換える必要はありません。
+
+### ◆ HARD+APSゲージ
+
+HARDゲージで失敗した際にNORMALへ切り替わるAPS機能を提供します。ゲージとパーセント表示が連動して切り替わり、APSバナーには切り替え演出が適用されます。
+
+### ◆ 判定タイミング設定
+
+専用のテスト譜面を繰り返しプレイしながら、判定と表示の設定を調整できます。
+
+## 不具合報告
+
+問題が発生した場合は、[Issues](https://github.com/yhc308/ksm-enhanced-vertical-mod/issues)にWindowsのバージョン、ゲーム・Modのバージョン、再現手順をお知らせください。スクリーンショットやエラーログも調査に役立ちます。
+
+- ゲームログ: `<game folder>/log/session-<number>-pid<PID>/events-0.log`
+- インストーラーの処理結果: `%TEMP%/KsmEnhancedVerticalSetup-last-result.json`
+
+## クレジット・ライセンス
+
+Codexとの共同作業で開発しました。使用している画像と音源はすべて手作業で制作されています。
+
+原作ゲーム: [K-Shoot Mania](https://www.kshootmania.com/) / [公式ソース](https://github.com/kshootmania/ksm-v2)
+
+- Special thanks: [KSMの開発者](https://x.com/masaka_k)
+- UIスキン制作・Mod制作への貢献: [chesia_game](https://x.com/chesia_game)
+- プレビュー・判定タイミング設定用の楽曲提供: [Hyung](https://open.spotify.com/artist/2soZF7u1mCALXnpwCbyGvh?si=7gvRzWqdTeqV2lEYtfmo5w)
+
+このプロジェクトは非公式Modです。原作の著作権表記とライセンスを維持しています。
