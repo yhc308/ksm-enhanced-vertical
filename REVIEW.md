@@ -7,10 +7,10 @@ The original upstream license, source paths and six submodule revisions remain.
 
 ## Comparisons and reading order
 
-- [Complete game changes](https://github.com/yhc308/ksm-enhanced-vertical-mod/compare/review%2Fupstream-2.1.0...review%2Fcurrent-features)
+- [Complete game changes](https://github.com/yhc308/ksm-enhanced-vertical-mod/compare/41bfdaa7331808aff7239a9ec283cdba01b3b406...1c96d26c1477ade1efdfc70180b578e40b3f8c68)
 - [Behavior-preserving implementation separation](https://github.com/yhc308/ksm-enhanced-vertical-mod/compare/e71cedb61ecfcd8f7296e4ba1bcfa1a2baecae0f...ff402e7e3b46b2122627104dc7f64489a93f0c4e)
 - [Windows frame deadline timer only](https://github.com/yhc308/ksm-enhanced-vertical-mod/compare/ff402e7e3b46b2122627104dc7f64489a93f0c4e...414a091d05be9a8952f6db5b71f3d01c779bb1d2)
-- [Companion tests and development tools](https://github.com/yhc308/ksm-enhanced-vertical-mod/compare/review%2Fcurrent-features...review%2Fcurrent-features-tests)
+- [Companion tests and development tools](https://github.com/yhc308/ksm-enhanced-vertical-mod/compare/1c96d26c1477ade1efdfc70180b578e40b3f8c68...1d9b5b13361386d53a785150b8de31bbe6a86ded)
 
 Start with `kshootmania/src/Main.cpp` and `Diagnostics/DiagnosticRunner.cpp`;
 diagnostic implementation stays registered in the game project but is disabled
@@ -67,7 +67,7 @@ Serialized `.noco` UI data is included and collapsed by GitHub's generated-file
 display setting; expand it to inspect it. It is counted separately from C++ in the
 review statistics. No data was removed to make the comparison appear smaller.
 
-The companion `review/current-features-tests` branch carries reproducible source
+The archived `archive/review-current-features-tests` tag carries reproducible source
 expectations, added-code style checks, unit/headless/native Windows timer tests,
 the existing complete runtime test harness, installer/package tools and local
 validation evidence. See its `docs/review/VALIDATION.md`, `STATISTICS.json` and
