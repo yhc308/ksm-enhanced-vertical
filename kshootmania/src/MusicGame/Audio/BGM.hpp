@@ -7,8 +7,8 @@ namespace MusicGame::Audio
 	enum class LegacyAudioFPMode
 	{
 		kNone, // リアルタイムエフェクト
-		kF, // 2ファイル指定
-		kFP, // 4ファイル指定
+		kF,	   // 2ファイル指定
+		kFP,   // 4ファイル指定
 	};
 
 	LegacyAudioFPMode DetermineLegacyAudioFPMode(const kson::ChartData& chartData, const FilePath& parentPath);
@@ -57,9 +57,7 @@ namespace MusicGame::Audio
 		ksmaudio::AudioEffect::AudioEffectBus* pAudioEffectBusLaser;
 
 		SwitchAudioStream(const std::string& name, const std::string& filePath, double volume, bool enableCompressor, bool preload, double playbackSpeed)
-			: name(name)
-			, stream(filePath, volume, enableCompressor, preload, playbackSpeed)
-			, pAudioEffectBusLaser(stream.emplaceAudioEffectBusLaser())
+			: name(name), stream(filePath, volume, enableCompressor, preload, playbackSpeed), pAudioEffectBusLaser(stream.emplaceAudioEffectBusLaser())
 		{
 		}
 
@@ -72,16 +70,16 @@ namespace MusicGame::Audio
 	class BGM
 	{
 	private:
-        bool m_qaReportedNotPlaying = false;
+		bool m_qaReportedNotPlaying = false;
 		ksmaudio::StreamWithEffects m_stream;
 		const double m_playbackSpeed;
 		const Duration m_duration;
 		SecondsF m_offset;
 		SecondsF m_timeSec = 0s;
-        ksmaudio::AudioClockSnapshot m_clock;
-        Optional<std::uint64_t> m_tailOutputFrame;
-        std::uint64_t m_tailGeneration=0;
-        double m_tailRenderTimeSec = 0;
+		ksmaudio::AudioClockSnapshot m_clock;
+		Optional<std::uint64_t> m_tailOutputFrame;
+		std::uint64_t m_tailGeneration = 0;
+		double m_tailRenderTimeSec = 0;
 		bool m_isStreamStarted = false;
 		bool m_isPaused = true;
 		ksmaudio::AudioEffect::AudioEffectBus* const m_pAudioEffectBusFX;
@@ -119,12 +117,12 @@ namespace MusicGame::Audio
 		void pause();
 
 		void seekPosSec(SecondsF timeSec);
-        void restartAtChartTime(SecondsF timeSec);
-        void setSettingsOffset(SecondsF offset);
+		void restartAtChartTime(SecondsF timeSec);
+		void setSettingsOffset(SecondsF offset);
 
 		SecondsF posSec() const;
-        ksmaudio::AudioClockSnapshot clockSnapshot() const;
-        SecondsF renderPosSec() const;
+		ksmaudio::AudioClockSnapshot clockSnapshot() const;
+		SecondsF renderPosSec() const;
 
 		Duration duration() const;
 

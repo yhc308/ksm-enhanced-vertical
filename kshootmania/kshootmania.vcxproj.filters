@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
@@ -318,6 +318,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Vertical\ModOptionsScene.cpp">
+      <Filter>src\Vertical</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Diagnostics\DiagnosticRunner.cpp">
+      <Filter>src\Diagnostics</Filter>
+    </ClCompile>
     <ClCompile Include="ThirdParty\SQLiteCpp\sqlite3\sqlite3.c">
       <Filter>Source Files\ThirdParty\SQLiteCpp\sqlite3</Filter>
     </ClCompile>
@@ -1015,6 +1021,12 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Diagnostics\DiagnosticArguments.hpp">
+      <Filter>src\Diagnostics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Diagnostics\DiagnosticRunner.hpp">
+      <Filter>src\Diagnostics</Filter>
+    </ClInclude>
     <ClInclude Include="src\RuntimeConfig.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1339,6 +1351,9 @@
     <ClInclude Include="src\Common\FrameRateLimit.hpp">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
+    <ClInclude Include="src\Common\WindowsWaitableTimer.hpp">
+      <Filter>Header Files\Common</Filter>
+    </ClInclude>
     <ClInclude Include="src\MusicGame\Camera\CamSystem.hpp">
       <Filter>Header Files\MusicGame\Camera</Filter>
     </ClInclude>
@@ -1596,5 +1611,55 @@
     <Font Include="App\assets\font\tektur-ksm\Tektur-KSM-Medium.ttf">
       <Filter>Resource Files\assets\font\tektur-ksm</Filter>
     </Font>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Common\AudioOutputRestart.hpp"><Filter>Header Files\Common</Filter></ClInclude>
+    <ClInclude Include="src\Common\AudioOutputRestartPolicy.hpp"><Filter>Header Files\Common</Filter></ClInclude>
+    <ClInclude Include="src\Common\AudioOutputSettings.hpp"><Filter>Header Files\Common</Filter></ClInclude>
+    <ClInclude Include="src\Common\SkinPreset.hpp"><Filter>Header Files\Common</Filter></ClInclude>
+    <ClInclude Include="src\Diagnostics\ApsFixture.hpp"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\Diagnostics\ApsVideoFixture.hpp"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\Diagnostics\EnhancedMenuFixture.hpp"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\Diagnostics\JudgeSettingFixture.hpp"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\Diagnostics\RenderGeometryFixture.hpp"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\Diagnostics\SkinPresetFixture.hpp"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\Graphics\GameRenderContext.hpp"><Filter>Header Files\Graphics</Filter></ClInclude>
+    <ClCompile Include="src\HighScore\AdditionalScoreIO.cpp"><Filter>Source Files\HighScore</Filter></ClCompile>
+    <ClInclude Include="src\HighScore\AdditionalScoreIO.hpp"><Filter>Header Files\HighScore</Filter></ClInclude>
+    <ClInclude Include="src\Input\MenuInputProfiles.hpp"><Filter>Header Files\Input</Filter></ClInclude>
+    <ClInclude Include="src\MusicGame\GaugePresentation.hpp"><Filter>Header Files\MusicGame</Filter></ClInclude>
+    <ClInclude Include="src\MusicGame\Graphics\ViewportGeometry.hpp"><Filter>Header Files\MusicGame\Graphics</Filter></ClInclude>
+    <ClCompile Include="src\MusicGame\JudgeSettingSession.cpp"><Filter>Source Files\MusicGame</Filter></ClCompile>
+    <ClInclude Include="src\MusicGame\JudgeSettingSession.hpp"><Filter>Header Files\MusicGame</Filter></ClInclude>
+    <ClCompile Include="src\MusicGame\Judgment\NormalGaugeState.cpp"><Filter>Source Files\MusicGame\Judgment</Filter></ClCompile>
+    <ClInclude Include="src\MusicGame\Judgment\NormalGaugeState.hpp"><Filter>Header Files\MusicGame\Judgment</Filter></ClInclude>
+    <ClInclude Include="src\MusicGame\Judgment\RecentTimingWindow.hpp"><Filter>Header Files\MusicGame\Judgment</Filter></ClInclude>
+    <ClCompile Include="src\Scenes\Title\JudgeSettingOverlay.cpp"><Filter>Source Files\Scenes\Title</Filter></ClCompile>
+    <ClInclude Include="src\Scenes\Title\JudgeSettingOverlay.hpp"><Filter>Header Files\Scenes\Title</Filter></ClInclude>
+    <ClInclude Include="src\Scenes\Title\ModMenuButtons.hpp"><Filter>Header Files\Scenes\Title</Filter></ClInclude>
+    <ClInclude Include="src\Scenes\Title\SkinOverlay.hpp"><Filter>Header Files\Scenes\Title</Filter></ClInclude>
+    <ClInclude Include="src\UI\ModMenuStyle.hpp"><Filter>Header Files\UI</Filter></ClInclude>
+    <ClInclude Include="src\Vertical\DepthImageSettings.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\DiagnosticInputReplay.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\DisplayTransitionTest.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\JudgmentReplayTest.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\MenuContentLayout.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\MenuEntryGate.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\MenuInputTest.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\ModOptionsScene.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\OptionFlowTest.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\OptionsPresentation.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\ProjectiveWall.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\SpinRegression.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\VerticalCameraProfile.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\VerticalDisplay.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\VerticalHUDLayout.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\VerticalLaneGeometry.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\VerticalLayout.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\VerticalModConfig.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\VerticalRenderPreview.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\VerticalResources.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\VerticalSelfTest.hpp"></ClInclude>
+    <ClInclude Include="src\Vertical\VerticalTunnelWarp.hpp"></ClInclude>
   </ItemGroup>
 </Project>

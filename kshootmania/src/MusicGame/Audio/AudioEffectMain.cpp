@@ -462,10 +462,7 @@ namespace MusicGame::Audio
 	}
 
 	AudioEffectMain::AudioEffectMain(BGM& bgm, const kson::ChartData& chartData, const kson::TimingCache& timingCache, const FilePath& parentPath, double audioProcDelaySec, double bgmVolume)
-		: m_longFXNoteInvocations(RegisterAudioEffectsAndCreateLongFXNoteInvocations(bgm, chartData, timingCache, parentPath, bgmVolume))
-		, m_laserPulseInvocations(CreateLaserPulseAudioEffectInvocations(bgm, chartData))
-		, m_audioProcDelaySec(audioProcDelaySec)
-		, m_peakingFilterDelaySec(GetEffectivePeakingFilterDelaySec(chartData))
+		: m_longFXNoteInvocations(RegisterAudioEffectsAndCreateLongFXNoteInvocations(bgm, chartData, timingCache, parentPath, bgmVolume)), m_laserPulseInvocations(CreateLaserPulseAudioEffectInvocations(bgm, chartData)), m_audioProcDelaySec(audioProcDelaySec), m_peakingFilterDelaySec(GetEffectivePeakingFilterDelaySec(chartData))
 	{
 	}
 
@@ -489,13 +486,11 @@ namespace MusicGame::Audio
 				// 音声エフェクトはバッファサイズによる遅延を回避するため、バッファサイズ分だけ早めに適用し始める必要がある。
 				// これはプレイヤーのキー入力に関係なく実施する必要があるため、下記の「～.value_or(true)」で、longFXPressed[i]がnoneである(つまり判定中のロングFXノーツがまだ存在しない)場合でも、
 				// あたかもロングFXが押されている(trueである)かのように扱っている。
-				// 
+				//
 				// それに加えて、キー入力がやや遅れた場合でも音声エフェクトが途切れないように、(バッファサイズとは別に)最初の30ms分はプレイヤーのキー入力に関係なく音声エフェクトを有効にしている。
-				// 
+				//
 				// HSP版での対応箇所: https://github.com/kshootmania/ksm-v1/blob/19bfb6acbec8abd304b2e7dae6009df8e8e1f66f/src/scene/play/play_audio_effects.hsp#L488
-				if (currentLongNoteByTime.has_value()
-					&& (inputStatus.longFXPressed[i].value_or(true)
-						|| (currentTimeSec - kson::PulseToSec(currentLongNoteByTime->first, chartData.beat, timingCache)) < kLongFXNoteAudioEffectAutoPlaySec))
+				if (currentLongNoteByTime.has_value() && (inputStatus.longFXPressed[i].value_or(true) || (currentTimeSec - kson::PulseToSec(currentLongNoteByTime->first, chartData.beat, timingCache)) < kLongFXNoteAudioEffectAutoPlaySec))
 				{
 					currentLongNoteOfLanes[i] = currentLongNoteByTime;
 					bypassFX = false;
@@ -528,9 +523,7 @@ namespace MusicGame::Audio
 
 		// LASERノーツの音声エフェクト
 		{
-			const bool isPeakingFilter = activeLaserInvocation.has_value()
-				&& std::holds_alternative<DSPAudioEffectInvocation>(*activeLaserInvocation)
-				&& std::get<DSPAudioEffectInvocation>(*activeLaserInvocation).isPeakingFilterLaser;
+			const bool isPeakingFilter = activeLaserInvocation.has_value() && std::holds_alternative<DSPAudioEffectInvocation>(*activeLaserInvocation) && std::get<DSPAudioEffectInvocation>(*activeLaserInvocation).isPeakingFilterLaser;
 			kson::Pulse currentPulseForLaserAudio;
 			if (isPeakingFilter && m_peakingFilterDelaySec != 0.0)
 			{
@@ -562,7 +555,7 @@ namespace MusicGame::Audio
 
 				// 表示上のX座標の値(0.0:左、1.0:右)を、音声エフェクトで使うためのレーンに依存しない値(0.0～1.0)に変換
 				const float fLaneLaserValue = static_cast<float>(laneLaserValue.value());
-				static_assert(kson::kNumLaserLanesSZ == 2U); // 以下の処理はLASERのレーン数が2であることを前提にしている
+				static_assert(kson::kNumLaserLanesSZ == 2U);							// 以下の処理はLASERのレーン数が2であることを前提にしている
 				const float v = (i == 0U) ? fLaneLaserValue : (1.0f - fLaneLaserValue); // 右レーンの値を反転
 
 				// 音声エフェクトにはLASERの左右レーンのうち値が大きい方を採用する
@@ -581,13 +574,13 @@ namespace MusicGame::Audio
 					.playbackSpeed = static_cast<float>(bgm.playbackSpeed()),
 				},
 				activeLaserInvocation.has_value() && std::holds_alternative<DSPAudioEffectInvocation>(*activeLaserInvocation)
-				? std::make_optional(std::get<DSPAudioEffectInvocation>(*activeLaserInvocation).audioEffectIdx)
-				: std::nullopt);
+					? std::make_optional(std::get<DSPAudioEffectInvocation>(*activeLaserInvocation).audioEffectIdx)
+					: std::nullopt);
 		}
 
 		Optional<std::size_t> activeSwitchAudioIdxFX;
 		Optional<std::size_t> activeSwitchAudioIdxLaser;
-	
+
 		// FXのSwitchAudioチェック
 		for (std::size_t i = 0U; i < kson::kNumFXLanesSZ; ++i)
 		{
@@ -625,7 +618,7 @@ namespace MusicGame::Audio
 				break;
 			}
 		}
-	
+
 		// LASERのSwitchAudioチェック
 		{
 			// いずれかのレーザーがOnかつノーツがある状態か調べる(SwitchAudioは先行発音しないためbypassとは別に調べる)
@@ -649,7 +642,7 @@ namespace MusicGame::Audio
 				activeSwitchAudioIdxLaser = switchInvocation.switchAudioIdx;
 			}
 		}
-	
+
 		// f/fp音源の切り替え判定
 		if (bgm.legacyAudioFPStream().mode != LegacyAudioFPMode::kNone)
 		{

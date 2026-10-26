@@ -15,8 +15,14 @@ namespace MusicGame::Graphics
 		constexpr StringView kLaserNoteRightStartTextureFilename = U"laserr_0.gif";
 
 		constexpr Size kLaserTextureSize = { 48, 48 };
-        double LaserLineWidth() { return ViewportGeometry::LaserWidth(); }
-        double LaserScale() { return ViewportGeometry::LaserScale(); }
+		double LaserLineWidth()
+		{
+			return ViewportGeometry::LaserWidth();
+		}
+		double LaserScale()
+		{
+			return ViewportGeometry::LaserScale();
+		}
 		constexpr int32 kLaserSlamHeightMax = kLaserTextureSize.y;
 		constexpr kson::RelPulse kLaserSlamHeightPulse = kson::kResolution4 / 32; // 32分長
 		constexpr int32 kLaserTailHeightMax = 80;
@@ -306,11 +312,11 @@ namespace MusicGame::Graphics
 						// scroll_speedが正の場合は下方向、負の場合は上方向にテクスチャを配置
 						if (isScrollSpeedPositive)
 						{
-							laserStartTexture.scaled(LaserScale(),1.0).draw(Arg::topCenter = positionStart);
+							laserStartTexture.scaled(LaserScale(), 1.0).draw(Arg::topCenter = positionStart);
 						}
 						else
 						{
-							laserStartTexture.flipped().scaled(LaserScale(),1.0).draw(Arg::bottomCenter = positionStart);
+							laserStartTexture.flipped().scaled(LaserScale(), 1.0).draw(Arg::bottomCenter = positionStart);
 						}
 					}
 				}
@@ -434,21 +440,20 @@ namespace MusicGame::Graphics
 	}
 
 	LaserNoteGraphics::LaserNoteGraphics()
-		: m_laserNoteTexture(TextureAsset(kLaserNoteTextureFilename))
-		, m_laserNoteMaskTexture(TextureAsset(kLaserNoteMaskTextureFilename))
-		, m_laserNoteStartTextures{
-			TiledTexture(
-				kLaserNoteLeftStartTextureFilename,
-				{
-					.column = kNumTextureColumnsMainSub,
-					.sourceSize = kLaserStartTextureSize,
-				}),
-			TiledTexture(
-				kLaserNoteRightStartTextureFilename,
-				{
-					.column = kNumTextureColumnsMainSub,
-					.sourceSize = kLaserStartTextureSize,
-				}) }
+		: m_laserNoteTexture(TextureAsset(kLaserNoteTextureFilename)), m_laserNoteMaskTexture(TextureAsset(kLaserNoteMaskTextureFilename)), m_laserNoteStartTextures{
+			  TiledTexture(
+				  kLaserNoteLeftStartTextureFilename,
+				  {
+					  .column = kNumTextureColumnsMainSub,
+					  .sourceSize = kLaserStartTextureSize,
+				  }),
+			  TiledTexture(
+				  kLaserNoteRightStartTextureFilename,
+				  {
+					  .column = kNumTextureColumnsMainSub,
+					  .sourceSize = kLaserStartTextureSize,
+				  })
+		  }
 	{
 	}
 

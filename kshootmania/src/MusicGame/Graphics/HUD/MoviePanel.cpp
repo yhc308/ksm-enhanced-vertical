@@ -83,9 +83,7 @@ namespace MusicGame::Graphics
 	}
 
 	MoviePanel::MoviePanel(const FilePath& moviePath, double movieOffsetSec, double playbackSpeed, bool enabled)
-		: m_movieOffsetSec(movieOffsetSec)
-		, m_playbackSpeed(playbackSpeed)
-		, m_enabled(enabled)
+		: m_movieOffsetSec(movieOffsetSec), m_playbackSpeed(playbackSpeed), m_enabled(enabled)
 	{
 		if (!m_enabled)
 		{

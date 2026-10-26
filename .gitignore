@@ -474,3 +474,23 @@ dist_scripts/*.zip
 # Public review documentation
 !/README_ENHANCED.md
 !/REVIEW.md
+
+# Refactoring audit documents
+!/docs/REFACTOR_PROGRESS.md
+!/docs/BASELINE_TEST_FINDINGS.md
+!/docs/REMOVAL_AUDIT.md
+
+# Locally supplied ordinary songs for integration tests
+/tests/fixtures/
+!/docs/REFACTOR_VALIDATION.md
+
+!/docs/FRAME_PACING_FIX.md
+
+# Generated Python caches and retained local-only test evidence
+__pycache__/
+*.pyc
+/test-logs/
+
+# Installer and release source documentation
+!/docs/MOD_INSTALLER*.md
+!/docs/RELEASE_0.5.1-beta1.md

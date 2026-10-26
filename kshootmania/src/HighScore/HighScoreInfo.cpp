@@ -239,9 +239,13 @@ HighScoreInfo HighScoreInfo::applyPlayResult(const MusicGame::PlayResult& playRe
 	return newHighScoreInfo;
 }
 
-Optional<int64> HighScoreInfo::exScore(GaugeType type) const {
-    if(type==GaugeType::kEasyGauge)return easyGauge.exScore;
-    if(!normalGauge.exScore)return hardGauge.exScore;
-    if(!hardGauge.exScore)return normalGauge.exScore;
-    return Max(*normalGauge.exScore,*hardGauge.exScore);
+Optional<int64> HighScoreInfo::exScore(GaugeType type) const
+{
+	if (type == GaugeType::kEasyGauge)
+		return easyGauge.exScore;
+	if (!normalGauge.exScore)
+		return hardGauge.exScore;
+	if (!hardGauge.exScore)
+		return normalGauge.exScore;
+	return Max(*normalGauge.exScore, *hardGauge.exScore);
 }

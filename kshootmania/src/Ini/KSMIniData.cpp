@@ -57,7 +57,7 @@ void KSMIniData::save(FilePathView path) const
 		remainingKeys.insert(key);
 	}
 #endif
-	
+
 	// iniファイルの内容を読み込みながら, 設定の行を最新の値で書き換える
 	if (FileSystem::Exists(path))
 	{

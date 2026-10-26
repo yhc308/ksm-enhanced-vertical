@@ -1,4 +1,4 @@
-#include "ScoringStatus.hpp"
+﻿#include "ScoringStatus.hpp"
 
 namespace MusicGame::Judgment
 {
@@ -92,32 +92,32 @@ namespace MusicGame::Judgment
 			break;
 
 		case GaugeCalcType::kNormalHard:
-			{
-				const double rate = currentPercentageInt <= kGaugePercentageThresholdHardWarning ? kGaugeDecreaseRateHardLow : 1.0;
-				adjustedSub = static_cast<int32>(sub * rate);
-				break;
-			}
+		{
+			const double rate = currentPercentageInt <= kGaugePercentageThresholdHardWarning ? kGaugeDecreaseRateHardLow : 1.0;
+			adjustedSub = static_cast<int32>(sub * rate);
+			break;
+		}
 
 		case GaugeCalcType::kCourseNormal:
-			{
-				const double rate = currentPercentageInt <= kGaugePercentageThresholdHardWarning ? kGaugeDecreaseRateCourseLow : 1.0;
-				adjustedSub = static_cast<int32>(sub * kGaugeDecreaseRateCourseNormal * rate);
-				break;
-			}
+		{
+			const double rate = currentPercentageInt <= kGaugePercentageThresholdHardWarning ? kGaugeDecreaseRateCourseLow : 1.0;
+			adjustedSub = static_cast<int32>(sub * kGaugeDecreaseRateCourseNormal * rate);
+			break;
+		}
 
 		case GaugeCalcType::kCourseEasy:
-			{
-				const double rate = currentPercentageInt <= kGaugePercentageThresholdHardWarning ? kGaugeDecreaseRateCourseLow : 1.0;
-				adjustedSub = static_cast<int32>(sub * kGaugeDecreaseRateCourseEasy * rate);
-				break;
-			}
+		{
+			const double rate = currentPercentageInt <= kGaugePercentageThresholdHardWarning ? kGaugeDecreaseRateCourseLow : 1.0;
+			adjustedSub = static_cast<int32>(sub * kGaugeDecreaseRateCourseEasy * rate);
+			break;
+		}
 
 		case GaugeCalcType::kCourseHard:
-			{
-				const double rate = currentPercentageInt <= kGaugePercentageThresholdHardWarning ? kGaugeDecreaseRateCourseHardLow : 1.0;
-				adjustedSub = static_cast<int32>(sub * kGaugeDecreaseRateCourseHard * rate);
-				break;
-			}
+		{
+			const double rate = currentPercentageInt <= kGaugePercentageThresholdHardWarning ? kGaugeDecreaseRateCourseHardLow : 1.0;
+			adjustedSub = static_cast<int32>(sub * kGaugeDecreaseRateCourseHard * rate);
+			break;
+		}
 		}
 
 		m_gaugeValue = Max(m_gaugeValue - adjustedSub, 0);
@@ -129,21 +129,14 @@ namespace MusicGame::Judgment
 	}
 
 	ScoringStatus::ScoringStatus(int32 scoreValueMax, int32 gaugeValueMax, GaugeType gaugeType, const Optional<CourseContinuation>& courseContinuation, GameMode gameMode, bool apsEnabled)
-		: m_scoreValueMax(scoreValueMax)
-		, m_gaugeValueMax(gaugeValueMax)
-		, m_gaugeType(gaugeType)
-		, m_gameMode(gameMode)
-		, m_gaugeCalcType(ToGaugeCalcType(gaugeType, gameMode))
-		, m_gaugeValue(courseContinuation.has_value() ? courseContinuation->gaugeValue : ((gaugeType == GaugeType::kHardGauge || gameMode == GameMode::kCourseMode) ? kGaugeValueMaxHard : 0))
-		, m_uncappedGaugeValue(m_gaugeValue)
-        , m_apsEnabled(apsEnabled && gaugeType == GaugeType::kHardGauge && gameMode == GameMode::kNormal && !courseContinuation.has_value())
-		, m_comboStatus(courseContinuation)
+		: m_scoreValueMax(scoreValueMax), m_gaugeValueMax(gaugeValueMax), m_gaugeType(gaugeType), m_gameMode(gameMode), m_gaugeCalcType(ToGaugeCalcType(gaugeType, gameMode)), m_gaugeValue(courseContinuation.has_value() ? courseContinuation->gaugeValue : ((gaugeType == GaugeType::kHardGauge || gameMode == GameMode::kCourseMode) ? kGaugeValueMaxHard : 0)), m_uncappedGaugeValue(m_gaugeValue), m_apsEnabled(apsEnabled && gaugeType == GaugeType::kHardGauge && gameMode == GameMode::kNormal && !courseContinuation.has_value()), m_comboStatus(courseContinuation)
 	{
 	}
 
 	void ScoringStatus::onChipOrLaserSlamJudgment(Judgment::JudgmentResult result)
 	{
-        if (m_apsEnabled) m_apsNormal.process(result, true, m_gaugeValueMax);
+		if (m_apsEnabled)
+			m_apsNormal.process(result, true, m_gaugeValueMax);
 		m_comboStatus.processJudgmentResult(result);
 		AddToComboStats(m_chipOrLaserSlamStats, result);
 
@@ -197,7 +190,8 @@ namespace MusicGame::Judgment
 
 	void ScoringStatus::onLongOrLaserLineJudgment(Judgment::JudgmentResult result)
 	{
-        if (m_apsEnabled) m_apsNormal.process(result, false, m_gaugeValueMax);
+		if (m_apsEnabled)
+			m_apsNormal.process(result, false, m_gaugeValueMax);
 		m_comboStatus.processJudgmentResult(result);
 		AddToComboStats(m_longOrLaserLineStats, result);
 
@@ -229,14 +223,15 @@ namespace MusicGame::Judgment
 		}
 	}
 
-    bool ScoringStatus::tryActivateAps()
-    {
-        if (!apsProtected() || gaugePercentageInt(GaugeType::kHardGauge) > kGaugePercentageThresholdHard) return false;
-        m_apsTriggered = true;
-        return true;
-    }
+	bool ScoringStatus::tryActivateAps()
+	{
+		if (!apsProtected() || gaugePercentageInt(GaugeType::kHardGauge) > kGaugePercentageThresholdHard)
+			return false;
+		m_apsTriggered = true;
+		return true;
+	}
 
-    int32 ScoringStatus::score() const
+	int32 ScoringStatus::score() const
 	{
 		if (m_scoreValueMax == 0)
 		{
@@ -268,7 +263,8 @@ namespace MusicGame::Judgment
 
 	int32 ScoringStatus::gaugePercentageInt(GaugeType gaugeType) const
 	{
-        if (m_apsTriggered) return m_gaugeValueMax == 0 ? 0 : 100 * m_apsNormal.value / m_gaugeValueMax;
+		if (m_apsTriggered)
+			return m_gaugeValueMax == 0 ? 0 : 100 * m_apsNormal.value / m_gaugeValueMax;
 		if (gaugeType == GaugeType::kHardGauge || m_gameMode == GameMode::kCourseMode)
 		{
 			return m_gaugeValue / 1000;
@@ -285,7 +281,8 @@ namespace MusicGame::Judgment
 
 	double ScoringStatus::gaugePercentageForGrade() const
 	{
-        if (m_apsTriggered) return gaugePercentage(GaugeType::kNormalGauge);
+		if (m_apsTriggered)
+			return gaugePercentage(GaugeType::kNormalGauge);
 		// HARDゲージまたはコースモードの場合はNORMAL基準のゲージ値を使用
 		if (m_gaugeType == GaugeType::kHardGauge || m_gameMode == GameMode::kCourseMode)
 		{

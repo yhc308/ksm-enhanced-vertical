@@ -21,12 +21,11 @@ namespace MusicGame::Graphics
 	}
 
 	AchievementPanel::AchievementPanel()
-		: m_texture(U"playresult.png", TiledTextureSizeInfo
-			{
-				.row = 4,
-				.sourceScale = SourceScale::k2x,
-				.sourceSize = { 540, 150 },
-			})
+		: m_texture(U"playresult.png", TiledTextureSizeInfo{
+										   .row = 4,
+										   .sourceScale = SourceScale::k2x,
+										   .sourceSize = { 540, 150 },
+									   })
 	{
 	}
 

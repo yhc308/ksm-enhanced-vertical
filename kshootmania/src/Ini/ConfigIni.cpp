@@ -294,30 +294,48 @@ void ConfigIni::Load()
 
 void ConfigIni::Save()
 {
-    ksmaudio::qa::Scope qaScope{"ConfigIni.save",true};
+	ksmaudio::qa::Scope qaScope{ "ConfigIni.save", true };
 	s_configIniData.save(GetConfigIniFilePath());
 }
 
-bool ConfigIni::SaveSelectedIntegers(const Array<std::pair<String,int32>>& values)
+bool ConfigIni::SaveSelectedIntegers(const Array<std::pair<String, int32>>& values)
 {
-    const FilePath path=GetConfigIniFilePath(),temp=path+U".judge-setting.tmp";
-    auto candidate=s_configIniData;
-    for(const auto& [key,value]:values)candidate.setInt(key,value);
-    if(FileSystem::Exists(temp))FileSystem::Remove(temp);
-    if(FileSystem::Exists(path) && !FileSystem::Copy(path,temp)){Logger<<U"[judge setting] Cannot prepare temporary settings file";return false;}
-    candidate.save(temp);
-    if(!FileSystem::IsFile(temp)){Logger<<U"[judge setting] Temporary settings file missing";return false;}
-    KSMIniData verified{temp};
-    if(!(verified==candidate)){Logger<<U"[judge setting] Incomplete settings write";return false;}
-    for(const auto& [key,value]:values)if(!verified.hasValue(key) || verified.getInt(key)!=value)return false;
+	const FilePath path = GetConfigIniFilePath(), temp = path + U".judge-setting.tmp";
+	auto candidate = s_configIniData;
+	for (const auto& [key, value] : values)
+		candidate.setInt(key, value);
+	if (FileSystem::Exists(temp))
+		FileSystem::Remove(temp);
+	if (FileSystem::Exists(path) && !FileSystem::Copy(path, temp))
+	{
+		Logger << U"[judge setting] Cannot prepare temporary settings file";
+		return false;
+	}
+	candidate.save(temp);
+	if (!FileSystem::IsFile(temp))
+	{
+		Logger << U"[judge setting] Temporary settings file missing";
+		return false;
+	}
+	KSMIniData verified{ temp };
+	if (!(verified == candidate))
+	{
+		Logger << U"[judge setting] Incomplete settings write";
+		return false;
+	}
+	for (const auto& [key, value] : values)
+		if (!verified.hasValue(key) || verified.getInt(key) != value)
+			return false;
 #ifdef _WIN32
-    const bool ok=::MoveFileExW(temp.toWstr().c_str(),path.toWstr().c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=0;
+	const bool ok = ::MoveFileExW(temp.toWstr().c_str(), path.toWstr().c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
 #else
-    const bool ok=std::rename(temp.toUTF8().c_str(),path.toUTF8().c_str())==0;
+	const bool ok = std::rename(temp.toUTF8().c_str(), path.toUTF8().c_str()) == 0;
 #endif
-    if(ok)s_configIniData=std::move(candidate);
-    else Logger<<U"[judge setting] Could not replace settings file";
-    return ok;
+	if (ok)
+		s_configIniData = std::move(candidate);
+	else
+		Logger << U"[judge setting] Could not replace settings file";
+	return ok;
 }
 
 bool ConfigIni::HasValue(StringView key)

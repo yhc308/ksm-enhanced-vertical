@@ -67,9 +67,12 @@ namespace
 			currentPressed = pressed;
 		}
 
-		bool pressed() const { return currentPressed; }
-		bool down() const { return currentPressed && !previousPressed; }
-		bool up() const { return !currentPressed && previousPressed; }
+		bool pressed() const
+		{ return currentPressed; }
+		bool down() const
+		{ return currentPressed && !previousPressed; }
+		bool up() const
+		{ return !currentPressed && previousPressed; }
 	};
 
 	std::array<PlatformKeyState, kPlatformKeys.size()> s_platformKeyStates;
@@ -601,7 +604,8 @@ void KeyConfig::SaveToConfigIni()
 
 bool KeyConfig::Pressed(Button button)
 {
-	if (Vertical::DiagnosticInputReplay::Active()) return Vertical::DiagnosticInputReplay::Held(button);
+	if (Vertical::DiagnosticInputReplay::Active())
+		return Vertical::DiagnosticInputReplay::Held(button);
 	if (button == kUnspecifiedButton)
 	{
 		return false;
@@ -683,7 +687,8 @@ Optional<Button> KeyConfig::LastPressedLaserButton(Button button1, Button button
 
 bool KeyConfig::Down(Button button)
 {
-	if (Vertical::DiagnosticInputReplay::Active()) return Vertical::DiagnosticInputReplay::Down(button);
+	if (Vertical::DiagnosticInputReplay::Active())
+		return Vertical::DiagnosticInputReplay::Down(button);
 	if (button == kUnspecifiedButton)
 	{
 		return false;
@@ -837,7 +842,8 @@ Co::Task<void> KeyConfig::WaitUntilDown(Button button)
 
 bool KeyConfig::Up(Button button)
 {
-	if (Vertical::DiagnosticInputReplay::Active()) return Vertical::DiagnosticInputReplay::Up(button);
+	if (Vertical::DiagnosticInputReplay::Active())
+		return Vertical::DiagnosticInputReplay::Up(button);
 	if (button == kUnspecifiedButton)
 	{
 		return false;
@@ -917,7 +923,8 @@ bool KeyConfig::Up(Button button)
 
 bool KeyConfig::IsLaserInputDigital()
 {
-	if (Vertical::DiagnosticInputReplay::Active()) return Vertical::DiagnosticInputReplay::state->laserDigital;
+	if (Vertical::DiagnosticInputReplay::Active())
+		return Vertical::DiagnosticInputReplay::state->laserDigital;
 	const int32 laserInputType = ConfigIni::GetInt(ConfigIni::Key::kLaserInputType, ConfigIni::Value::LaserInputType::kKeyboard);
 	return laserInputType == ConfigIni::Value::LaserInputType::kKeyboard;
 }
@@ -930,7 +937,8 @@ bool KeyConfig::IsLaserInputMouse()
 
 double KeyConfig::LaserDeltaCursorX(int32 laneIdx, double deltaTimeSec)
 {
-	if (Vertical::DiagnosticInputReplay::Active()) return Vertical::DiagnosticInputReplay::state->laserDelta.at(laneIdx);
+	if (Vertical::DiagnosticInputReplay::Active())
+		return Vertical::DiagnosticInputReplay::state->laserDelta.at(laneIdx);
 	// 入力方式が初期化されていない、または設定が変更された場合は再初期化
 	if (!s_laserInputMethods[laneIdx] || s_laserInputMethods[laneIdx]->reconstructionNeeded())
 	{

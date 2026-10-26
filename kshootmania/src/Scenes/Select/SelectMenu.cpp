@@ -1,4 +1,5 @@
-﻿#include "SelectMenu.hpp"
+﻿#include "Diagnostics/DiagnosticArguments.hpp"
+#include "SelectMenu.hpp"
 #include <cassert>
 #include "kson/kson.hpp"
 #include "IR/IRHash.hpp"
@@ -36,8 +37,11 @@ namespace
 		{ U"bottom1", 1 },
 		{ U"bottom2", 2 },
 		{ U"bottom3", 3 },
-		{ U"bottom4", 4 }, { U"bottom5", 5 }, { U"bottom6", 6 },
-		{ U"bottom7", 7 }, { U"bottom8", 8 },
+		{ U"bottom4", 4 },
+		{ U"bottom5", 5 },
+		{ U"bottom6", 6 },
+		{ U"bottom7", 7 },
+		{ U"bottom8", 8 },
 	};
 
 	/// @brief 上下の項目の押下イベントから相対移動量を取得(発火していない場合は0)
@@ -654,13 +658,15 @@ void SelectMenu::refreshContentCanvasParams()
 			pItem->setCanvasParamsTopBottom(m_eventContext, *m_selectSceneCanvas, difficultyIdx, U"bottom{}"_fmt(bottomIdx));
 		}
 	}
-    if(System::GetCommandLineArgs().contains(U"--vertical-preview-select")){
-        JSON state;state[U"cursor"]=m_menu.cursor();state[U"count"]=m_menu.size();
-        const auto chart=m_menu.cursorValue()?m_menu.cursorValue()->chartInfoPtr(difficultyIdx):nullptr;
-        state[U"chart"]=chart?String{chart->chartFilePath()}:U"";
-        state.save(FsUtils::GetResourcePath(U"select-preview-state.json"));
-    }
-
+	if (ModDiagnostics::Arguments().contains(U"--vertical-preview-select"))
+	{
+		JSON state;
+		state[U"cursor"] = m_menu.cursor();
+		state[U"count"] = m_menu.size();
+		const auto chart = m_menu.cursorValue() ? m_menu.cursorValue()->chartInfoPtr(difficultyIdx) : nullptr;
+		state[U"chart"] = chart ? String{ chart->chartFilePath() } : U"";
+		state.save(FsUtils::GetResourcePath(U"select-preview-state.json"));
+	}
 }
 
 void SelectMenu::refreshSongPreview()
@@ -706,71 +712,92 @@ SelectMenu::SelectMenu(
 	std::function<void(StringView)> fnShowErrorDialog,
 	std::function<void()> fnExitSearchMode,
 	std::function<void()> fnOpenFavoriteDialog)
-	: m_eventContext
-		{
-			.fnMoveToPlayScene = [fnMoveToPlayScene](FilePath path, MusicGame::IsAutoPlayYN isAutoPlay, const Optional<CoursePlayState>& courseState) { fnMoveToPlayScene(path, isAutoPlay, courseState); },
-			.fnOpenDirectory = [this](FilePath path) { openDirectory(path, PlaySeYN::Yes); },
-			.fnOpenAllFolder = [this]() { openAllFolder(PlaySeYN::Yes); },
-			.fnOpenFavoriteFolder = [this](FilePath specialPath) { openFavoriteFolder(specialPath, PlaySeYN::Yes); },
-			.fnOpenCoursesFolder = [this]() { openCoursesFolder(PlaySeYN::Yes); },
-			.fnCloseFolder = [this]() { closeFolder(PlaySeYN::Yes); },
-			.fnExitSearch = std::move(fnExitSearchMode),
-			.fnMoveToNextSubDirSection = [this]() { moveToNextSubDirSection(); },
-			.fnMoveToPrevSubDirSection = [this]() { moveToPrevSubDirSection(); },
-			.fnChangeDifficulty = [this](int32 newDifficultyIdx)
-			{
-				const int32 prevDifficultyIdx = m_difficultyMenu.cursor();
-				m_difficultyMenu.setCursor(newDifficultyIdx);
-				if (m_difficultyMenu.cursor() != prevDifficultyIdx)
-				{
-					resetSongInfoTextDisplayTimer();
-				}
-				ConfigIni::SetInt(ConfigIni::Key::kSelectDifficulty, newDifficultyIdx);
-			},
-			.fnJumpToItemWithDifficulty = [this](int32 jumpMenuIndex, int32 newDifficultyIdx)
-			{
-				const int32 prevIndex = m_menu.cursor();
-				const int32 prevDifficultyIdx = m_difficultyMenu.cursor();
-				m_menu.setCursor(jumpMenuIndex);
-				m_difficultyMenu.setCursor(newDifficultyIdx);
-				if (m_menu.cursor() != prevIndex || m_difficultyMenu.cursor() != prevDifficultyIdx)
-				{
-					resetSongInfoTextDisplayTimer();
-				}
-				ConfigIni::SetInt(ConfigIni::Key::kSelectSongIndex, jumpMenuIndex);
-				ConfigIni::SetInt(ConfigIni::Key::kSelectDifficulty, newDifficultyIdx);
-				if (jumpMenuIndex > prevIndex)
-				{
-					playShakeDownTween();
-				}
-				else if (jumpMenuIndex < prevIndex)
-				{
-					playShakeUpTween();
-				}
-			},
-			.fnShowErrorDialog = std::move(fnShowErrorDialog),
-			.fnOpenFavoriteDialog = std::move(fnOpenFavoriteDialog),
-			.fnGetHighScore = [this](FilePathView chartFilePath) -> HighScoreInfo
-			{
-				return m_highScoreCache.getChartHighScore(chartFilePath, CreateKscKeyFromConfig());
-			},
-			.fnGetCourseHighScore = [this](FilePathView courseFilePath) -> HighScoreInfo
-			{
-				return m_highScoreCache.getCourseHighScore(courseFilePath, CreateKscKeyFromConfig());
-			},
-		}
-	, m_selectSceneCanvas(selectSceneCanvas)
-	, m_menu(
-		LinearMenu::CreateInfoWithCursorMinMax{
-			.cursorInputCreateInfo = {
-				.type = CursorInput::Type::Vertical,
-				.buttonFlags = CursorButtonFlags::kArrowOrLaser | CursorButtonFlags::kMouseWheel,
-				.buttonIntervalSec = 0.05,
-				.buttonIntervalSecFirst = 0.3,
-			},
-			.cyclic = IsCyclicMenuYN::Yes,
-		})
-	, m_difficultyMenu(this)
+	: m_eventContext{
+		  .fnMoveToPlayScene = [fnMoveToPlayScene](FilePath path, MusicGame::IsAutoPlayYN isAutoPlay, const Optional<CoursePlayState>& courseState)
+		  {
+			  fnMoveToPlayScene(path, isAutoPlay, courseState);
+		  },
+		  .fnOpenDirectory = [this](FilePath path)
+		  {
+			  openDirectory(path, PlaySeYN::Yes);
+		  },
+		  .fnOpenAllFolder = [this]()
+		  {
+			  openAllFolder(PlaySeYN::Yes);
+		  },
+		  .fnOpenFavoriteFolder = [this](FilePath specialPath)
+		  {
+			  openFavoriteFolder(specialPath, PlaySeYN::Yes);
+		  },
+		  .fnOpenCoursesFolder = [this]()
+		  {
+			  openCoursesFolder(PlaySeYN::Yes);
+		  },
+		  .fnCloseFolder = [this]()
+		  {
+			  closeFolder(PlaySeYN::Yes);
+		  },
+		  .fnExitSearch = std::move(fnExitSearchMode),
+		  .fnMoveToNextSubDirSection = [this]()
+		  {
+			  moveToNextSubDirSection();
+		  },
+		  .fnMoveToPrevSubDirSection = [this]()
+		  {
+			  moveToPrevSubDirSection();
+		  },
+		  .fnChangeDifficulty = [this](int32 newDifficultyIdx)
+		  {
+			  const int32 prevDifficultyIdx = m_difficultyMenu.cursor();
+			  m_difficultyMenu.setCursor(newDifficultyIdx);
+			  if (m_difficultyMenu.cursor() != prevDifficultyIdx)
+			  {
+				  resetSongInfoTextDisplayTimer();
+			  }
+			  ConfigIni::SetInt(ConfigIni::Key::kSelectDifficulty, newDifficultyIdx);
+		  },
+		  .fnJumpToItemWithDifficulty = [this](int32 jumpMenuIndex, int32 newDifficultyIdx)
+		  {
+			  const int32 prevIndex = m_menu.cursor();
+			  const int32 prevDifficultyIdx = m_difficultyMenu.cursor();
+			  m_menu.setCursor(jumpMenuIndex);
+			  m_difficultyMenu.setCursor(newDifficultyIdx);
+			  if (m_menu.cursor() != prevIndex || m_difficultyMenu.cursor() != prevDifficultyIdx)
+			  {
+				  resetSongInfoTextDisplayTimer();
+			  }
+			  ConfigIni::SetInt(ConfigIni::Key::kSelectSongIndex, jumpMenuIndex);
+			  ConfigIni::SetInt(ConfigIni::Key::kSelectDifficulty, newDifficultyIdx);
+			  if (jumpMenuIndex > prevIndex)
+			  {
+				  playShakeDownTween();
+			  }
+			  else if (jumpMenuIndex < prevIndex)
+			  {
+				  playShakeUpTween();
+			  }
+		  },
+		  .fnShowErrorDialog = std::move(fnShowErrorDialog),
+		  .fnOpenFavoriteDialog = std::move(fnOpenFavoriteDialog),
+		  .fnGetHighScore = [this](FilePathView chartFilePath) -> HighScoreInfo
+		  {
+			  return m_highScoreCache.getChartHighScore(chartFilePath, CreateKscKeyFromConfig());
+		  },
+		  .fnGetCourseHighScore = [this](FilePathView courseFilePath) -> HighScoreInfo
+		  {
+			  return m_highScoreCache.getCourseHighScore(courseFilePath, CreateKscKeyFromConfig());
+		  },
+	  },
+	  m_selectSceneCanvas(selectSceneCanvas), m_menu(LinearMenu::CreateInfoWithCursorMinMax{
+												  .cursorInputCreateInfo = {
+													  .type = CursorInput::Type::Vertical,
+													  .buttonFlags = CursorButtonFlags::kArrowOrLaser | CursorButtonFlags::kMouseWheel,
+													  .buttonIntervalSec = 0.05,
+													  .buttonIntervalSecFirst = 0.3,
+												  },
+												  .cyclic = IsCyclicMenuYN::Yes,
+											  }),
+	  m_difficultyMenu(this)
 {
 	// ConfigIniからソートモードを読み込み
 	const StringView sortModeStr = ConfigIni::GetString(ConfigIni::Key::kSelectSortType, U"");
@@ -842,22 +869,24 @@ SelectMenu::SelectMenu(
 		openDirectory(U"", PlaySeYN::No);
 	}
 
-    // Preview uses the real menu and chart metadata, with no settings save.
-    const auto previewArgs = System::GetCommandLineArgs();
-    if (previewArgs.contains(U"--vertical-preview-select"))
-        for (size_t i = 0; i + 1 < previewArgs.size(); ++i)
-            if (previewArgs[i] == U"--vertical-preview-chart")
-            {
-                const FilePath path = previewArgs[i + 1];
-                openDirectory(FileSystem::ParentPath(FileSystem::ParentPath(path)), PlaySeYN::No);
-                setCursorByChartFilePath(path);
-            }
+	// Preview uses the real menu and chart metadata, with no settings save.
+	const auto previewArgs = ModDiagnostics::Arguments();
+	if (previewArgs.contains(U"--vertical-preview-select"))
+		for (size_t i = 0; i + 1 < previewArgs.size(); ++i)
+			if (previewArgs[i] == U"--vertical-preview-chart")
+			{
+				const FilePath path = previewArgs[i + 1];
+				openDirectory(FileSystem::ParentPath(FileSystem::ParentPath(path)), PlaySeYN::No);
+				setCursorByChartFilePath(path);
+			}
 
-    if (!m_menu.empty() && previewArgs.contains(U"--vertical-preview-select"))
-    {
-        if (previewArgs.contains(U"--vertical-preview-select-first")) m_menu.setCursor(0);
-        if (previewArgs.contains(U"--vertical-preview-select-last")) m_menu.setCursor(static_cast<int32>(m_menu.size()) - 1);
-    }
+	if (!m_menu.empty() && previewArgs.contains(U"--vertical-preview-select"))
+	{
+		if (previewArgs.contains(U"--vertical-preview-select-first"))
+			m_menu.setCursor(0);
+		if (previewArgs.contains(U"--vertical-preview-select-last"))
+			m_menu.setCursor(static_cast<int32>(m_menu.size()) - 1);
+	}
 
 	resetSongInfoTextDisplayTimer();
 	refreshContentCanvasParams();
@@ -922,12 +951,12 @@ void SelectMenu::update(SongPreviewOnlyYN songPreviewOnly)
 			playShakeUpTween();
 		}
 		refreshContentCanvasParams();
-        if (System::GetCommandLineArgs().contains(U"--vertical-preview-select"))
-        {
-            TextWriter report{U"vertical-select-preview-state.csv"};
-            report.writeln(U"cursor,delta,chart");
-            report.writeln(U"{},{},{}"_fmt(m_menu.cursor(), deltaCursor, currentChartFilePath().value_or(U"")));
-        }
+		if (ModDiagnostics::Arguments().contains(U"--vertical-preview-select"))
+		{
+			TextWriter report{ U"vertical-select-preview-state.csv" };
+			report.writeln(U"cursor,delta,chart");
+			report.writeln(U"{},{},{}"_fmt(m_menu.cursor(), deltaCursor, currentChartFilePath().value_or(U"")));
+		}
 
 		refreshSongPreview();
 	}

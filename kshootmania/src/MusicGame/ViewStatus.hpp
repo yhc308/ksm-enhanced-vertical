@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "TimingFeedback.hpp"
 #include "GaugePresentation.hpp"
 #include "Judgment/DetailedJudgmentStats.hpp"
@@ -20,20 +20,20 @@ namespace MusicGame
 		Camera::CamStatus camStatus;
 
 		int32 score = 0;
-        int64 exScore = 0;
-        int64 exMaximum = 0;
+		int64 exScore = 0;
+		int64 exMaximum = 0;
 		GaugeType effectiveGaugeType = GaugeType::kNormalGauge;
-        bool apsProtected = false;
-        GaugeVisual gaugeVisual;
-        double gaugePercentage = 0.0;
+		bool apsProtected = false;
+		GaugeVisual gaugeVisual;
+		double gaugePercentage = 0.0;
 		int32 gaugePercentageInt = 0; // 切り捨てで整数化したゲージパーセンテージ
 		int32 displayCombo = 0;
 		bool displayIsNoError = true;
 		double comboMilestoneEffectStartTimeSec = kPastDisplayTimeSec; // 100コンボ毎のアニメーションの開始時刻
 		int32 timingAdjustMs = 0;
-        Optional<TimingFeedback> timingFeedback;
-        Judgment::DetailedJudgmentStats detailedJudgments;
-        Judgment::InputTimingStats inputTiming;
-        uint64 previewChipDemoCount=0; // Nonzero only in a synthetic skin-preview session.
+		Optional<TimingFeedback> timingFeedback;
+		Judgment::DetailedJudgmentStats detailedJudgments;
+		Judgment::InputTimingStats inputTiming;
+		uint64 previewChipDemoCount = 0; // Nonzero only in a synthetic skin-preview session.
 	};
 }

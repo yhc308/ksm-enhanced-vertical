@@ -29,34 +29,28 @@ kson::MetaChartData SelectChartInfo::LoadMetaChartData(FilePathView chartFilePat
 }
 
 SelectChartInfo::SelectChartInfo(FilePathView chartFilePath)
-	: m_chartFilePath(chartFilePath)
-	, m_chartData(LoadMetaChartData(chartFilePath))
-    , m_exMaximum(MusicGame::Judgment::LoadChartExMaximum(chartFilePath))
-	, m_folderConfIni(FolderConfIni::Load(chartFilePath))
-	{
-		// 検索用文字列をあらかじめ用意
-		const String songFolderName = FsUtils::DirectoryNameByDirectoryPath(FileSystem::ParentPath(chartFilePath));
-		m_joinedTextForSearch = (
-			Unicode::FromUTF8(m_chartData.meta.title) + kSearchTextSeparator +
-			Unicode::FromUTF8(m_chartData.meta.titleTranslit) + kSearchTextSeparator +
-			Unicode::FromUTF8(m_chartData.meta.artist) + kSearchTextSeparator +
-			Unicode::FromUTF8(m_chartData.meta.artistTranslit) + kSearchTextSeparator +
-			songFolderName).lowercased();
-	}
+	: m_chartFilePath(chartFilePath), m_chartData(LoadMetaChartData(chartFilePath)), m_exMaximum(MusicGame::Judgment::LoadChartExMaximum(chartFilePath)), m_folderConfIni(FolderConfIni::Load(chartFilePath))
+{
+	// 検索用文字列をあらかじめ用意
+	const String songFolderName = FsUtils::DirectoryNameByDirectoryPath(FileSystem::ParentPath(chartFilePath));
+	m_joinedTextForSearch = (Unicode::FromUTF8(m_chartData.meta.title) + kSearchTextSeparator +
+							 Unicode::FromUTF8(m_chartData.meta.titleTranslit) + kSearchTextSeparator +
+							 Unicode::FromUTF8(m_chartData.meta.artist) + kSearchTextSeparator +
+							 Unicode::FromUTF8(m_chartData.meta.artistTranslit) + kSearchTextSeparator +
+							 songFolderName)
+								.lowercased();
+}
 
-SelectChartInfo::SelectChartInfo(FilePathView chartFilePath, const kson::MetaChartData& chartData, const FolderConfIni& folderConfIni,int64 exMaximum)
-	: m_chartFilePath(chartFilePath)
-	, m_chartData(chartData)
-    , m_exMaximum(exMaximum)
-	, m_folderConfIni(folderConfIni)
+SelectChartInfo::SelectChartInfo(FilePathView chartFilePath, const kson::MetaChartData& chartData, const FolderConfIni& folderConfIni, int64 exMaximum)
+	: m_chartFilePath(chartFilePath), m_chartData(chartData), m_exMaximum(exMaximum), m_folderConfIni(folderConfIni)
 {
 	const String songFolderName = FsUtils::DirectoryNameByDirectoryPath(FileSystem::ParentPath(chartFilePath));
-	m_joinedTextForSearch = (
-		Unicode::FromUTF8(m_chartData.meta.title) + kSearchTextSeparator +
-		Unicode::FromUTF8(m_chartData.meta.titleTranslit) + kSearchTextSeparator +
-		Unicode::FromUTF8(m_chartData.meta.artist) + kSearchTextSeparator +
-		Unicode::FromUTF8(m_chartData.meta.artistTranslit) + kSearchTextSeparator +
-		songFolderName).lowercased();
+	m_joinedTextForSearch = (Unicode::FromUTF8(m_chartData.meta.title) + kSearchTextSeparator +
+							 Unicode::FromUTF8(m_chartData.meta.titleTranslit) + kSearchTextSeparator +
+							 Unicode::FromUTF8(m_chartData.meta.artist) + kSearchTextSeparator +
+							 Unicode::FromUTF8(m_chartData.meta.artistTranslit) + kSearchTextSeparator +
+							 songFolderName)
+								.lowercased();
 }
 
 String SelectChartInfo::title() const

@@ -71,7 +71,7 @@ endif()
 
 target_compile_features(${TARGET_NAME} PRIVATE cxx_std_20)
 
-target_compile_definitions(${TARGET_NAME} PRIVATE)
+target_compile_definitions(${TARGET_NAME} PRIVATE KSM_ENABLE_DIAGNOSTICS=1)
 
 if(APPLE)
     # Siv3DのmacOS/Linux版はプリコンパイル済みヘッダ非対応のため通常のヘッダとしてインクルード
@@ -101,4 +101,9 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 enable_testing()
-add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME})
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_test(NAME ${TARGET_NAME}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/RunCatch2.py
+    $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_CURRENT_BINARY_DIR}/catch2-results.xml
+)
+set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 200)

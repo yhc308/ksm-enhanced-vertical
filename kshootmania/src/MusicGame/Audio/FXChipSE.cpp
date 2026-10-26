@@ -1,4 +1,4 @@
-#include "FXChipSE.hpp"
+﻿#include "FXChipSE.hpp"
 #include "AudioDefines.hpp"
 
 namespace MusicGame::Audio
@@ -37,8 +37,7 @@ namespace MusicGame::Audio
 	}
 
 	FXChipSE::FXChipSE(const kson::ChartData& chartData, const kson::TimingCache& timingCache, FilePathView parentPath, bool isAutoPlaySE, double folderVolumeScale)
-		: m_isAutoPlaySE(isAutoPlaySE)
-		, m_folderVolumeScale(folderVolumeScale)
+		: m_isAutoPlaySE(isAutoPlaySE), m_folderVolumeScale(folderVolumeScale)
 	{
 		// SE自動再生モード用にPulseから秒数への変換マップを作成
 		if (m_isAutoPlaySE)
@@ -81,10 +80,13 @@ namespace MusicGame::Audio
 
 	void FXChipSE::update(const kson::ChartData& chartData, const GameStatus& gameStatus, const std::array<FXChipJudgedStatus, kson::kNumFXLanesSZ>& judgedStatuses)
 	{
-        if (!m_isAutoPlaySE && ksmaudio::IsASIOActive() && IsScheduledAudioReady() && m_manualGeneration != s_scheduling.clock.generation) {
-            if (m_manualGeneration != 0) for (std::size_t i=0; i<m_lastPlayedTimeSecs.size(); ++i) m_lastPlayedTimeSecs[i]=judgedStatuses[i].lastChipJudgedTimeSec;
-            m_manualGeneration=s_scheduling.clock.generation;
-        }
+		if (!m_isAutoPlaySE && ksmaudio::IsASIOActive() && IsScheduledAudioReady() && m_manualGeneration != s_scheduling.clock.generation)
+		{
+			if (m_manualGeneration != 0)
+				for (std::size_t i = 0; i < m_lastPlayedTimeSecs.size(); ++i)
+					m_lastPlayedTimeSecs[i] = judgedStatuses[i].lastChipJudgedTimeSec;
+			m_manualGeneration = s_scheduling.clock.generation;
+		}
 		if (m_isAutoPlaySE)
 		{
 			// SE自動再生モードの場合、ノーツタイミングで効果音を再生
@@ -99,16 +101,18 @@ namespace MusicGame::Audio
 
 	void FXChipSE::updateByNoteTime(const kson::ChartData& chartData, const GameStatus& gameStatus)
 	{
-        if (ksmaudio::IsASIOActive()) {
-            if (!IsScheduledAudioReady()) return;
-            if (m_asioGeneration != s_scheduling.clock.generation) {
-                m_asioGeneration = s_scheduling.clock.generation;
-                m_asioRestartTime = gameStatus.currentTimeSecForAudioProc - 0.000001;
-                m_autoPlaySELastPulses.fill(kPastPulse);
-            }
-        }
-        const double currentTimeSecForAudioProc = ksmaudio::IsASIOActive() ?
-            ScheduledAudioHorizon(gameStatus.currentTimeSecForAudioProc) : gameStatus.currentTimeSecForAudioProc + SELatencySec();
+		if (ksmaudio::IsASIOActive())
+		{
+			if (!IsScheduledAudioReady())
+				return;
+			if (m_asioGeneration != s_scheduling.clock.generation)
+			{
+				m_asioGeneration = s_scheduling.clock.generation;
+				m_asioRestartTime = gameStatus.currentTimeSecForAudioProc - 0.000001;
+				m_autoPlaySELastPulses.fill(kPastPulse);
+			}
+		}
+		const double currentTimeSecForAudioProc = ksmaudio::IsASIOActive() ? ScheduledAudioHorizon(gameStatus.currentTimeSecForAudioProc) : gameStatus.currentTimeSecForAudioProc + SELatencySec();
 		const auto& chipEvent = chartData.audio.keySound.fx.chipEvent;
 
 		for (const auto& [filename, lanes] : chipEvent)
@@ -130,7 +134,8 @@ namespace MusicGame::Audio
 					}
 
 					const double chipTimeSec = m_pulseToSec.at(chipPulse);
-                    if (ksmaudio::IsASIOActive() && chipTimeSec < m_asioRestartTime) continue;
+					if (ksmaudio::IsASIOActive() && chipTimeSec < m_asioRestartTime)
+						continue;
 					if (chipTimeSec > currentTimeSecForAudioProc)
 					{
 						// まだ先のチップなのでこのレーンの処理を終了
@@ -146,7 +151,8 @@ namespace MusicGame::Audio
 
 					// キー音を再生
 					const double volume = chipData.vol;
-                    if (!PlayScheduledSound(m_keySounds.at(filename), chipTimeSec, gameStatus.currentTimeSecForAudioProc, volume * m_folderVolumeScale)) continue;
+					if (!PlayScheduledSound(m_keySounds.at(filename), chipTimeSec, gameStatus.currentTimeSecForAudioProc, volume * m_folderVolumeScale))
+						continue;
 					m_lastPlayedTimeSecs[laneIdx] = chipTimeSec;
 					m_autoPlaySELastPulses[laneIdx] = chipPulse;
 				}
@@ -197,7 +203,8 @@ namespace MusicGame::Audio
 
 				// キー音を再生
 				const double volume = it->second.vol;
-                if (!PlayInputSound(m_keySounds.at(filename), gameStatus.currentTimeSec, gameStatus.currentTimeSecForAudioProc, volume * m_folderVolumeScale)) continue;
+				if (!PlayInputSound(m_keySounds.at(filename), gameStatus.currentTimeSec, gameStatus.currentTimeSecForAudioProc, volume * m_folderVolumeScale))
+					continue;
 				m_lastPlayedTimeSecs[laneIdx] = judgmentTimeSec;
 				break;
 			}

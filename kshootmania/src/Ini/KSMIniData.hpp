@@ -8,7 +8,10 @@ private:
 
 public:
 	KSMIniData() = default;
-    bool operator==(const KSMIniData& other) const {return m_hashTable==other.m_hashTable;}
+	bool operator==(const KSMIniData& other) const
+	{
+		return m_hashTable == other.m_hashTable;
+	}
 
 	explicit KSMIniData(FilePathView path);
 

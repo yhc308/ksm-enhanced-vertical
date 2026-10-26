@@ -64,10 +64,11 @@ SelectMenuSongItem::SelectMenuSongItem(FilePathView fullPath)
 }
 
 SelectMenuSongItem::SelectMenuSongItem(FilePathView fullPath, const std::array<std::shared_ptr<const SelectChartInfo>, kNumDifficulties>& chartInfos, IsSingleChartItemYN isSingleChartItem)
-	: m_fullPath(fullPath)
-	, m_chartExists(std::any_of(chartInfos.begin(), chartInfos.end(), [](const auto& chartInfo) { return chartInfo != nullptr; }))
-	, m_isSingleChartItem(isSingleChartItem)
-	, m_chartInfos(chartInfos)
+	: m_fullPath(fullPath), m_chartExists(std::any_of(chartInfos.begin(), chartInfos.end(), [](const auto& chartInfo)
+													  {
+														  return chartInfo != nullptr;
+													  })),
+	  m_isSingleChartItem(isSingleChartItem), m_chartInfos(chartInfos)
 {
 }
 
@@ -157,11 +158,11 @@ const SelectChartInfo* SelectMenuSongItem::chartInfoPtr(int difficultyIdx, Fallb
 void SelectMenuSongItem::setCanvasParamsCenter(const SelectMenuEventContext& context, noco::Canvas& canvas, int32 difficultyIdx) const
 {
 	canvas.setSubCanvasParamValuesByTag(U"center", {
-		{ U"isSong", true },
-		{ U"isDirectory", false },
-		{ U"isSubDirectory", false },
-		{ U"isCourse", false },
-	});
+													   { U"isSong", true },
+													   { U"isDirectory", false },
+													   { U"isSubDirectory", false },
+													   { U"isCourse", false },
+												   });
 
 	// 各難易度の存在有無とレベルを設定
 	setDifficultyLevelDisplayParams(canvas);
@@ -187,7 +188,7 @@ void SelectMenuSongItem::setCanvasParamsCenter(const SelectMenuEventContext& con
 	if (pChartInfo != nullptr)
 	{
 		const HighScoreInfo highScoreInfo = context.fnGetHighScore(pChartInfo->chartFilePath());
-        ExScorePanel::Set(canvas,highScoreInfo.exScore(RuntimeConfig::GetGaugeType()),pChartInfo->exMaximum());
+		ExScorePanel::Set(canvas, highScoreInfo.exScore(RuntimeConfig::GetGaugeType()), pChartInfo->exMaximum());
 
 		const GaugeType gaugeType = RuntimeConfig::GetGaugeType();
 
@@ -199,35 +200,35 @@ void SelectMenuSongItem::setCanvasParamsCenter(const SelectMenuEventContext& con
 		const FilePath artistImgPath = pChartInfo->artistImgFilePath();
 		const bool hasArtistImg = !artistImgPath.isEmpty() && FileSystem::IsFile(artistImgPath);
 		const SongInfoTextDisplayParams titleParams = hasTitleImg
-			? SongInfoTextDisplayParams{}
-			: MakeSongInfoTextDisplayParams(pChartInfo->title(), pChartInfo->titleTranslit());
+														  ? SongInfoTextDisplayParams{}
+														  : MakeSongInfoTextDisplayParams(pChartInfo->title(), pChartInfo->titleTranslit());
 		const SongInfoTextDisplayParams artistParams = hasArtistImg
-			? SongInfoTextDisplayParams{}
-			: MakeSongInfoTextDisplayParams(pChartInfo->artist(), pChartInfo->artistTranslit());
+														   ? SongInfoTextDisplayParams{}
+														   : MakeSongInfoTextDisplayParams(pChartInfo->artist(), pChartInfo->artistTranslit());
 
 		canvas.setSubCanvasParamValuesByTag(U"center", {
-			{ U"title", titleParams.text },
-			{ U"titleTranslit", titleParams.translitText },
-			{ U"titleTranslitFadeRate", titleParams.translitFadeRate },
-			{ U"titleImgFilePath", titleImgPath },
-			{ U"artist", artistParams.text },
-			{ U"artistTranslit", artistParams.translitText },
-			{ U"artistTranslitFadeRate", artistParams.translitFadeRate },
-			{ U"artistImgFilePath", artistImgPath },
-			{ U"bpm", pChartInfo->dispBPM() },
-			{ U"jacketAuthor", pChartInfo->jacketAuthor() },
-			{ U"information", pChartInfo->information() },
-			{ U"chartAuthor", pChartInfo->chartAuthor() },
-			{ U"difficultyIndex", difficultyIdx },
-			{ U"medalIndex", static_cast<int32>(highScoreInfo.medal()) },
-			{ U"highScoreGradeIndex", static_cast<int32>(highScoreInfo.grade(gaugeType)) },
-			{ U"highScore", highScoreInfo.score(gaugeType) },
-			{ U"gaugePercentage", highScoreInfo.percent(gaugeType) },
-			{ U"jacketFilePath", jacketPath },
-			{ U"jacketActive", !jacketPath.isEmpty() && FileSystem::IsFile(jacketPath) },
-			{ U"iconFilePath", iconPath },
-			{ U"iconActive", !iconPath.isEmpty() && FileSystem::IsFile(iconPath) },
-		});
+														   { U"title", titleParams.text },
+														   { U"titleTranslit", titleParams.translitText },
+														   { U"titleTranslitFadeRate", titleParams.translitFadeRate },
+														   { U"titleImgFilePath", titleImgPath },
+														   { U"artist", artistParams.text },
+														   { U"artistTranslit", artistParams.translitText },
+														   { U"artistTranslitFadeRate", artistParams.translitFadeRate },
+														   { U"artistImgFilePath", artistImgPath },
+														   { U"bpm", pChartInfo->dispBPM() },
+														   { U"jacketAuthor", pChartInfo->jacketAuthor() },
+														   { U"information", pChartInfo->information() },
+														   { U"chartAuthor", pChartInfo->chartAuthor() },
+														   { U"difficultyIndex", difficultyIdx },
+														   { U"medalIndex", static_cast<int32>(highScoreInfo.medal()) },
+														   { U"highScoreGradeIndex", static_cast<int32>(highScoreInfo.grade(gaugeType)) },
+														   { U"highScore", highScoreInfo.score(gaugeType) },
+														   { U"gaugePercentage", highScoreInfo.percent(gaugeType) },
+														   { U"jacketFilePath", jacketPath },
+														   { U"jacketActive", !jacketPath.isEmpty() && FileSystem::IsFile(jacketPath) },
+														   { U"iconFilePath", iconPath },
+														   { U"iconActive", !iconPath.isEmpty() && FileSystem::IsFile(iconPath) },
+													   });
 	}
 	else
 	{

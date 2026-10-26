@@ -9,8 +9,8 @@ namespace MusicGame
 	struct PlayResult
 	{
 		int32 score = 0;
-        int64 exScore = 0;
-        int64 exMaximum = 0;
+		int64 exScore = 0;
+		int64 exMaximum = 0;
 
 		int32 maxCombo = 0;
 
@@ -20,7 +20,7 @@ namespace MusicGame
 
 		Judgment::ComboStats comboStats;
 
-        Judgment::DetailedJudgmentStats detailedStats;
+		Judgment::DetailedJudgmentStats detailedStats;
 
 		Judgment::ComboStats chipOrLaserSlamStats;
 

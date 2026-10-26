@@ -1,4 +1,4 @@
-#include "ksmaudio/Diagnostics.hpp"
+﻿#include "ksmaudio/Diagnostics.hpp"
 #include "PlayScene.hpp"
 #include "Input/InputUtils.hpp"
 #include "Scenes/Select/SelectScene.hpp"
@@ -54,15 +54,13 @@ namespace
 		const Optional<CoursePlayState>& courseState,
 		const Optional<MusicGame::TestPlayOption>& testPlayOption)
 	{
-		MusicGame::GameCreateInfo info =
-		{
+		MusicGame::GameCreateInfo info = {
 			.chartFilePath = FilePath{ chartFilePath },
-			.playOption = MusicGame::PlayOption
-			{
+			.playOption = MusicGame::PlayOption{
 				.gameMode = courseState.has_value() ? MusicGame::GameMode::kCourseMode : MusicGame::GameMode::kNormal,
 				.isAutoPlay = isAutoPlay,
 				.gaugeType = RuntimeConfig::GetGaugeType(),
-                .apsEnabled = RuntimeConfig::GetApsEnabled(),
+				.apsEnabled = RuntimeConfig::GetApsEnabled(),
 				.turnMode = RuntimeConfig::GetTurnMode(),
 				.playbackSpeed = RuntimeConfig::GetPlaybackSpeed(),
 				.btJudgmentPlayMode = RuntimeConfig::GetJudgmentPlayModeBT(),
@@ -81,7 +79,7 @@ namespace
 				}(),
 				.autoSyncMode = static_cast<AutoSyncMode>(ConfigIni::GetInt(ConfigIni::Key::kAutoSync, static_cast<int32>(AutoSyncMode::kOff))),
 				.fastSlowMode = RuntimeConfig::LoadFastSlowModeFromConfigIni(),
-                .timingHud = RuntimeConfig::LoadTimingHudSettingsFromConfigIni(),
+				.timingHud = RuntimeConfig::LoadTimingHudSettingsFromConfigIni(),
 				.availableHispeedTypes = LoadAvailableHispeedTypesFromConfigIni(),
 				.hispeedSetting = LoadHispeedSettingFromConfigIni(),
 				.movieEnabled = ConfigIni::GetInt(ConfigIni::Key::kBGMovie, static_cast<int32>(MovieMode::kOn)) == static_cast<int32>(MovieMode::kOn),
@@ -116,16 +114,10 @@ namespace
 }
 
 PlayScene::PlayScene(FilePathView chartFilePath, MusicGame::IsAutoPlayYN isAutoPlay, const Optional<CoursePlayState>& courseState, const Optional<MusicGame::TestPlayOption>& testPlayOption, const Optional<SelectSceneSearchParams>& selectSearchParams)
-	: m_gameMain(MakeGameCreateInfo(chartFilePath, isAutoPlay, courseState, testPlayOption))
-	, m_isAutoPlay(isAutoPlay)
-	, m_courseState(courseState)
-	, m_fadeOutDuration(kFadeDuration)
-	, m_testPlayOption(testPlayOption)
-	, m_selectSearchParams(selectSearchParams)
-	, m_commonOverlay(kBackButtonClickHoldDuration)
+	: m_gameMain(MakeGameCreateInfo(chartFilePath, isAutoPlay, courseState, testPlayOption)), m_isAutoPlay(isAutoPlay), m_courseState(courseState), m_fadeOutDuration(kFadeDuration), m_testPlayOption(testPlayOption), m_selectSearchParams(selectSearchParams), m_commonOverlay(kBackButtonClickHoldDuration)
 {
-    ksmaudio::qa::Scene("play");
-    ksmaudio::qa::Event("PLAY_START",0,0,FileSystem::FileName(chartFilePath).toUTF8());
+	ksmaudio::qa::Scene("play");
+	ksmaudio::qa::Event("PLAY_START", 0, 0, FileSystem::FileName(chartFilePath).toUTF8());
 	m_gameMain.start();
 
 	// Playシーンではウィンドウのフォーカスが外れていてもミュートしない
@@ -137,7 +129,7 @@ PlayScene::PlayScene(FilePathView chartFilePath, MusicGame::IsAutoPlayYN isAutoP
 
 PlayScene::~PlayScene()
 {
-    ksmaudio::qa::Scope qaScope{"PlayScene.destroy",true};
+	ksmaudio::qa::Scope qaScope{ "PlayScene.destroy", true };
 	m_gameMain.terminate();
 
 	KeyConfig::SetRightClickAsBackSuppressed(false);
@@ -145,7 +137,7 @@ PlayScene::~PlayScene()
 
 void PlayScene::update()
 {
-    ksmaudio::qa::Scope qaScope{"PlayScene.update",false};
+	ksmaudio::qa::Scope qaScope{ "PlayScene.update", false };
 	// マウスカーソル非表示設定
 	if (ConfigIni::GetInt(ConfigIni::Key::kHideMouseCursor, ConfigIni::Value::HideMouseCursor::kPlayOnly) != ConfigIni::Value::HideMouseCursor::kOff)
 	{
@@ -161,7 +153,7 @@ void PlayScene::update()
 
 	if (startFadeOut)
 	{
-        ksmaudio::qa::Event("PLAY_FINISH_REQUEST");
+		ksmaudio::qa::Event("PLAY_FINISH_REQUEST");
 		// 譜面終了時にリザルト画面に遷移
 		m_fadeOutDuration = kPlayFinishFadeOutDuration;
 
@@ -173,14 +165,16 @@ void PlayScene::update()
 		else if (m_testPlayOption.has_value())
 		{
 			// テストプレイ(-fromなし、手動)の場合はリザルト画面へ
-			const ResultSceneArgs args =
-			{
+			const ResultSceneArgs args = {
 				.chartFilePath = FilePath(m_gameMain.chartFilePath()),
 				.chartData = m_gameMain.chartData(),
 				.playResult = m_gameMain.playResult(),
 				.selectSearchParams = m_selectSearchParams,
 			};
-			{ ksmaudio::qa::Scope transition{"request.ResultScene",true}; requestNextScene<ResultScene>(args); }
+			{
+				ksmaudio::qa::Scope transition{ "request.ResultScene", true };
+				requestNextScene<ResultScene>(args);
+			}
 		}
 		else if (m_isAutoPlay)
 		{
@@ -200,27 +194,32 @@ void PlayScene::update()
 			else
 			{
 				// 次の曲がない場合は選曲画面へ
-				{ ksmaudio::qa::Scope transition{"request.SelectScene",true}; requestNextScene<SelectScene>(m_selectSearchParams); }
+				{
+					ksmaudio::qa::Scope transition{ "request.SelectScene", true };
+					requestNextScene<SelectScene>(m_selectSearchParams);
+				}
 			}
 		}
 		else
 		{
-			const ResultSceneArgs args =
-			{
+			const ResultSceneArgs args = {
 				.chartFilePath = FilePath(m_gameMain.chartFilePath()),
 				.chartData = m_gameMain.chartData(), // TODO: shared_ptrでコピーを避ける?
 				.playResult = m_gameMain.playResult(),
 				.courseState = m_courseState,
 				.selectSearchParams = m_selectSearchParams,
 			};
-			{ ksmaudio::qa::Scope transition{"request.ResultScene",true}; requestNextScene<ResultScene>(args); }
+			{
+				ksmaudio::qa::Scope transition{ "request.ResultScene", true };
+				requestNextScene<ResultScene>(args);
+			}
 		}
 	}
 }
 
 void PlayScene::processBackButtonInput()
 {
-    ksmaudio::qa::Scope qaScope{"PlayScene.back",false};
+	ksmaudio::qa::Scope qaScope{ "PlayScene.back", false };
 	if (!KeyConfig::Down(kButtonBack))
 	{
 		return;
@@ -243,36 +242,43 @@ void PlayScene::processBackButtonInput()
 	else if (m_testPlayOption.has_value())
 	{
 		// テストプレイ(-fromなし、手動)の場合はリザルト画面へ
-		const ResultSceneArgs args =
-		{
+		const ResultSceneArgs args = {
 			.chartFilePath = FilePath(m_gameMain.chartFilePath()),
 			.chartData = m_gameMain.chartData(),
 			.playResult = m_gameMain.playResult(),
 			.selectSearchParams = m_selectSearchParams,
 		};
-		{ ksmaudio::qa::Scope transition{"request.ResultScene",true}; requestNextScene<ResultScene>(args); }
+		{
+			ksmaudio::qa::Scope transition{ "request.ResultScene", true };
+			requestNextScene<ResultScene>(args);
+		}
 	}
 	else if (m_isAutoPlay)
 	{
-		{ ksmaudio::qa::Scope transition{"request.SelectScene",true}; requestNextScene<SelectScene>(m_selectSearchParams); }
+		{
+			ksmaudio::qa::Scope transition{ "request.SelectScene", true };
+			requestNextScene<SelectScene>(m_selectSearchParams);
+		}
 	}
 	else
 	{
-		const ResultSceneArgs args =
-		{
+		const ResultSceneArgs args = {
 			.chartFilePath = FilePath(m_gameMain.chartFilePath()),
 			.chartData = m_gameMain.chartData(), // TODO: shared_ptrでコピーを避ける?
 			.playResult = m_gameMain.playResult(),
 			.courseState = m_courseState,
 			.selectSearchParams = m_selectSearchParams,
 		};
-		{ ksmaudio::qa::Scope transition{"request.ResultScene",true}; requestNextScene<ResultScene>(args); }
+		{
+			ksmaudio::qa::Scope transition{ "request.ResultScene", true };
+			requestNextScene<ResultScene>(args);
+		}
 	}
 }
 
 void PlayScene::updateFadeOut()
 {
-    ksmaudio::qa::Scope qaScope{"PlayScene.fadeOut.update",false};
+	ksmaudio::qa::Scope qaScope{ "PlayScene.fadeOut.update", false };
 	m_commonOverlay.update(noco::HitTestEnabledYN::No);
 
 	// フェードアウト中もゲームの更新は継続
@@ -284,7 +290,7 @@ void PlayScene::updateFadeOut()
 
 void PlayScene::draw() const
 {
-    ksmaudio::qa::Scope qaScope{"PlayScene.draw",false};
+	ksmaudio::qa::Scope qaScope{ "PlayScene.draw", false };
 	m_gameMain.draw();
 	m_commonOverlay.draw();
 }
@@ -396,7 +402,7 @@ namespace
 
 void PlayScene::showAutoSyncSaveDialog()
 {
-    ksmaudio::qa::Scope qaScope{"AutoSync.saveDialog",true};
+	ksmaudio::qa::Scope qaScope{ "AutoSync.saveDialog", true };
 	const int32 offsetMs = m_gameMain.timingAdjustOffsetMs();
 	if (offsetMs == 0 || m_isAutoPlay || m_testPlayOption.has_value())
 	{
@@ -409,7 +415,7 @@ void PlayScene::showAutoSyncSaveDialog()
 	const String offsetStr = U"{:+}"_fmt(offsetMs);
 	const String message = I18n::Get(I18n::Play::AutoSyncSaveConfirm, offsetStr, currentOffset, newOffset);
 
-    ksmaudio::qa::Scope dialog{"dialog.AutoSync.YES_NO",true};
+	ksmaudio::qa::Scope dialog{ "dialog.AutoSync.YES_NO", true };
 	const auto result = MessageBoxUtils::ShowYesNo(message, MessageBoxStyle::Question);
 	if (result == MessageBoxResult::OK)
 	{
@@ -427,15 +433,22 @@ void PlayScene::showAutoSyncSaveDialog()
 
 Co::Task<void> PlayScene::fadeOut()
 {
-    ksmaudio::qa::Scope qaScope{"PlayScene.fadeOut",true};
+	ksmaudio::qa::Scope qaScope{ "PlayScene.fadeOut", true };
 	// フェードアウト中もBack入力を受け付けるため、updateFadeOutを実行
-	const auto updateRunner = Co::UpdaterTask([this] { updateFadeOut(); }).runScoped();
+	const auto updateRunner = Co::UpdaterTask([this]
+											  {
+												  updateFadeOut();
+											  })
+								  .runScoped();
 
 	m_gameMain.startBGMFadeOut(m_fadeOutDuration);
 
 	co_await Co::Any(
 		Co::ScreenFadeOut(m_fadeOutDuration),
-		Co::WaitUntil([this] { return m_backButtonPressedDuringFadeOut; }));
+		Co::WaitUntil([this]
+					  {
+						  return m_backButtonPressedDuringFadeOut;
+					  }));
 
 	showAutoSyncSaveDialog();
 }

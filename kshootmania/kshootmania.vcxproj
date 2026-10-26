@@ -18,6 +18,9 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>kshootmania</ProjectName>
   </PropertyGroup>
+  <PropertyGroup>
+    <KsmEnableDiagnostics Condition="'$(KsmEnableDiagnostics)' == ''">0</KsmEnableDiagnostics>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -67,7 +70,7 @@
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_ENABLE_EXTENDED_ALIGNED_STORAGE;_SILENCE_CXX20_CISO646_REMOVED_WARNING;_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS;SQLITE_ENABLE_COLUMN_METADATA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>KSM_ENABLE_DIAGNOSTICS=$(KsmEnableDiagnostics);_DEBUG;_WINDOWS;_ENABLE_EXTENDED_ALIGNED_STORAGE;_SILENCE_CXX20_CISO646_REMOVED_WARNING;_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS;SQLITE_ENABLE_COLUMN_METADATA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -94,7 +97,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_ENABLE_EXTENDED_ALIGNED_STORAGE;_SILENCE_CXX20_CISO646_REMOVED_WARNING;_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS;SQLITE_ENABLE_COLUMN_METADATA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>KSM_ENABLE_DIAGNOSTICS=$(KsmEnableDiagnostics);NDEBUG;_WINDOWS;_ENABLE_EXTENDED_ALIGNED_STORAGE;_SILENCE_CXX20_CISO646_REMOVED_WARNING;_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS;SQLITE_ENABLE_COLUMN_METADATA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -117,6 +120,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Vertical\ModOptionsScene.cpp" />
+    <ClCompile Include="src\Diagnostics\DiagnosticRunner.cpp" />
     <ClCompile Include="ThirdParty\SQLiteCpp\sqlite3\sqlite3.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -402,6 +407,8 @@
     <None Include="App\engine\soundfont\GMGSx.sf2.zstdcmp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Diagnostics\DiagnosticRunner.hpp" />
+    <ClInclude Include="src\Diagnostics\DiagnosticArguments.hpp" />
     <ClInclude Include="src\Addon\AutoMuteAddon.hpp" />
     <ClInclude Include="src\Addon\CommonSEAddon.hpp" />
     <ClInclude Include="src\Addon\DisableIMEAddon.hpp" />
@@ -410,6 +417,7 @@
     <ClInclude Include="src\Common\Encoding.hpp" />
     <ClInclude Include="src\Common\EnumUtils.hpp" />
     <ClInclude Include="src\Common\FrameRateLimit.hpp" />
+    <ClInclude Include="src\Common\WindowsWaitableTimer.hpp" />
     <ClInclude Include="src\Common\FsUtils.hpp" />
     <ClInclude Include="src\Common\IMEUtils.hpp" />
     <ClInclude Include="src\Common\MathUtils.hpp" />
@@ -623,6 +631,56 @@
   <ItemGroup>
     <Font Include="App\assets\font\corporate-logo\Corporate-Logo-Medium-ver3.otf" />
     <Font Include="App\assets\font\tektur-ksm\Tektur-KSM-Medium.ttf" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Common\AudioOutputRestart.hpp" />
+    <ClInclude Include="src\Common\AudioOutputRestartPolicy.hpp" />
+    <ClInclude Include="src\Common\AudioOutputSettings.hpp" />
+    <ClInclude Include="src\Common\SkinPreset.hpp" />
+    <ClInclude Include="src\Diagnostics\ApsFixture.hpp" />
+    <ClInclude Include="src\Diagnostics\ApsVideoFixture.hpp" />
+    <ClInclude Include="src\Diagnostics\EnhancedMenuFixture.hpp" />
+    <ClInclude Include="src\Diagnostics\JudgeSettingFixture.hpp" />
+    <ClInclude Include="src\Diagnostics\RenderGeometryFixture.hpp" />
+    <ClInclude Include="src\Diagnostics\SkinPresetFixture.hpp" />
+    <ClInclude Include="src\Graphics\GameRenderContext.hpp" />
+    <ClCompile Include="src\HighScore\AdditionalScoreIO.cpp" />
+    <ClInclude Include="src\HighScore\AdditionalScoreIO.hpp" />
+    <ClInclude Include="src\Input\MenuInputProfiles.hpp" />
+    <ClInclude Include="src\MusicGame\GaugePresentation.hpp" />
+    <ClInclude Include="src\MusicGame\Graphics\ViewportGeometry.hpp" />
+    <ClCompile Include="src\MusicGame\JudgeSettingSession.cpp" />
+    <ClInclude Include="src\MusicGame\JudgeSettingSession.hpp" />
+    <ClCompile Include="src\MusicGame\Judgment\NormalGaugeState.cpp" />
+    <ClInclude Include="src\MusicGame\Judgment\NormalGaugeState.hpp" />
+    <ClInclude Include="src\MusicGame\Judgment\RecentTimingWindow.hpp" />
+    <ClCompile Include="src\Scenes\Title\JudgeSettingOverlay.cpp" />
+    <ClInclude Include="src\Scenes\Title\JudgeSettingOverlay.hpp" />
+    <ClInclude Include="src\Scenes\Title\ModMenuButtons.hpp" />
+    <ClInclude Include="src\Scenes\Title\SkinOverlay.hpp" />
+    <ClInclude Include="src\UI\ModMenuStyle.hpp" />
+    <ClInclude Include="src\Vertical\DepthImageSettings.hpp" />
+    <ClInclude Include="src\Vertical\DiagnosticInputReplay.hpp" />
+    <ClInclude Include="src\Vertical\DisplayTransitionTest.hpp" />
+    <ClInclude Include="src\Vertical\JudgmentReplayTest.hpp" />
+    <ClInclude Include="src\Vertical\MenuContentLayout.hpp" />
+    <ClInclude Include="src\Vertical\MenuEntryGate.hpp" />
+    <ClInclude Include="src\Vertical\MenuInputTest.hpp" />
+    <ClInclude Include="src\Vertical\ModOptionsScene.hpp" />
+    <ClInclude Include="src\Vertical\OptionFlowTest.hpp" />
+    <ClInclude Include="src\Vertical\OptionsPresentation.hpp" />
+    <ClInclude Include="src\Vertical\ProjectiveWall.hpp" />
+    <ClInclude Include="src\Vertical\SpinRegression.hpp" />
+    <ClInclude Include="src\Vertical\VerticalCameraProfile.hpp" />
+    <ClInclude Include="src\Vertical\VerticalDisplay.hpp" />
+    <ClInclude Include="src\Vertical\VerticalHUDLayout.hpp" />
+    <ClInclude Include="src\Vertical\VerticalLaneGeometry.hpp" />
+    <ClInclude Include="src\Vertical\VerticalLayout.hpp" />
+    <ClInclude Include="src\Vertical\VerticalModConfig.hpp" />
+    <ClInclude Include="src\Vertical\VerticalRenderPreview.hpp" />
+    <ClInclude Include="src\Vertical\VerticalResources.hpp" />
+    <ClInclude Include="src\Vertical\VerticalSelfTest.hpp" />
+    <ClInclude Include="src\Vertical\VerticalTunnelWarp.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

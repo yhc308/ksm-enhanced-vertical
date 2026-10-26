@@ -1,4 +1,4 @@
-#include "CourseInfo.hpp"
+﻿#include "CourseInfo.hpp"
 #include "Common/FsUtils.hpp"
 #include "Common/Encoding.hpp"
 

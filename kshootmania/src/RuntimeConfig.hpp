@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Common/CommonDefines.hpp"
 #include "MusicGame/TimingFeedback.hpp"
 
@@ -6,15 +6,15 @@
 // config.iniには保存されず、起動時にデフォルト値にリセットされる
 namespace RuntimeConfig
 {
-    FastSlowMode LoadFastSlowModeFromConfigIni();
-    MusicGame::TimingHudSettings LoadTimingHudSettingsFromConfigIni();
+	FastSlowMode LoadFastSlowModeFromConfigIni();
+	MusicGame::TimingHudSettings LoadTimingHudSettingsFromConfigIni();
 	[[nodiscard]]
 	GaugeType GetGaugeType();
 
 	void SetGaugeType(GaugeType gaugeType);
-    bool GetApsEnabled();
-    void SetGaugeSelection(int32 selection);
-    int32 GetGaugeSelection();
+	bool GetApsEnabled();
+	void SetGaugeSelection(int32 selection);
+	int32 GetGaugeSelection();
 
 	[[nodiscard]]
 	TurnMode GetTurnMode();

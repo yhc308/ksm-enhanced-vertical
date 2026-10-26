@@ -418,7 +418,7 @@ TEST_CASE("Parse parameter value sets (Off/OnMin/OnMax)", "[AudioEffect][Param][
 		success = false;
 		const ValueSet vs2 = StrToValueSet(Type::kPitch, "0>6-12.0", &success);
 		REQUIRE(success == true);
-		REQUIRE(vs2.off == Approx(-48.0f)); // offは影響を受けない
+		REQUIRE(vs2.off == Approx(-48.0f));	 // offは影響を受けない
 		REQUIRE(vs2.onMin == Approx(54.0f)); // 6.0(量子化あり)ではなく54.0(量子化なし)
 		REQUIRE(vs2.onMax == Approx(60.0f));
 	}

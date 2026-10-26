@@ -1,4 +1,4 @@
-#include "LaserSlamSE.hpp"
+﻿#include "LaserSlamSE.hpp"
 #include "AudioDefines.hpp"
 
 namespace MusicGame::Audio
@@ -38,9 +38,7 @@ namespace MusicGame::Audio
 	}
 
 	LaserSlamSE::LaserSlamSE(const kson::ChartData& chartData, const kson::TimingCache& timingCache, FilePathView parentPath, bool isAutoPlaySE, double folderVolumeScale)
-		: m_defaultSlamSound(kDefaultSlamSoundPath, GetMaxPolyphony(chartData))
-		, m_isAutoPlaySE(isAutoPlaySE)
-		, m_folderVolumeScale(folderVolumeScale)
+		: m_defaultSlamSound(kDefaultSlamSoundPath, GetMaxPolyphony(chartData)), m_isAutoPlaySE(isAutoPlaySE), m_folderVolumeScale(folderVolumeScale)
 	{
 		// SE自動再生モード用にPulseから秒数への変換マップを作成
 		if (m_isAutoPlaySE)
@@ -90,10 +88,13 @@ namespace MusicGame::Audio
 
 	void LaserSlamSE::update(const kson::ChartData& chartData, const GameStatus& gameStatus)
 	{
-        if (!m_isAutoPlaySE && ksmaudio::IsASIOActive() && IsScheduledAudioReady() && m_manualGeneration != s_scheduling.clock.generation) {
-            if (m_manualGeneration != 0) for (std::size_t i=0; i<m_lastPlayedTimeSecs.size(); ++i) m_lastPlayedTimeSecs[i]=gameStatus.laserLaneStatus[i].lastLaserSlamJudgedTimeSec;
-            m_manualGeneration=s_scheduling.clock.generation;
-        }
+		if (!m_isAutoPlaySE && ksmaudio::IsASIOActive() && IsScheduledAudioReady() && m_manualGeneration != s_scheduling.clock.generation)
+		{
+			if (m_manualGeneration != 0)
+				for (std::size_t i = 0; i < m_lastPlayedTimeSecs.size(); ++i)
+					m_lastPlayedTimeSecs[i] = gameStatus.laserLaneStatus[i].lastLaserSlamJudgedTimeSec;
+			m_manualGeneration = s_scheduling.clock.generation;
+		}
 		if (m_isAutoPlaySE)
 		{
 			// SE自動再生モードの場合、ノーツタイミングで効果音を再生
@@ -108,16 +109,18 @@ namespace MusicGame::Audio
 
 	void LaserSlamSE::updateByNoteTime(const kson::ChartData& chartData, const GameStatus& gameStatus)
 	{
-        if (ksmaudio::IsASIOActive()) {
-            if (!IsScheduledAudioReady()) return;
-            if (m_asioGeneration != s_scheduling.clock.generation) {
-                m_asioGeneration = s_scheduling.clock.generation;
-                m_asioRestartTime = gameStatus.currentTimeSecForAudioProc - 0.000001;
-                m_autoPlaySELastPulses.fill(kPastPulse);
-            }
-        }
-        const double currentTimeSecForAudioProc = ksmaudio::IsASIOActive() ?
-            ScheduledAudioHorizon(gameStatus.currentTimeSecForAudioProc) : gameStatus.currentTimeSecForAudioProc + SELatencySec();
+		if (ksmaudio::IsASIOActive())
+		{
+			if (!IsScheduledAudioReady())
+				return;
+			if (m_asioGeneration != s_scheduling.clock.generation)
+			{
+				m_asioGeneration = s_scheduling.clock.generation;
+				m_asioRestartTime = gameStatus.currentTimeSecForAudioProc - 0.000001;
+				m_autoPlaySELastPulses.fill(kPastPulse);
+			}
+		}
+		const double currentTimeSecForAudioProc = ksmaudio::IsASIOActive() ? ScheduledAudioHorizon(gameStatus.currentTimeSecForAudioProc) : gameStatus.currentTimeSecForAudioProc + SELatencySec();
 
 		const auto fnGetVolumeScaleByNote = [](const kson::ChartData& chartData, std::size_t laneIdx, kson::Pulse slamY) -> double
 		{
@@ -178,7 +181,8 @@ namespace MusicGame::Audio
 					}
 
 					const double slamTimeSec = m_pulseToSec.at(slamY);
-                    if (ksmaudio::IsASIOActive() && slamTimeSec < m_asioRestartTime) continue;
+					if (ksmaudio::IsASIOActive() && slamTimeSec < m_asioRestartTime)
+						continue;
 					if (slamTimeSec > currentTimeSecForAudioProc)
 					{
 						// まだ先の直角なのでこのレーンの処理を終了
@@ -195,19 +199,25 @@ namespace MusicGame::Audio
 					const std::size_t oppositeLaneIdx = 1U - i;
 
 					// 2レーン同時直角の場合、大きい方の音量を優先する
-                    if (ksmaudio::IsASIOActive()) {
-                        const auto& oppositeLane = chartData.note.laser[oppositeLaneIdx];
-                        const auto section = kson::GraphSectionAt(oppositeLane, slamY);
-                        if (section != oppositeLane.end()) {
-                            const auto point = section->second.v.find(slamY - section->first);
-                            if (point != section->second.v.end() && !kson::AlmostEquals(point->second.v.v, point->second.v.vf)) {
-                                const double oppositeScale = fnGetVolumeScaleByNote(chartData, oppositeLaneIdx, slamY);
-                                if (oppositeScale > volumeScaleByNote || (oppositeScale == volumeScaleByNote && oppositeLaneIdx < i)) {
-                                    m_lastPlayedTimeSecs[i] = slamTimeSec; m_autoPlaySELastPulses[i] = slamY; continue;
-                                }
-                            }
-                        }
-                    }
+					if (ksmaudio::IsASIOActive())
+					{
+						const auto& oppositeLane = chartData.note.laser[oppositeLaneIdx];
+						const auto section = kson::GraphSectionAt(oppositeLane, slamY);
+						if (section != oppositeLane.end())
+						{
+							const auto point = section->second.v.find(slamY - section->first);
+							if (point != section->second.v.end() && !kson::AlmostEquals(point->second.v.v, point->second.v.vf))
+							{
+								const double oppositeScale = fnGetVolumeScaleByNote(chartData, oppositeLaneIdx, slamY);
+								if (oppositeScale > volumeScaleByNote || (oppositeScale == volumeScaleByNote && oppositeLaneIdx < i))
+								{
+									m_lastPlayedTimeSecs[i] = slamTimeSec;
+									m_autoPlaySELastPulses[i] = slamY;
+									continue;
+								}
+							}
+						}
+					}
 					if (!ksmaudio::IsASIOActive() && slamY == m_autoPlaySELastPulses[oppositeLaneIdx])
 					{
 						const double oppositeVolumeScaleByNote = fnGetVolumeScaleByNote(chartData, oppositeLaneIdx, slamY);
@@ -241,7 +251,8 @@ namespace MusicGame::Audio
 					}
 
 					// 直角音を再生
-                    if (!PlayScheduledSound(*pSlamSound, slamTimeSec, gameStatus.currentTimeSecForAudioProc, volume * volumeScaleByNote * m_folderVolumeScale)) continue;
+					if (!PlayScheduledSound(*pSlamSound, slamTimeSec, gameStatus.currentTimeSecForAudioProc, volume * volumeScaleByNote * m_folderVolumeScale))
+						continue;
 					m_lastPlayedTimeSecs[i] = slamTimeSec;
 					m_autoPlaySELastPulses[i] = slamY;
 				}
@@ -339,7 +350,8 @@ namespace MusicGame::Audio
 			}
 
 			// 直角音を再生
-            if (!PlayInputSound(*pSlamSound, gameStatus.currentTimeSec, gameStatus.currentTimeSecForAudioProc, volume * volumeScaleByNote * m_folderVolumeScale)) continue;
+			if (!PlayInputSound(*pSlamSound, gameStatus.currentTimeSec, gameStatus.currentTimeSecForAudioProc, volume * volumeScaleByNote * m_folderVolumeScale))
+				continue;
 			m_lastPlayedTimeSecs[i] = laneStatus.lastLaserSlamJudgedTimeSec;
 		}
 	}

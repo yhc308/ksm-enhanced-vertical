@@ -1,4 +1,4 @@
-#include "AssetManagement.hpp"
+﻿#include "AssetManagement.hpp"
 
 namespace AssetManagement
 {
@@ -41,20 +41,18 @@ namespace AssetManagement
 
 		void RegisterPixelShaderAssets()
 		{
-            const FilePath shaderDir = FsUtils::GetResourcePath(U"shaders");
+			const FilePath shaderDir = FsUtils::GetResourcePath(U"shaders");
 #ifdef __EMSCRIPTEN__
-            PixelShaderAsset::Register(U"ApsColorDodge", ESSL{FilePath{FileSystem::PathAppend(shaderDir,U"aps_color_dodge.essl.frag")},{{U"PSConstants2D",0}}});
+			PixelShaderAsset::Register(U"ApsColorDodge", ESSL{ FilePath{ FileSystem::PathAppend(shaderDir, U"aps_color_dodge.essl.frag") }, { { U"PSConstants2D", 0 } } });
 #else
-            PixelShaderAsset::Register(U"ApsColorDodge", HLSL{FilePath{FileSystem::PathAppend(shaderDir,U"aps_color_dodge.hlsl")},U"PS"}
-                | GLSL{FilePath{FileSystem::PathAppend(shaderDir,U"aps_color_dodge.frag")},{{U"PSConstants2D",0}}});
+			PixelShaderAsset::Register(U"ApsColorDodge", HLSL{ FilePath{ FileSystem::PathAppend(shaderDir, U"aps_color_dodge.hlsl") }, U"PS" } | GLSL{ FilePath{ FileSystem::PathAppend(shaderDir, U"aps_color_dodge.frag") }, { { U"PSConstants2D", 0 } } });
 #endif
 #ifdef __EMSCRIPTEN__
 			PixelShaderAsset::Register(U"MonochromeAlpha",
-				ESSL{ FilePath{ FileSystem::PathAppend(shaderDir, U"monochrome_alpha.essl.frag") }, { { U"PSConstants2D", 0 } } });
+									   ESSL{ FilePath{ FileSystem::PathAppend(shaderDir, U"monochrome_alpha.essl.frag") }, { { U"PSConstants2D", 0 } } });
 #else
 			PixelShaderAsset::Register(U"MonochromeAlpha",
-				HLSL{ FilePath{ FileSystem::PathAppend(shaderDir, U"monochrome_alpha.hlsl") }, U"PS" }
-				| GLSL{ FilePath{ FileSystem::PathAppend(shaderDir, U"monochrome_alpha.frag") }, { { U"PSConstants2D", 0 } } });
+									   HLSL{ FilePath{ FileSystem::PathAppend(shaderDir, U"monochrome_alpha.hlsl") }, U"PS" } | GLSL{ FilePath{ FileSystem::PathAppend(shaderDir, U"monochrome_alpha.frag") }, { { U"PSConstants2D", 0 } } });
 #endif
 		}
 
