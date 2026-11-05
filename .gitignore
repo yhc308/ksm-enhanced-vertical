@@ -494,3 +494,9 @@ __pycache__/
 # Installer and release source documentation
 !/docs/MOD_INSTALLER*.md
 !/docs/RELEASE_0.5.1-beta1.md
+
+# Versioned update and migration guide
+!/docs/UPDATE_0.5.4-beta4.md
+
+# Required Windows long-path application manifest
+!/kshootmania/app.manifest

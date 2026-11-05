@@ -8,11 +8,12 @@ private:
 	std::shared_ptr<noco::Canvas> m_canvas;
 	String m_titleText;
 	String m_bodyText;
+	bool m_detailedError = false;
 
 	Co::Task<void> start() override;
 
 	void draw() const override;
 
 public:
-	SimpleDialog(String titleText, String bodyText);
+	SimpleDialog(String titleText, String bodyText, bool detailedError = false);
 };

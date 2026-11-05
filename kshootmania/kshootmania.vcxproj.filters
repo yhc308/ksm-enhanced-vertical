@@ -1222,6 +1222,9 @@
     <ClInclude Include="src\MusicGame\Graphics\Highway\Highway3DGraphics.hpp">
       <Filter>Header Files\MusicGame\Graphics\Highway</Filter>
     </ClInclude>
+    <ClInclude Include="src\MusicGame\Graphics\Highway\HighwayArrival.hpp">
+      <Filter>Header Files\MusicGame\Graphics\Highway</Filter>
+    </ClInclude>
     <ClInclude Include="src\MusicGame\Graphics\Highway\Note\NoteGraphicsUtils.hpp">
       <Filter>Header Files\MusicGame\Graphics\Highway\Note</Filter>
     </ClInclude>
@@ -1622,6 +1625,7 @@
     <ClInclude Include="src\Diagnostics\EnhancedMenuFixture.hpp"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\Diagnostics\JudgeSettingFixture.hpp"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\Diagnostics\RenderGeometryFixture.hpp"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\Diagnostics\LaserRenderFixture.hpp"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\Diagnostics\SkinPresetFixture.hpp"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\Graphics\GameRenderContext.hpp"><Filter>Header Files\Graphics</Filter></ClInclude>
     <ClCompile Include="src\HighScore\AdditionalScoreIO.cpp"><Filter>Source Files\HighScore</Filter></ClCompile>
@@ -1661,5 +1665,22 @@
     <ClInclude Include="src\Vertical\VerticalResources.hpp"></ClInclude>
     <ClInclude Include="src\Vertical\VerticalSelfTest.hpp"></ClInclude>
     <ClInclude Include="src\Vertical\VerticalTunnelWarp.hpp"></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Common\CommandLine.hpp"><Filter>Header Files\Common</Filter></ClInclude>
+    <ClInclude Include="src\Common\SongLoadDiagnostics.hpp"><Filter>Header Files\Common</Filter></ClInclude>
+    <ClInclude Include="src\Diagnostics\ChartLoadFixture.hpp"><Filter>Header Files</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Common\CsvUtils.hpp"><Filter>Header Files\Common</Filter></ClInclude>
+    <ClInclude Include="src\Diagnostics\UnicodePathFixture.hpp"><Filter>Header Files</Filter></ClInclude>
+    <Manifest Include="app.manifest"><Filter>Resource Files</Filter></Manifest>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\Common\ErrorReporting.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClInclude Include="src\Common\ErrorReporting.hpp"><Filter>Header Files\Common</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Diagnostics\ErrorReportFixture.hpp"><Filter>Header Files</Filter></ClInclude>
   </ItemGroup>
 </Project>

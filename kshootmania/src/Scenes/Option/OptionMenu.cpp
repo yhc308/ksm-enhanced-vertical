@@ -74,6 +74,7 @@ Array<OptionMenu::SettingItemParams> OptionMenu::getSettingItemParamsList() cons
 			.name = m_fields[i].name(),
 			.value = m_fields[i].valueDisplayString(),
 			.selected = (i == cursorIdx),
+			.enabled = m_fields[i].enabled(),
 			.valueArrowIndex = static_cast<int32>(arrowType),
 			.valueLeftArrowVisible = arrowType == OptionMenuField::kArrowTypeLeft || arrowType == OptionMenuField::kArrowTypeLeftRight,
 			.valueRightArrowVisible = arrowType == OptionMenuField::kArrowTypeRight || arrowType == OptionMenuField::kArrowTypeLeftRight,

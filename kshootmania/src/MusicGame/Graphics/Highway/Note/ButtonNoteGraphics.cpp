@@ -142,6 +142,12 @@ namespace MusicGame::Graphics
 
 				for (const auto& [y, note] : lane)
 				{
+					if (note.length <= 0)
+					{
+						// ここではロングノーツ以外は描画しない
+						continue;
+					}
+
 					const int32 positionStartY = highwayScrollContext.getPositionY(y);
 					if (!hasNegativeScrollSpeed && positionStartY < 0)
 					{
@@ -162,11 +168,6 @@ namespace MusicGame::Graphics
 						continue;
 					}
 
-					if (note.length <= 0)
-					{
-						// ここではロングノーツ以外は描画しない
-						continue;
-					}
 
 					const int32 height = positionStartY - positionEndY;
 					if (height == 0)

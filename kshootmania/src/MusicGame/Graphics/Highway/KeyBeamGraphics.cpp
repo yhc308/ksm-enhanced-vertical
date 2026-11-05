@@ -26,6 +26,10 @@ namespace MusicGame::Graphics
 
 	void KeyBeamGraphics::draw(const GameStatus& gameStatus, const ViewStatus& viewStatus, const HighwayRenderTexture& target) const
 	{
+		const auto& settings = SkinPreset::Current();
+		if (settings.keyBeamOpacityPercent == 0)
+			return;
+		const double lengthScale = settings.keyBeamLengthPercent / 100.0;
 		const ScopedRenderTarget2D renderTarget(target.additiveTexture());
 		const Transformer2D layout{ Mat3x2::Scale(GameRender::VerticalEnabled() ? Vertical::kButtonWidthScale : 1.0, 1.0, Vec2{ static_cast<double>(kHighwayTextureWideCenterX), 0 }) };
 		const ScopedRenderStates2D renderState(BlendState::Additive);
@@ -67,6 +71,11 @@ namespace MusicGame::Graphics
 				kBTKeyBeamTextureSize.x * widthRate,
 				kBTKeyBeamTextureSize.y);
 
+			alpha *= settings.keyBeamOpacityPercent / 100.0;
+			// Keep each existing animated beam's foot, including the FX offset.
+			const double footY = kKeyBeamPositionOffset.y + kBTKeyBeamTextureSize.y +
+								 (isBT ? 0.0 : kFXKeyBeamTextureSize.y * (0.5 - widthRate / 2));
+			const Transformer2D length{ Mat3x2::Scale(1.0, lengthScale, Vec2{ 0, footY }) };
 			const double dLaneIdx = static_cast<double>(laneIdx);
 
 			if (isBT)

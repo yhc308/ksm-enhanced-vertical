@@ -58,7 +58,7 @@ namespace MusicGame::Graphics
 	{
 	}
 
-	void Highway3DGraphics::update(const ViewStatus& viewStatus)
+	void Highway3DGraphics::update(const ViewStatus& viewStatus, const BasicCamera3D* displayCamera)
 	{
 		// メッシュの頂点座標を更新
 		// HSP版の該当箇所: https://github.com/kshootmania/ksm-v1/blob/d2811a09e2d75dad5cc152d7c4073897061addb7/src/scene/play/play_draw_frame.hsp#L779-L821
@@ -118,9 +118,11 @@ namespace MusicGame::Graphics
 							  ((m_meshData.vertices[2].pos + m_meshData.vertices[3].pos - m_meshData.vertices[0].pos - m_meshData.vertices[1].pos) * .5f) * static_cast<float>(hitT);
 		if (GameRender::VerticalEnabled())
 		{
-			const auto camera = Vertical::MakeCamera(GameRender::Size(), Vertical::ModConfig::Load().layout);
-			const auto span = Vertical::DisplayLaneSpan(m_meshData, camera, viewStatus);
-			auto display = Vertical::DisplayHighwayMesh(m_meshData, span);
+			const auto camera = displayCamera ? *displayCamera : Vertical::MakeCamera(GameRender::Size(), Vertical::ModConfig::Load().layout);
+			m_displayLaneSpan = Vertical::DisplayLaneSpan(m_meshData, camera, viewStatus);
+			const auto& span = m_displayLaneSpan;
+			auto& display = m_verticalMeshData;
+			Vertical::UpdateDisplayHighwayMesh(display, m_meshData, span);
 			m_displayNoteAnchor = (display.vertices[2].pos + display.vertices[3].pos) * .5f;
 			if (ModDiagnostics::Arguments().contains(U"--vertical-preview-geometry"))
 			{
@@ -137,8 +139,11 @@ namespace MusicGame::Graphics
 					writer.writeln(U"{},{},{},{},{},{},{},{}"_fmt(anchor.x, anchor.y, bar.x, bar.y, end.y, (anchor - bar).length(), (end.y - bar.y) * 1280 / GameRender::Height(), span.rayValid));
 				}
 			}
-			if (m_trianglesFlipped)
+			if (m_verticalTrianglesFlipped != m_trianglesFlipped)
+			{
 				display.flipTriangles();
+				m_verticalTrianglesFlipped = m_trianglesFlipped;
+			}
 			m_verticalMesh.fill(display);
 		}
 	}

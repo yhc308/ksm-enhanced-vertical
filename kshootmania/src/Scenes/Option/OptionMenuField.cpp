@@ -208,6 +208,7 @@ OptionMenuField::OptionMenuField(const CreateInfo& createInfo)
 	, m_suffixStrNegative(createInfo.suffixStrNegative)
 	, m_valueDisplayNamePairs(createInfo.valueDisplayNamePairs)
 	, m_onChangeCallback(createInfo.onChangeCallback)
+	, m_isEnabled(createInfo.isEnabled)
 	, m_menu(createInfo.valueStep == 0
 		? MakeMenuEnum(static_cast<int32>(createInfo.valueDisplayNamePairs.size()), FindDefaultCursor(m_configIniKey, m_isEnum, m_valueDisplayNamePairs, createInfo.valueDefault))
 		: MakeMenuInt(createInfo.valueMin, createInfo.valueMax, FindDefaultCursor(m_configIniKey, m_isEnum, m_valueDisplayNamePairs, createInfo.valueDefault), createInfo.valueStep))
@@ -221,6 +222,7 @@ bool OptionMenuField::update()
 
 bool OptionMenuField::update(int32 externalValueDelta)
 {
+	if (!enabled()) return false;
 	const int32 cursorPrev = m_menu.cursor();
 
 	m_menu.updateWithExternalDelta(externalValueDelta);
@@ -311,5 +313,5 @@ const String& OptionMenuField::name() const
 
 OptionMenuField::ArrowType OptionMenuField::arrowType() const
 {
-	return GetMenuFieldValueArrowType(m_menu);
+	return enabled() ? GetMenuFieldValueArrowType(m_menu) : kArrowTypeNone;
 }

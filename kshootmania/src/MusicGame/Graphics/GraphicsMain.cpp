@@ -44,7 +44,7 @@ namespace MusicGame::Graphics
 	namespace
 	{
 		constexpr double kCameraVerticalFOV = 45_deg;
-		constexpr Vec3 kCameraPosition = { 0.0, 45.0, -366.0 };
+		constexpr Vec3 kCameraPosition = HighwayArrival::kUpstreamCameraEye;
 
 		constexpr double kSin15Deg = 0.2588190451;
 		constexpr double kCos15Deg = 0.9659258263;
@@ -448,8 +448,7 @@ namespace MusicGame::Graphics
 			result.push_back(p.x);
 			result.push_back(p.y);
 		};
-		const auto& source = m_highway3DGraphics.sourceMesh();
-		const auto mesh = GameRender::VerticalEnabled() ? Vertical::DisplayHighwayMesh(source, Vertical::DisplayLaneSpan(source, m_camera, view)) : source;
+		const auto& mesh = m_highway3DGraphics.displayMesh();
 		const double angle = Math::ToRadians(view.camStatus.rotationDeg + view.camStatus.rotationDegHighway) + view.tiltRadians;
 		const auto origin = Camera::CamShiftXMatrix(view.camStatus.shiftX) * GearTiltTransformMatrix(angle);
 		for (const auto& vertex : mesh.vertices)
@@ -472,7 +471,7 @@ namespace MusicGame::Graphics
 	{
 		m_comboOverlay.update(viewStatus, gameStatus.currentTimeSec);
 		m_scoreAnimator.update(viewStatus.score);
-		m_highway3DGraphics.update(viewStatus);
+		m_highway3DGraphics.update(viewStatus, &m_camera);
 		if (m_vertical && m_playOption.showLayer && m_depthEnabled)
 		{
 			auto referenceView = viewStatus;
@@ -482,10 +481,10 @@ namespace MusicGame::Graphics
 			const float farZ = Highway3DGraphics::neutralUpperMidpoint(viewStatus.camStatus.useLegacyZoomTop).z;
 			for (int i = 0; i < 4; ++i)
 				m_referenceGear.vertices[i].pos = { source.vertices[i].pos.x, 0, i < 2 ? farZ : -kHighwayPlaneSize.y / 2 };
-			const auto quad = [&](const MeshData& mesh, const ViewStatus& view)
+			const auto quad = [&](const MeshData& mesh, const ViewStatus& view, const Vertical::LaneSpan* cachedSpan = nullptr)
 			{
 				Vertical::ProjectiveWall::GearQuad result{};
-				const auto span = Vertical::DisplayLaneSpan(mesh, m_camera, view);
+				const auto span = cachedSpan ? *cachedSpan : Vertical::DisplayLaneSpan(mesh, m_camera, view);
 				const auto origin = Vertical::HighwayOrigin(view);
 				const float half = kHighwayPlaneSize.x / 2 / static_cast<float>(Vertical::kHighwayUVScaleX);
 				const Float3 upper = (mesh.vertices[0].pos + mesh.vertices[1].pos) * .5f;
@@ -501,7 +500,7 @@ namespace MusicGame::Graphics
 			};
 			const double scaled = Camera::ScaledCamZoomBottomValue(viewStatus.camStatus.zoomBottom);
 			const double baseline = Abs(Camera::ScaledCamZoomBottomValue(scaled < 0 ? -100.0 : 100.0));
-			m_tunnelWarp.updateGear(m_camera, layerTransform(viewStatus), quad(source, viewStatus), quad(m_referenceGear, referenceView), scaled / baseline);
+			m_tunnelWarp.updateGear(m_camera, layerTransform(viewStatus), quad(source, viewStatus, &m_highway3DGraphics.displayLaneSpan()), quad(m_referenceGear, referenceView), scaled / baseline);
 		}
 		m_laserApproachIndicator.update(gameStatus, timingCache);
 		if (TimingHudCapture::Enabled() && ModDiagnostics::Arguments().contains(U"--play-judge-indicator-fixture"))

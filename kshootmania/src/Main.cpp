@@ -1,4 +1,5 @@
-﻿#include "Diagnostics/DiagnosticArguments.hpp"
+﻿#include "Common/ErrorReporting.hpp"
+#include "Diagnostics/DiagnosticArguments.hpp"
 #include "ksmaudio/Diagnostics.hpp"
 #include "Common/AudioOutputSettings.hpp"
 #include <Siv3D.hpp>
@@ -144,14 +145,14 @@ void OutputLicenseTxt()
 	bassFxLicense.title = U"BASS_FX";
 	bassFxLicense.copyright = U"Copyright (c) 2002-2018 Arthur Aminov (JOBnik!)\nhttp://www.jobnik.org";
 	bassFxLicense.text = U"BASS_FX is fully useable in commercial software, as long as credit is given.\n"
-		U"\n"
-		U"Credits:\n"
-		U"* BiQuad filters - Robert Bristow-Johnson\n"
-		U"* Peaking Equalizer (BiQuad filter) - Manu Webber\n"
-		U"* Tempo/Pitch/Rate/BPM [SoundTouch v2.0.0] - Copyright (c) 2002-2017 Olli Parviainen (LGPL license)\n"
-		U"* Auto Wah, Chorus, Distortion, Echo and Phaser - Copyright (c) 2000 Aleksey Smoli\n"
-		U"* Freeverb - Copyright (c) 2000 Jezar at Dreampoint (Public domain)\n"
-		U"* Pitch shifting using FFT [smbPitchShift v1.2] - Copyright (c) 1999-2009 Stephan M. Bernsee";
+						 U"\n"
+						 U"Credits:\n"
+						 U"* BiQuad filters - Robert Bristow-Johnson\n"
+						 U"* Peaking Equalizer (BiQuad filter) - Manu Webber\n"
+						 U"* Tempo/Pitch/Rate/BPM [SoundTouch v2.0.0] - Copyright (c) 2002-2017 Olli Parviainen (LGPL license)\n"
+						 U"* Auto Wah, Chorus, Distortion, Echo and Phaser - Copyright (c) 2000 Aleksey Smoli\n"
+						 U"* Freeverb - Copyright (c) 2000 Jezar at Dreampoint (Public domain)\n"
+						 U"* Pitch shifting using FFT [smbPitchShift v1.2] - Copyright (c) 1999-2009 Stephan M. Bernsee";
 	licenses.push_back(bassFxLicense);
 #else
 	// Web版のオーディオバックエンドで使用しているライブラリのライセンス情報を追加
@@ -159,41 +160,41 @@ void OutputLicenseTxt()
 	miniaudioLicense.title = U"miniaudio";
 	miniaudioLicense.copyright = U"Copyright (c) 2025 David Reid\nhttps://miniaud.io/";
 	miniaudioLicense.text = U"This software is available as a choice of the following licenses (MIT No Attribution / Public Domain).\n"
-		U"\n"
-		U"Permission is hereby granted, free of charge, to any person obtaining a copy of\n"
-		U"this software and associated documentation files (the \"Software\"), to deal in\n"
-		U"the Software without restriction, including without limitation the rights to\n"
-		U"use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies\n"
-		U"of the Software, and to permit persons to whom the Software is furnished to do so.\n"
-		U"\n"
-		U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
-		U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
-		U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
-		U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
-		U"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
-		U"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
+							U"\n"
+							U"Permission is hereby granted, free of charge, to any person obtaining a copy of\n"
+							U"this software and associated documentation files (the \"Software\"), to deal in\n"
+							U"the Software without restriction, including without limitation the rights to\n"
+							U"use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies\n"
+							U"of the Software, and to permit persons to whom the Software is furnished to do so.\n"
+							U"\n"
+							U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
+							U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
+							U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
+							U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
+							U"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
+							U"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
 	licenses.push_back(miniaudioLicense);
 
 	LicenseInfo stbVorbisLicense;
 	stbVorbisLicense.title = U"stb_vorbis";
 	stbVorbisLicense.copyright = U"Copyright (c) 2017 Sean Barrett\nhttps://github.com/nothings/stb";
 	stbVorbisLicense.text = U"This software is available as a choice of the following licenses (MIT License / Public Domain).\n"
-		U"\n"
-		U"Permission is hereby granted, free of charge, to any person obtaining a copy of\n"
-		U"this software and associated documentation files (the \"Software\"), to deal in\n"
-		U"the Software without restriction, including without limitation the rights to\n"
-		U"use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies\n"
-		U"of the Software, and to permit persons to whom the Software is furnished to do\n"
-		U"so, subject to the following conditions:\n"
-		U"The above copyright notice and this permission notice shall be included in all\n"
-		U"copies or substantial portions of the Software.\n"
-		U"\n"
-		U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
-		U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
-		U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
-		U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
-		U"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
-		U"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
+							U"\n"
+							U"Permission is hereby granted, free of charge, to any person obtaining a copy of\n"
+							U"this software and associated documentation files (the \"Software\"), to deal in\n"
+							U"the Software without restriction, including without limitation the rights to\n"
+							U"use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies\n"
+							U"of the Software, and to permit persons to whom the Software is furnished to do\n"
+							U"so, subject to the following conditions:\n"
+							U"The above copyright notice and this permission notice shall be included in all\n"
+							U"copies or substantial portions of the Software.\n"
+							U"\n"
+							U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
+							U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
+							U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
+							U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
+							U"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
+							U"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
 	licenses.push_back(stbVorbisLicense);
 #endif
 
@@ -202,22 +203,22 @@ void OutputLicenseTxt()
 	ksonLicense.title = U"libkson";
 	ksonLicense.copyright = U"Copyright (c) 2019-2022 masaka";
 	ksonLicense.text = U"Permission is hereby granted, free of charge, to any person obtaining a copy\n"
-		U"of this software and associated documentation files (the \"Software\"), to deal\n"
-		U"in the Software without restriction, including without limitation the rights\n"
-		U"to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n"
-		U"copies of the Software, and to permit persons to whom the Software is\n"
-		U"furnished to do so, subject to the following conditions:\n"
-		U"\n"
-		U"The above copyright notice and this permission notice shall be included in all\n"
-		U"copies or substantial portions of the Software.\n"
-		U"\n"
-		U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
-		U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
-		U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
-		U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
-		U"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
-		U"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n"
-		U"SOFTWARE.";
+					   U"of this software and associated documentation files (the \"Software\"), to deal\n"
+					   U"in the Software without restriction, including without limitation the rights\n"
+					   U"to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n"
+					   U"copies of the Software, and to permit persons to whom the Software is\n"
+					   U"furnished to do so, subject to the following conditions:\n"
+					   U"\n"
+					   U"The above copyright notice and this permission notice shall be included in all\n"
+					   U"copies or substantial portions of the Software.\n"
+					   U"\n"
+					   U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
+					   U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
+					   U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
+					   U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
+					   U"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
+					   U"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n"
+					   U"SOFTWARE.";
 	licenses.push_back(ksonLicense);
 
 	// ksmaxisのライセンス情報を追加
@@ -225,43 +226,43 @@ void OutputLicenseTxt()
 	ksmaxisLicense.title = U"ksmaxis";
 	ksmaxisLicense.copyright = U"Copyright (c) 2025 masaka";
 	ksmaxisLicense.text = U"Permission is hereby granted, free of charge, to any person obtaining a copy\n"
-		U"of this software and associated documentation files (the \"Software\"), to deal\n"
-		U"in the Software without restriction, including without limitation the rights\n"
-		U"to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n"
-		U"copies of the Software, and to permit persons to whom the Software is\n"
-		U"furnished to do so, subject to the following conditions:\n"
-		U"\n"
-		U"The above copyright notice and this permission notice shall be included in all\n"
-		U"copies or substantial portions of the Software.\n"
-		U"\n"
-		U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
-		U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
-		U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
-		U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
-		U"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
-		U"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n"
-		U"SOFTWARE.";
+						  U"of this software and associated documentation files (the \"Software\"), to deal\n"
+						  U"in the Software without restriction, including without limitation the rights\n"
+						  U"to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n"
+						  U"copies of the Software, and to permit persons to whom the Software is\n"
+						  U"furnished to do so, subject to the following conditions:\n"
+						  U"\n"
+						  U"The above copyright notice and this permission notice shall be included in all\n"
+						  U"copies or substantial portions of the Software.\n"
+						  U"\n"
+						  U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
+						  U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
+						  U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
+						  U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
+						  U"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
+						  U"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n"
+						  U"SOFTWARE.";
 	licenses.push_back(ksmaxisLicense);
 
 	// KSMフォントのライセンス情報を追加
 	LicenseInfo ksmFontLicense;
 	ksmFontLicense.title = U"KSM Fonts (KSM-JA/SC/TC-Medium)";
 	ksmFontLicense.copyright = U"Component fonts:\n"
-		U"1. Tektur (Modified as Tektur-KSM) - Copyright 2023 The Tektur Project Authors, Modified by K-Shoot MANIA Project\n"
-		U"2. Corporate Logo ver3 - Copyright LOGOTYPE.JP, Based on Source Han Sans (Copyright 2014-2020 Adobe)\n"
-		U"3. Noto Sans, Noto Sans JP/KR/SC/TC, Noto Sans Math, Noto Sans Symbols, Noto Music, Arabic, Thai, Hebrew, Cherokee - Copyright Google Inc. and Adobe Inc.";
+							   U"1. Tektur (Modified as Tektur-KSM) - Copyright 2023 The Tektur Project Authors, Modified by K-Shoot MANIA Project\n"
+							   U"2. Corporate Logo ver3 - Copyright LOGOTYPE.JP, Based on Source Han Sans (Copyright 2014-2020 Adobe)\n"
+							   U"3. Noto Sans, Noto Sans JP/KR/SC/TC, Noto Sans Math, Noto Sans Symbols, Noto Music, Arabic, Thai, Hebrew, Cherokee - Copyright Google Inc. and Adobe Inc.";
 	ksmFontLicense.text = U"All component fonts are licensed under the SIL Open Font License, Version 1.1.\n"
-		U"\n"
-		U"Permission is hereby granted, free of charge, to any person obtaining a copy of the Font Software,\n"
-		U"to use, study, copy, merge, embed, modify, redistribute, and sell modified and unmodified copies\n"
-		U"of the Font Software, subject to the following conditions:\n"
-		U"\n"
-		U"1) Neither the Font Software nor any of its individual components, in Original or Modified Versions,\n"
-		U"   may be sold by itself.\n"
-		U"2) Original or Modified Versions of the Font Software may be bundled, redistributed and/or sold with\n"
-		U"   any software, provided that each copy contains the above copyright notice and this license.\n"
-		U"3) The Font Software, modified or unmodified, in part or in whole, must be distributed entirely under\n"
-		U"   this license, and must not be distributed under any other license.";
+						  U"\n"
+						  U"Permission is hereby granted, free of charge, to any person obtaining a copy of the Font Software,\n"
+						  U"to use, study, copy, merge, embed, modify, redistribute, and sell modified and unmodified copies\n"
+						  U"of the Font Software, subject to the following conditions:\n"
+						  U"\n"
+						  U"1) Neither the Font Software nor any of its individual components, in Original or Modified Versions,\n"
+						  U"   may be sold by itself.\n"
+						  U"2) Original or Modified Versions of the Font Software may be bundled, redistributed and/or sold with\n"
+						  U"   any software, provided that each copy contains the above copyright notice and this license.\n"
+						  U"3) The Font Software, modified or unmodified, in part or in whole, must be distributed entirely under\n"
+						  U"   this license, and must not be distributed under any other license.";
 	licenses.push_back(ksmFontLicense);
 
 	// SQLiteのライセンス情報を追加
@@ -269,31 +270,31 @@ void OutputLicenseTxt()
 	sqliteLicense.title = U"SQLite";
 	sqliteLicense.copyright = U"https://www.sqlite.org/copyright.html";
 	sqliteLicense.text = U"SQLite Is Public Domain\n"
-		U"\n"
-		U"All of the code and documentation in SQLite has been dedicated to the public\n"
-		U"domain by the authors. All code authors, and representatives of the companies\n"
-		U"they work for, have signed affidavits dedicating their contributions to the\n"
-		U"public domain and originals of those signed affidavits are stored in a firesafe\n"
-		U"at the main offices of Hwaci. All contributors are citizens of countries that\n"
-		U"allow creative works to be dedicated into the public domain. Anyone is free to\n"
-		U"copy, modify, publish, use, compile, sell, or distribute the original SQLite\n"
-		U"code, either in source code form or as a compiled binary, for any purpose,\n"
-		U"commercial or non-commercial, and by any means.\n"
-		U"\n"
-		U"The previous paragraph applies to the deliverable code and documentation in\n"
-		U"SQLite - those parts of the SQLite library that you actually bundle and ship\n"
-		U"with a larger application. Some scripts used as part of the build process (for\n"
-		U"example the \"configure\" scripts generated by autoconf) might fall under other\n"
-		U"open-source licenses. Nothing from these build scripts ever reaches the final\n"
-		U"deliverable SQLite library, however, and so the licenses associated with those\n"
-		U"scripts should not be a factor in assessing your rights to copy and use the\n"
-		U"SQLite library.\n"
-		U"\n"
-		U"All of the deliverable code in SQLite has been written from scratch. No code\n"
-		U"has been taken from other projects or from the open internet. Every line of\n"
-		U"code can be traced back to its original author, and all of those authors have\n"
-		U"public domain dedications on file. So the SQLite code base is clean and is\n"
-		U"uncontaminated with licensed code from other projects.";
+						 U"\n"
+						 U"All of the code and documentation in SQLite has been dedicated to the public\n"
+						 U"domain by the authors. All code authors, and representatives of the companies\n"
+						 U"they work for, have signed affidavits dedicating their contributions to the\n"
+						 U"public domain and originals of those signed affidavits are stored in a firesafe\n"
+						 U"at the main offices of Hwaci. All contributors are citizens of countries that\n"
+						 U"allow creative works to be dedicated into the public domain. Anyone is free to\n"
+						 U"copy, modify, publish, use, compile, sell, or distribute the original SQLite\n"
+						 U"code, either in source code form or as a compiled binary, for any purpose,\n"
+						 U"commercial or non-commercial, and by any means.\n"
+						 U"\n"
+						 U"The previous paragraph applies to the deliverable code and documentation in\n"
+						 U"SQLite - those parts of the SQLite library that you actually bundle and ship\n"
+						 U"with a larger application. Some scripts used as part of the build process (for\n"
+						 U"example the \"configure\" scripts generated by autoconf) might fall under other\n"
+						 U"open-source licenses. Nothing from these build scripts ever reaches the final\n"
+						 U"deliverable SQLite library, however, and so the licenses associated with those\n"
+						 U"scripts should not be a factor in assessing your rights to copy and use the\n"
+						 U"SQLite library.\n"
+						 U"\n"
+						 U"All of the deliverable code in SQLite has been written from scratch. No code\n"
+						 U"has been taken from other projects or from the open internet. Every line of\n"
+						 U"code can be traced back to its original author, and all of those authors have\n"
+						 U"public domain dedications on file. So the SQLite code base is clean and is\n"
+						 U"uncontaminated with licensed code from other projects.";
 	licenses.push_back(sqliteLicense);
 
 	// SQLiteCppのライセンス情報を追加
@@ -301,21 +302,21 @@ void OutputLicenseTxt()
 	sqliteCppLicense.title = U"SQLiteCpp";
 	sqliteCppLicense.copyright = U"Copyright (c) 2012-2025 Sebastien Rombauts (sebastien.rombauts@gmail.com)";
 	sqliteCppLicense.text = U"Permission is hereby granted, free of charge, to any person obtaining a copy\n"
-		U"of this software and associated documentation files (the \"Software\"), to deal\n"
-		U"in the Software without restriction, including without limitation the rights\n"
-		U"to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n"
-		U"copies of the Software, and to permit persons to whom the Software is furnished\n"
-		U"to do so, subject to the following conditions:\n"
-		U"\n"
-		U"The above copyright notice and this permission notice shall be included in all\n"
-		U"copies or substantial portions of the Software.\n"
-		U"\n"
-		U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
-		U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
-		U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
-		U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\n"
-		U"WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR\n"
-		U"IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
+							U"of this software and associated documentation files (the \"Software\"), to deal\n"
+							U"in the Software without restriction, including without limitation the rights\n"
+							U"to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n"
+							U"copies of the Software, and to permit persons to whom the Software is furnished\n"
+							U"to do so, subject to the following conditions:\n"
+							U"\n"
+							U"The above copyright notice and this permission notice shall be included in all\n"
+							U"copies or substantial portions of the Software.\n"
+							U"\n"
+							U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
+							U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
+							U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
+							U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\n"
+							U"WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR\n"
+							U"IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
 	licenses.push_back(sqliteCppLicense);
 
 	// stb_imageのライセンス情報を追加
@@ -323,29 +324,29 @@ void OutputLicenseTxt()
 	stbImageLicense.title = U"stb_image";
 	stbImageLicense.copyright = U"Copyright (c) 2017 Sean Barrett\nhttps://github.com/nothings/stb\nLicensed under the MIT License (ALTERNATIVE A of stb's dual license).";
 	stbImageLicense.text = U"Permission is hereby granted, free of charge, to any person obtaining a copy of\n"
-		U"this software and associated documentation files (the \"Software\"), to deal in\n"
-		U"the Software without restriction, including without limitation the rights to\n"
-		U"use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies\n"
-		U"of the Software, and to permit persons to whom the Software is furnished to do\n"
-		U"so, subject to the following conditions:\n"
-		U"\n"
-		U"The above copyright notice and this permission notice shall be included in all\n"
-		U"copies or substantial portions of the Software.\n"
-		U"\n"
-		U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
-		U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
-		U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
-		U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
-		U"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
-		U"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n"
-		U"SOFTWARE.";
+						   U"this software and associated documentation files (the \"Software\"), to deal in\n"
+						   U"the Software without restriction, including without limitation the rights to\n"
+						   U"use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies\n"
+						   U"of the Software, and to permit persons to whom the Software is furnished to do\n"
+						   U"so, subject to the following conditions:\n"
+						   U"\n"
+						   U"The above copyright notice and this permission notice shall be included in all\n"
+						   U"copies or substantial portions of the Software.\n"
+						   U"\n"
+						   U"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n"
+						   U"IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n"
+						   U"FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n"
+						   U"AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n"
+						   U"LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n"
+						   U"OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n"
+						   U"SOFTWARE.";
 	licenses.push_back(stbImageLicense);
 
 	// アルファベット順にソート
 	licenses.sort_by([](const LicenseInfo& a, const LicenseInfo& b)
-	{
-		return a.title < b.title;
-	});
+					 {
+						 return a.title < b.title;
+					 });
 
 	// ファイルに保存
 	TextWriter writer(U"license.txt");
@@ -395,7 +396,7 @@ void KSMMain()
 	LicenseManager::DisableDefaultTrigger();
 
 	// ウィンドウタイトル
-	Window::SetTitle(U"K-Shoot Mania V2.1.0 - Enhanced Vertical Mod (Unofficial Build)");
+	Window::SetTitle(U"K-Shoot Mania V2.1.0 - Enhanced Vertical Mod 0.5.4-beta4 (Unofficial Build)");
 
 	// カレントディレクトリを設定
 	// (ChangeCurrentDirectoryはここ以外は基本的に使用禁止。どうしても使う必要がある場合は必ずResourceDirectoryPathに戻すこと)
@@ -471,6 +472,7 @@ void KSMMain()
 
 	// ランタイム設定を初期化
 	RuntimeConfig::RestoreJudgmentModesFromConfigIni();
+	RuntimeConfig::RestoreGaugeSelectionFromConfigIni();
 
 	// 言語ファイルを読み込み
 	// (BASS初期化失敗時ダイアログの文言に必要なのでBASS初期化前に行う)
@@ -653,7 +655,7 @@ void KSMMain()
 								   : kson::LoadKshChartData(testPlayArgs->chartFilePath.toUTF8());
 		if (chartData.error != kson::ErrorType::None)
 		{
-			MessageBoxUtils::ShowOK(I18n::Get(I18n::Play::ErrorChartLoadFailed), MessageBoxStyle::Error);
+			MessageBoxUtils::ShowOK(ErrorReporting::FormatMessage(ErrorReporting::Record(ErrorReporting::Stage::Chart, testPlayArgs->chartFilePath, Unicode::FromUTF8(kson::GetErrorString(chartData.error)), ErrorReporting::Reason::ChartFormat)), MessageBoxStyle::Error);
 			return;
 		}
 	}
@@ -986,6 +988,7 @@ void KSMMain()
 	if (!previewMode)
 	{
 		AudioCalibration::Store();
+		RuntimeConfig::StoreGaugeSelectionToConfigIni();
 		ConfigIni::Save();
 	}
 
@@ -1034,6 +1037,7 @@ void Main()
 	}
 	catch (const Error& e)
 	{
+		const auto report = ErrorReporting::Record(ErrorReporting::Stage::Game, U"", e.what());
 		ksmaudio::qa::Event("EXCEPTION", 0, 0, e.what().toUTF8());
 		ksmaudio::qa::Phase("exception.audio_cleanup");
 		Vertical::OptionsPresentation::Reset();
@@ -1048,25 +1052,27 @@ void Main()
 			TextWriter{ FsUtils::GetResourcePath(U"skin-test-failure.txt") }.writeln(e.what());
 			return;
 		}
-		MessageBoxUtils::ShowOK(e.what(), MessageBoxStyle::Error);
-		throw;
+		MessageBoxUtils::ShowOK(ErrorReporting::FormatMessage(report), MessageBoxStyle::Error);
+		return;
 	}
 	catch (const std::exception& e)
 	{
+		const auto report = ErrorReporting::Record(ErrorReporting::Stage::Game, U"", e);
 		ksmaudio::qa::Event("EXCEPTION", 0, 0, e.what());
 		ksmaudio::qa::Phase("exception.audio_cleanup");
 		Vertical::OptionsPresentation::Reset();
 		ksmaudio::Terminate();
-		MessageBoxUtils::ShowOK(Unicode::FromUTF8(e.what()), MessageBoxStyle::Error);
-		throw;
+		MessageBoxUtils::ShowOK(ErrorReporting::FormatMessage(report), MessageBoxStyle::Error);
+		return;
 	}
 	catch (...)
 	{
+		const auto report = ErrorReporting::Record(ErrorReporting::Stage::Game, U"", U"Unknown exception");
 		ksmaudio::qa::Event("EXCEPTION_UNKNOWN");
 		ksmaudio::qa::Phase("exception.audio_cleanup");
 		Vertical::OptionsPresentation::Reset();
 		ksmaudio::Terminate();
-		MessageBoxUtils::ShowOK(U"Unknown exception", MessageBoxStyle::Error);
-		throw;
+		MessageBoxUtils::ShowOK(ErrorReporting::FormatMessage(report), MessageBoxStyle::Error);
+		return;
 	}
 }

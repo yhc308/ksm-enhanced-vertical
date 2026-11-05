@@ -1,5 +1,6 @@
 ﻿#include "MusicGame/Judgment/ExScore.hpp"
 #include "SelectChartInfo.hpp"
+#include "Common/SongLoadDiagnostics.hpp"
 #include "Ini/ConfigIni.hpp"
 #include "kson/IO/KshIO.hpp"
 
@@ -15,17 +16,32 @@ FilePath SelectChartInfo::toFullPath(const std::string& u8Filename) const
 
 kson::MetaChartData SelectChartInfo::LoadMetaChartData(FilePathView chartFilePath)
 {
-	kson::MetaChartData chartData = FsUtils::HasKsonExtension(chartFilePath)
-		? kson::LoadKsonMetaChartData(chartFilePath.toUTF8())
-		: kson::LoadKshMetaChartData(chartFilePath.toUTF8());
-
-	// disp_bpmが空の場合は最初のBPMを表示に使用
-	if (chartData.meta.dispBPM.empty())
+	try
 	{
-		chartData.meta.dispBPM = Unicode::ToUTF8(Format(chartData.firstBPM));
+		kson::MetaChartData chartData = FsUtils::HasKsonExtension(chartFilePath)
+											? kson::LoadKsonMetaChartData(chartFilePath.toUTF8())
+											: kson::LoadKshMetaChartData(chartFilePath.toUTF8());
+	
+		// disp_bpmが空の場合は最初のBPMを表示に使用
+		if (chartData.meta.dispBPM.empty())
+		{
+			chartData.meta.dispBPM = Unicode::ToUTF8(Format(chartData.firstBPM));
+		}
+	
+		return chartData;
 	}
-
-	return chartData;
+	catch (const std::bad_alloc&) { throw; }
+	catch (const std::exception& error)
+	{
+		SongLoadDiagnostics::Write(U"chart metadata", chartFilePath, error);
+	}
+	catch (const Error& error)
+	{
+		SongLoadDiagnostics::Write(U"chart metadata", chartFilePath, error.what());
+	}
+	kson::MetaChartData invalid;
+	invalid.error = kson::ErrorType::GeneralChartFormatError;
+	return invalid;
 }
 
 SelectChartInfo::SelectChartInfo(FilePathView chartFilePath)

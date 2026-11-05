@@ -104,6 +104,14 @@ namespace I18n
 		LatencyEstimate,
 		NextLaunchOutput,
 		CurrentAudioOutput,
+		SlamThickness,
+		KeyBeamLength,
+		KeyBeamOpacity,
+		SkinHelp,
+		SkinHelpText,
+		RememberEffRate,
+		AsioJudgmentCorrection,
+		AsioJudgmentCorrectionHelp,
 	};
 
 	/// @brief 共通/起動時テキストのキー名

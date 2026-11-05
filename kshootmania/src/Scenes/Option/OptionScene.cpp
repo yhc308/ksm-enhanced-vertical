@@ -155,6 +155,12 @@ std::unique_ptr<std::array<OptionMenu, OptionScene::kOptionMenuTypeEnumCount>> O
 																																																									 }),
 #ifdef _WIN32
 			CreateInfo::Enum(I18n::Get(I18n::Option::ItemAudioBackend), ConfigIni::Key::kAudioBackend, audioOutputs),
+			[this] {
+				auto field = CreateInfo::Int(I18n::Get(I18n::Mod::AsioJudgmentCorrection), ConfigIni::Key::kAsioJudgmentCorrection, -100, 100, 15, U"ms", 1);
+				field.isEnabled = [] { return ksmaudio::IsASIOActive(); };
+				field.onChangeCallback = [this] { if (!AudioCalibration::Store()) { m_outputError = I18n::Get(I18n::Mod::AudioSaveFailed); logAudioOutput(m_outputError, true, false); } };
+				return field;
+			}(),
 #endif
 			CreateInfo::Enum(I18n::Get(I18n::Option::ItemVsync), ConfigIni::Key::kVsync, Array<StrPair>{
 																							 StrPair{ U"0;120", I18n::Get(I18n::Option::VsyncOffWithFps, 120) },
@@ -284,6 +290,10 @@ std::unique_ptr<std::array<OptionMenu, OptionScene::kOptionMenuTypeEnumCount>> O
 																													 I18n::Get(I18n::Option::Off),
 																													 I18n::Get(I18n::Option::On),
 																												 }),
+			CreateInfo::Enum(I18n::Get(I18n::Mod::RememberEffRate), ConfigIni::Key::kRememberEffRate, Array<StringView>{ I18n::Get(I18n::Option::Off), I18n::Get(I18n::Option::On) }).setDefaultValue(0).setOnChangeCallback([]
+																																																							 {
+																																																								 RuntimeConfig::SetRememberEffRate(ConfigIni::GetBool(ConfigIni::Key::kRememberEffRate, false));
+																																																							 }),
 		}),
 		OptionMenu({}),
 	});
@@ -521,6 +531,7 @@ void OptionScene::logAudioOutput(const String& title, bool error, bool includeMe
 				latency += U" | {:.2f}~{:.2f}ms (avg {:.2f})"_fmt(
 					metrics.predictedMinSec * 1000, metrics.predictedMaxSec * 1000, metrics.predictedMeanSec * 1000);
 			entry.lines.push_back(latency);
+			if (output.backend == ksmaudio::AudioBackend::ASIO) entry.lines.push_back(String{ I18n::Get(I18n::Mod::AsioJudgmentCorrectionHelp) });
 			entry.lines.push_back(String{ I18n::Get(I18n::Mod::LatencyEstimate) });
 		}
 	}
@@ -605,10 +616,11 @@ Co::Task<void> OptionScene::fadeIn()
 Co::Task<void> OptionScene::fadeOut()
 {
 	const auto canvasUpdateRunner = Co::UpdaterTask([this]
-	{
-		m_canvas->update(noco::HitTestEnabledYN::No);
-		m_commonOverlay.update(noco::HitTestEnabledYN::No);
-	}).runScoped();
+													{
+														m_canvas->update(noco::HitTestEnabledYN::No);
+														m_commonOverlay.update(noco::HitTestEnabledYN::No);
+													})
+										.runScoped();
 
 	m_bgmStream.setFadeOut(kFadeDuration);
 	co_await Co::ScreenFadeOut(kFadeDuration);
@@ -696,6 +708,7 @@ void OptionScene::createSettingItemNodes()
 				{ U"name", params.name },
 				{ U"value", params.value },
 				{ U"selected", params.selected },
+				{ U"itemTint", params.enabled ? Color{ 255 } : Color{ 128 } },
 				{ U"valueArrowIndex", params.valueArrowIndex },
 				{ U"valueLeftArrowVisible", params.valueLeftArrowVisible },
 				{ U"valueRightArrowVisible", params.valueRightArrowVisible },
@@ -800,6 +813,7 @@ void OptionScene::refreshSettingItemParams()
 			{ U"name", params.name },
 			{ U"value", params.value },
 			{ U"selected", params.selected },
+				{ U"itemTint", params.enabled ? Color{ 255 } : Color{ 128 } },
 			{ U"valueArrowIndex", params.valueArrowIndex },
 			{ U"valueLeftArrowVisible", params.valueLeftArrowVisible },
 			{ U"valueRightArrowVisible", params.valueRightArrowVisible },

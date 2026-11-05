@@ -1,4 +1,5 @@
 ﻿#include "SelectMenuCourseItem.hpp"
+#include "Common/ErrorReporting.hpp"
 #include "Course/CoursePlayState.hpp"
 #include "I18n/I18n.hpp"
 #include "RuntimeConfig.hpp"
@@ -8,6 +9,14 @@
 
 namespace
 {
+	String CourseLoadError(const CourseInfo& course)
+	{
+		for (const auto& chart : course.charts)
+			if (!chart.exists)
+				return ErrorReporting::FormatMessage(ErrorReporting::FileUnavailable(ErrorReporting::Stage::Chart, chart.absolutePath));
+		return ErrorReporting::FormatMessage(ErrorReporting::Record(ErrorReporting::Stage::Chart, course.filePath, U"The course contains no charts", ErrorReporting::Reason::ChartFormat));
+	}
+
 	// TODO: PlayOptionを選曲画面側で生成してそれを使うように
 	KscKey CreateKscKeyFromConfig()
 	{
@@ -33,7 +42,7 @@ void SelectMenuCourseItem::decide(const SelectMenuEventContext& context, [[maybe
 	// コースの全譜面が存在するかチェック
 	if (!m_courseInfo.isValid())
 	{
-		context.fnShowErrorDialog(I18n::Get(I18n::Play::ErrorSomeChartMissingInCourse));
+		context.fnShowErrorDialog(CourseLoadError(m_courseInfo));
 		return;
 	}
 
@@ -41,7 +50,7 @@ void SelectMenuCourseItem::decide(const SelectMenuEventContext& context, [[maybe
 	const FilePath firstChartPath = m_courseInfo.charts[0].absolutePath;
 	if (!FileSystem::Exists(firstChartPath))
 	{
-		context.fnShowErrorDialog(I18n::Get(I18n::Play::ErrorChartFileNotFound));
+		context.fnShowErrorDialog(ErrorReporting::FormatMessage(ErrorReporting::FileUnavailable(ErrorReporting::Stage::Chart, firstChartPath)));
 		return;
 	}
 
@@ -56,7 +65,7 @@ void SelectMenuCourseItem::decideAutoPlay(const SelectMenuEventContext& context,
 	// コースの全譜面が存在するかチェック
 	if (!m_courseInfo.isValid())
 	{
-		context.fnShowErrorDialog(I18n::Get(I18n::Play::ErrorSomeChartMissingInCourse));
+		context.fnShowErrorDialog(CourseLoadError(m_courseInfo));
 		return;
 	}
 
@@ -64,7 +73,7 @@ void SelectMenuCourseItem::decideAutoPlay(const SelectMenuEventContext& context,
 	const FilePath firstChartPath = m_courseInfo.charts[0].absolutePath;
 	if (!FileSystem::Exists(firstChartPath))
 	{
-		context.fnShowErrorDialog(I18n::Get(I18n::Play::ErrorChartFileNotFound));
+		context.fnShowErrorDialog(ErrorReporting::FormatMessage(ErrorReporting::FileUnavailable(ErrorReporting::Stage::Chart, firstChartPath)));
 		return;
 	}
 

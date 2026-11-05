@@ -1,22 +1,25 @@
 ﻿#include "SimpleDialog.hpp"
+#include "Common/MessageBoxUtils.hpp"
 #include "Input/KeyConfig.hpp"
 #include "Input/InputUtils.hpp"
 #include "Common/FsUtils.hpp"
 #include "Graphics/ScreenUtils.hpp"
 
-SimpleDialog::SimpleDialog(String titleText, String bodyText)
+SimpleDialog::SimpleDialog(String titleText, String bodyText, bool detailedError)
 	: m_titleText(std::move(titleText))
 	, m_bodyText(std::move(bodyText))
+	, m_detailedError(detailedError)
 {
 }
 
 Co::Task<void> SimpleDialog::start()
 {
 	// Canvasをロード
-	const FilePath uiFilePath = FsUtils::GetResourcePath(U"ui/dialog/simple_dialog.noco");
+	const FilePath uiFilePath = FsUtils::GetResourcePath(m_detailedError ? U"mods/enhanced/ui/error_dialog.noco" : U"ui/dialog/simple_dialog.noco");
 	m_canvas = noco::Canvas::LoadFromFile(uiFilePath);
 	if (!m_canvas)
 	{
+		if (m_detailedError) MessageBoxUtils::ShowOK(m_bodyText, MessageBoxStyle::Error);
 		co_return;
 	}
 
@@ -31,7 +34,9 @@ Co::Task<void> SimpleDialog::start()
 	// Start・Back・クリックのいずれかで閉じる
 	while (true)
 	{
-		const double scale = ScreenUtils::Scaled(1.0);
+		const double scale = m_detailedError
+			? Min(ScreenUtils::Scaled(1.0), Min(Scene::Width() * .9 / m_canvas->referenceSize().x, Scene::Height() * .9 / m_canvas->referenceSize().y))
+			: ScreenUtils::Scaled(1.0);
 		const Vec2 position = (Scene::Size() - m_canvas->referenceSize() * scale) / 2.0;
 		m_canvas->setPositionScale(position, Vec2{ scale, scale });
 

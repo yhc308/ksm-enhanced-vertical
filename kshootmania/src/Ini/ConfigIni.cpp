@@ -55,6 +55,8 @@ backgroundmovie=1
 noteskin=default
 
 viewtiming=0
+remember_effrate=0
+last_effrate=1
 timing_position=0
 timing_ms_display=3
 timing_ms_color=2
@@ -164,6 +166,8 @@ backgroundmovie=1
 noteskin=default
 
 viewtiming=0
+remember_effrate=0
+last_effrate=1
 timing_position=0
 timing_ms_display=3
 timing_ms_color=2
@@ -260,9 +264,9 @@ void ConfigIni::Load()
 		// Note: 旧バージョンでは誤って"O"と"C"が逆に保存されていたため、正しく読み込むために意図的に入れ替えてある
 		using StrPair = std::pair<StringView, StringView>;
 		for (const auto& [key, modComma] : {
-				StrPair{ Key::kHispeedShowXMod, U"x," },
-				StrPair{ Key::kHispeedShowOMod, U"C,"/* ← 食い違っているが意図的 */ },
-				StrPair{ Key::kHispeedShowCMod, U"O,"/* ← 食い違っているが意図的 */ } })
+				 StrPair{ Key::kHispeedShowXMod, U"x," },
+				 StrPair{ Key::kHispeedShowOMod, U"C," /* ← 食い違っているが意図的 */ },
+				 StrPair{ Key::kHispeedShowCMod, U"O," /* ← 食い違っているが意図的 */ } })
 		{
 			if (!s_configIniData.hasValue(key))
 			{
@@ -279,12 +283,11 @@ void ConfigIni::Load()
 
 	// キーコンフィグの読み込み
 	using KeyConfigTypes = std::initializer_list<std::tuple<StringView, KeyConfig::ConfigSet>>;
-	for (const auto & [iniKey, targetConfigSet]
-		: KeyConfigTypes{
-			{ Key::kKeyConfigKeyboard1, KeyConfig::kKeyboard1 },
-			{ Key::kKeyConfigKeyboard2, KeyConfig::kKeyboard2 },
-			{ Key::kKeyConfigGamepad1,  KeyConfig::kGamepad1  },
-			{ Key::kKeyConfigGamepad2,  KeyConfig::kGamepad2  } })
+	for (const auto& [iniKey, targetConfigSet] : KeyConfigTypes{
+			 { Key::kKeyConfigKeyboard1, KeyConfig::kKeyboard1 },
+			 { Key::kKeyConfigKeyboard2, KeyConfig::kKeyboard2 },
+			 { Key::kKeyConfigGamepad1, KeyConfig::kGamepad1 },
+			 { Key::kKeyConfigGamepad2, KeyConfig::kGamepad2 } })
 	{
 		const StringView defaultValue = KeyConfig::kDefaultConfigValues[targetConfigSet];
 		const StringView configValue = GetString(iniKey, defaultValue);

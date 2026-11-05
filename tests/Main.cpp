@@ -1,13 +1,11 @@
-﻿#define CATCH_CONFIG_RUNNER
+#define CATCH_CONFIG_RUNNER
 #include <Siv3D.hpp>
 #ifdef __pre
 #undef __pre
 #endif
 #include <catch2/catch.hpp>
 #include <cstdlib>
-#ifdef __linux__
-SIV3D_SET(EngineOption::Renderer::Headless)
-#endif
+SIV3D_SET(EngineOption::Renderer::Headless) // Unit tests never create a window on any platform.
 
 void Main()
 {

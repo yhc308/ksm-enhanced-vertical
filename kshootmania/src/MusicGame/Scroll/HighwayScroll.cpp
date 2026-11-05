@@ -102,7 +102,32 @@ namespace MusicGame::Scroll
 
 	int32 HighwayScrollContext::getPositionY(kson::Pulse pulse) const
 	{
-		return m_pHighwayScroll->getPositionY(pulse, *m_pBeatInfo, *m_pTimingCache, *m_pGameStatus);
+		const auto& hispeed = m_pHighwayScroll->hispeedSetting();
+		if (m_positionTime != m_pGameStatus->currentTimeSec || m_positionPulse != m_pGameStatus->currentPulseDouble ||
+			m_positionHispeed.type != hispeed.type || m_positionHispeed.value != hispeed.value)
+		{
+			m_positionTime = m_pGameStatus->currentTimeSec;
+			m_positionPulse = m_pGameStatus->currentPulseDouble;
+			m_positionHispeed = hispeed;
+			if (++m_positionGeneration == 0)
+			{
+				for (auto& entry : m_positionCache)
+					entry.generation = 0;
+				m_positionGeneration = 1;
+			}
+		}
+		uint64 key = static_cast<uint64>(pulse);
+		key = (key ^ (key >> 30)) * 0xbf58476d1ce4e5b9ULL;
+		key = (key ^ (key >> 27)) * 0x94d049bb133111ebULL;
+		key ^= key >> 31;
+		auto& entry = m_positionCache[key & (m_positionCache.size() - 1)];
+		if (entry.generation != m_positionGeneration || entry.pulse != pulse)
+		{
+			entry.pulse = pulse;
+			entry.value = m_pHighwayScroll->getPositionY(pulse, *m_pBeatInfo, *m_pTimingCache, *m_pGameStatus);
+			entry.generation = m_positionGeneration;
+		}
+		return entry.value;
 	}
 
 	bool HighwayScrollContext::isPulseRangeInDrawRange(kson::Pulse startPulse, kson::Pulse endPulse, int32 positionYOffset) const

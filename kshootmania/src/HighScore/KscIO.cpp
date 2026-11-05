@@ -1,5 +1,6 @@
 ﻿#include "KscIO.hpp"
 #include "AdditionalScoreIO.hpp"
+#include "MusicGame/Judgment/ExScore.hpp"
 #include "Common/FsUtils.hpp"
 #include "Ini/ConfigIni.hpp"
 #include "Course/CoursePlayState.hpp"
@@ -242,8 +243,8 @@ namespace KscIO
 				}
 				const KscValue& origKscValue = origHighScoreInfo.kscValueOf(gaugeType);
 				const KscValue newKscValue = playResult.playOption.gameMode == MusicGame::GameMode::kCourseMode
-					? origKscValue.applyPlayResultForCourse(playResult)
-					: origKscValue.applyPlayResult(playResult);
+												 ? origKscValue.applyPlayResultForCourse(playResult)
+												 : origKscValue.applyPlayResult(playResult);
 				const String replace = search + newKscValue.toString();
 
 				TextReader reader(kscFilePath);
@@ -345,12 +346,17 @@ namespace KscIO
 
 		if (!playResult.playOption.shouldSaveScore())
 			return false;
+		// Older result producers may omit MAX. Resolve it from the chart once at save,
+		// identically for both orientations, without inventing a missing EX score.
+		auto additionalResult = playResult;
+		if (additionalResult.exMaximum <= 0)
+			additionalResult.exMaximum = MusicGame::Judgment::LoadChartExMaximum(chartFilePath);
 		const bool kscFileExists = FileSystem::IsFile(kscFilePath);
 		if (kscFileExists)
 		{
 			// ファイルが存在する場合は既存のファイルを更新する
 			const bool ok = UpdateExistingKscFile(kscFilePath, playResult, condition);
-			if (ok && !AdditionalScoreIO::Write(kscFilePath, playResult, condition))
+			if (ok && !AdditionalScoreIO::Write(kscFilePath, additionalResult, condition))
 				Logger << U"[EX SCORE] additional save failed: " + kscFilePath;
 			return ok;
 		}
@@ -358,7 +364,7 @@ namespace KscIO
 		{
 			// ファイルが存在しない場合は今回のプレイ結果を新しいファイルとして書き込む
 			const bool ok = CreateNewKscFile(kscFilePath, playResult, condition);
-			if (ok && !AdditionalScoreIO::Write(kscFilePath, playResult, condition))
+			if (ok && !AdditionalScoreIO::Write(kscFilePath, additionalResult, condition))
 				Logger << U"[EX SCORE] additional save failed: " + kscFilePath;
 			return ok;
 		}
@@ -430,8 +436,7 @@ namespace KscIO
 			}
 
 			// 新しいハイスコア情報を生成
-			const KscValue newKscValue
-			{
+			const KscValue newKscValue{
 				.score = Max(origKscValue.score, playResult.avgScore),
 				.achievement = Max(origKscValue.achievement, playResult.achievement()),
 				.grade = Max(origKscValue.grade, Grade::kNoGrade),

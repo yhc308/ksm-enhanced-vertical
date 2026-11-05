@@ -1,4 +1,5 @@
-﻿#include "ksmaudio/Diagnostics.hpp"
+﻿#include "Ini/AudioCalibration.hpp"
+#include "ksmaudio/Diagnostics.hpp"
 #include "GameMain.hpp"
 #include "Audio/AudioDefines.hpp"
 #include "GameMain.hpp"
@@ -47,8 +48,8 @@ namespace MusicGame
 		kson::ChartData LoadChartDataWithTurn(const GameCreateInfo& createInfo, NoteArrangement* pNoteArrangementOut, Optional<SRandomFXAudioMapping>* pSRandomFXAudioMappingOut, std::array<HashSet<kson::Pulse>, kson::kNumLaserLanesSZ>* pLaserCurvedPulses)
 		{
 			auto chartData = FsUtils::HasKsonExtension(createInfo.chartFilePath)
-				? kson::LoadKsonChartData(createInfo.chartFilePath.toUTF8())
-				: kson::LoadKshChartData(createInfo.chartFilePath.toUTF8());
+								 ? kson::LoadKsonChartData(createInfo.chartFilePath.toUTF8())
+								 : kson::LoadKshChartData(createInfo.chartFilePath.toUTF8());
 
 			// Turn変換を適用
 			pNoteArrangementOut->turnTable = MakeTurnTable(createInfo.playOption.turnMode);
@@ -113,8 +114,7 @@ namespace MusicGame
 			if (createInfo.playOption.turnMode == TurnMode::kSRandom)
 			{
 				const Array<std::size_t> sRandomNoteLanes = MakeSRandomNoteLanes(chartData, createInfo.playOption.nonZeroPlaybackSpeed());
-				*pSRandomFXAudioMappingOut = SRandomFXAudioMapping
-				{
+				*pSRandomFXAudioMappingOut = SRandomFXAudioMapping{
 					.fxLanesForAudio = chartData.note.fx,
 					.fxNoteDestinations = MakeFXNoteDestinations(chartData, sRandomNoteLanes),
 				};
@@ -233,8 +233,9 @@ namespace MusicGame
 		const double laserInputDelaySec = m_playOption.effectiveLaserInputDelayMs() / 1000.0;
 		const double audioProcDelaySec = m_playOption.effectiveAudioProcDelayMs() / 1000.0;
 		const double timingAdjustSec = m_judgmentMain->timingAdjustOffsetSec();
-		const double currentTimeSecForButtonJudgment = currentTimeSec - inputDelaySec + timingAdjustSec;
-		const double currentTimeSecForLaserJudgment = currentTimeSec - inputDelaySec - laserInputDelaySec + timingAdjustSec;
+		const double backendJudgmentCorrectionSec = AudioCalibration::JudgmentCorrectionSec();
+		const double currentTimeSecForButtonJudgment = currentTimeSec - inputDelaySec + timingAdjustSec + backendJudgmentCorrectionSec;
+		const double currentTimeSecForLaserJudgment = currentTimeSec - inputDelaySec - laserInputDelaySec + timingAdjustSec + backendJudgmentCorrectionSec;
 		const double currentTimeSecForAudioProc = currentTimeSec - audioProcDelaySec;
 		const kson::Pulse currentPulse = kson::SecToPulse(currentTimeSec, m_chartData.beat, m_timingCache);
 		const double currentPulseDouble = kson::SecToPulseDouble(currentTimeSec, m_chartData.beat, m_timingCache);
@@ -627,8 +628,8 @@ namespace MusicGame
 		}
 		const std::size_t destLaneIdx = destItr->second;
 		const ButtonLaneStatus& laneStatus = destLaneIdx < kson::kNumBTLanesSZ
-			? m_gameStatus.btLaneStatus[destLaneIdx]
-			: m_gameStatus.fxLaneStatus[destLaneIdx - kson::kNumBTLanesSZ];
+												 ? m_gameStatus.btLaneStatus[destLaneIdx]
+												 : m_gameStatus.fxLaneStatus[destLaneIdx - kson::kNumBTLanesSZ];
 		return laneStatus.currentLongNotePulse == y;
 	}
 
@@ -643,8 +644,8 @@ namespace MusicGame
 			for (std::size_t destLaneIdx = 0U; destLaneIdx < kNumSRandomLanesSZ; ++destLaneIdx)
 			{
 				const ButtonLaneStatus& laneStatus = destLaneIdx < kson::kNumBTLanesSZ
-					? m_gameStatus.btLaneStatus[destLaneIdx]
-					: m_gameStatus.fxLaneStatus[destLaneIdx - kson::kNumBTLanesSZ];
+														 ? m_gameStatus.btLaneStatus[destLaneIdx]
+														 : m_gameStatus.fxLaneStatus[destLaneIdx - kson::kNumBTLanesSZ];
 				if (laneStatus.lastChipJudgedTimeSec <= judgedStatuses[fxLaneIdx].lastChipJudgedTimeSec)
 				{
 					continue;
@@ -654,8 +655,7 @@ namespace MusicGame
 				{
 					continue;
 				}
-				judgedStatuses[fxLaneIdx] = Audio::FXChipJudgedStatus
-				{
+				judgedStatuses[fxLaneIdx] = Audio::FXChipJudgedStatus{
 					.lastJudgedChipPulse = laneStatus.lastJudgedChipPulse,
 					.lastChipJudgedTimeSec = laneStatus.lastChipJudgedTimeSec,
 				};

@@ -10,6 +10,7 @@ public:
 		String name;
 		String value;
 		bool selected;
+		bool enabled;
 		int32 valueArrowIndex;
 		bool valueLeftArrowVisible;
 		bool valueRightArrowVisible;

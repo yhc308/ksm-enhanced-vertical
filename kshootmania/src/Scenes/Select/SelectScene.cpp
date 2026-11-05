@@ -60,9 +60,9 @@ namespace
 		}
 
 		playerNames.sort_by([](const String& a, const String& b)
-		{
-			return a.lowercased() < b.lowercased();
-		});
+							{
+								return a.lowercased() < b.lowercased();
+							});
 
 		return playerNames;
 	}
@@ -90,7 +90,7 @@ namespace
 
 		// 該当行を削除
 		bool removed = false;
-		for (auto it = lines.begin(); it != lines.end(); )
+		for (auto it = lines.begin(); it != lines.end();)
 		{
 			// .fav内にあるパスを正規化
 			FilePath lineFullPath = FileSystem::PathAppend(songsDir, *it);
@@ -285,9 +285,15 @@ void SelectScene::enterSearchInputPhase()
 
 	const String initialQuery = wasNone ? String{} : m_searchResultQuery;
 	m_dialogRunner = Co::Play<SearchInputDialog>(
-		initialQuery,
-		[this](StringView q) { m_menu.setSearchQuery(q); }
-	).runScoped([this](const Optional<String>& result) { onSearchInputDialogClosed(result); });
+						 initialQuery,
+						 [this](StringView q)
+						 {
+							 m_menu.setSearchQuery(q);
+						 })
+						 .runScoped([this](const Optional<String>& result)
+									{
+										onSearchInputDialogClosed(result);
+									});
 }
 
 void SelectScene::onSearchInputDialogClosed(const Optional<String>& result)
@@ -369,7 +375,7 @@ SelectScene::SelectScene(const Optional<SelectSceneSearchParams>& initialSearchP
 											 },
 											 [this](StringView msg)
 											 {
-												 m_dialogRunner = Co::Play<SimpleDialog>(String{ U"ERROR" }, String{ msg }).runScoped();
+												 m_dialogRunner = Co::Play<SimpleDialog>(String{ U"ERROR" }, String{ msg }, true).runScoped();
 											 },
 											 [this]()
 											 {
@@ -793,10 +799,11 @@ void SelectScene::draw() const
 Co::Task<void> SelectScene::fadeIn()
 {
 	const auto canvasUpdateRunner = Co::UpdaterTask([this]
-		{
-			m_canvas->update(noco::HitTestEnabledYN::No);
-			m_commonOverlay.update(noco::HitTestEnabledYN::No);
-		}).runScoped();
+													{
+														m_canvas->update(noco::HitTestEnabledYN::No);
+														m_commonOverlay.update(noco::HitTestEnabledYN::No);
+													})
+										.runScoped();
 
 	co_await Co::ScreenFadeIn(kFadeInDuration);
 }
@@ -809,10 +816,11 @@ Co::Task<void> SelectScene::fadeOut()
 	}
 
 	const auto canvasUpdateRunner = Co::UpdaterTask([this]
-		{
-			m_canvas->update(noco::HitTestEnabledYN::No);
-			m_commonOverlay.update(noco::HitTestEnabledYN::No);
-		}).runScoped();
+													{
+														m_canvas->update(noco::HitTestEnabledYN::No);
+														m_commonOverlay.update(noco::HitTestEnabledYN::No);
+													})
+										.runScoped();
 
 	co_await Co::ScreenFadeOut(kFadeOutDuration, m_fadeOutColor);
 }

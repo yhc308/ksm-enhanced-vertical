@@ -3,7 +3,7 @@
 #include "MusicGame/TimingFeedback.hpp"
 
 // 実行中のみ保持する設定
-// config.iniには保存されず、起動時にデフォルト値にリセットされる
+// ゲージ選択のみ、保存設定が有効な場合はconfig.iniから復元する
 namespace RuntimeConfig
 {
 	FastSlowMode LoadFastSlowModeFromConfigIni();
@@ -15,6 +15,9 @@ namespace RuntimeConfig
 	bool GetApsEnabled();
 	void SetGaugeSelection(int32 selection);
 	int32 GetGaugeSelection();
+	void RestoreGaugeSelectionFromConfigIni();
+	void StoreGaugeSelectionToConfigIni();
+	void SetRememberEffRate(bool enabled);
 
 	[[nodiscard]]
 	TurnMode GetTurnMode();

@@ -1,10 +1,12 @@
-﻿#include "TestPlayArgs.hpp"
+﻿#include "Common/ErrorReporting.hpp"
+#include "TestPlayArgs.hpp"
+#include "Common/CommandLine.hpp"
 
 Optional<TestPlayArgs> ParseTestPlayArgs(bool* pShouldExit)
 {
 	*pShouldExit = false;
 
-	const Array<String> args = System::GetCommandLineArgs();
+	const auto& args = CommandLine::Arguments();
 
 	// args[0]は実行ファイルパス、args[1]以降がユーザー引数
 	if (args.size() <= 1)
@@ -54,7 +56,7 @@ Optional<TestPlayArgs> ParseTestPlayArgs(bool* pShouldExit)
 	// ファイルが存在しない場合はエラー終了
 	if (!FileSystem::Exists(result.chartFilePath))
 	{
-		MessageBoxUtils::ShowOK(U"Chart file not found:\n" + result.chartFilePath, MessageBoxStyle::Error);
+		MessageBoxUtils::ShowOK(ErrorReporting::FormatMessage(ErrorReporting::FileUnavailable(ErrorReporting::Stage::CommandLine, result.chartFilePath)), MessageBoxStyle::Error);
 		*pShouldExit = true;
 		return none;
 	}

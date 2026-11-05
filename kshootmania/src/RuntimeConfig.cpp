@@ -28,6 +28,7 @@ namespace RuntimeConfig
 	{
 		g_config.gaugeType = gaugeType;
 		g_config.apsEnabled = false;
+		StoreGaugeSelectionToConfigIni();
 	}
 
 	bool GetApsEnabled()
@@ -43,6 +44,27 @@ namespace RuntimeConfig
 		const int32 hard = static_cast<int32>(GaugeType::kHardGauge);
 		g_config.gaugeType = static_cast<GaugeType>(Clamp(selection, static_cast<int32>(GaugeType::kEasyGauge), hard));
 		g_config.apsEnabled = selection == hard + 1;
+		StoreGaugeSelectionToConfigIni();
+	}
+
+	void StoreGaugeSelectionToConfigIni()
+	{
+		if (ConfigIni::GetBool(ConfigIni::Key::kRememberEffRate, false))
+			ConfigIni::SetInt(ConfigIni::Key::kLastEffRate, GetGaugeSelection());
+	}
+
+	void RestoreGaugeSelectionFromConfigIni()
+	{
+		const int32 normal = static_cast<int32>(GaugeType::kNormalGauge);
+		const int32 saved = ConfigIni::GetInt(ConfigIni::Key::kLastEffRate, normal);
+		const bool remember = ConfigIni::GetBool(ConfigIni::Key::kRememberEffRate, false);
+		SetGaugeSelection(remember && saved >= 0 && saved <= 3 ? saved : normal);
+	}
+
+	void SetRememberEffRate(bool enabled)
+	{
+		ConfigIni::SetBool(ConfigIni::Key::kRememberEffRate, enabled);
+		StoreGaugeSelectionToConfigIni();
 	}
 
 	TurnMode GetTurnMode()

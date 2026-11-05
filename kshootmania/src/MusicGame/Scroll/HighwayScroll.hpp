@@ -1,5 +1,7 @@
 ﻿#pragma once
 #include <mutex>
+#include <array>
+#include <limits>
 #include "MusicGame/GameStatus.hpp"
 #include "MusicGame/Graphics/GraphicsDefines.hpp"
 #include "HispeedSetting.hpp"
@@ -20,6 +22,21 @@ namespace MusicGame::Scroll
 
 		/// @brief scrollSpeedに負の値が含まれているか
 		const bool m_hasNegativeScrollSpeed;
+
+		// A draw context is thread-confined. Reuse exact positions within that
+		// frame, with bounded storage and no allocation or timing quantization.
+		struct PositionCacheEntry
+		{
+			kson::Pulse pulse = 0;
+			uint32 generation = 0;
+			int32 value = 0;
+		};
+		mutable std::array<PositionCacheEntry, 2048> m_positionCache{};
+		mutable uint32 m_positionGeneration = 0;
+		mutable double m_positionTime = std::numeric_limits<double>::quiet_NaN();
+		mutable double m_positionPulse = std::numeric_limits<double>::quiet_NaN();
+		mutable HispeedSetting m_positionHispeed{};
+
 
 	public:
 		/// @brief コンストラクタ

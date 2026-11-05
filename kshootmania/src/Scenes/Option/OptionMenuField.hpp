@@ -19,6 +19,7 @@ private:
 	const Array<std::pair<String, String>> m_valueDisplayNamePairs;
 
 	const std::function<void()> m_onChangeCallback;
+	const std::function<bool()> m_isEnabled;
 
 	LinearMenu m_menu;
 
@@ -42,6 +43,7 @@ public:
 		Array<std::pair<String, String>> valueDisplayNamePairs;
 
 		std::function<void()> onChangeCallback = nullptr;
+		std::function<bool()> isEnabled = nullptr;
 
 		static CreateInfo Enum(StringView name, StringView configIniKey, const Array<String>& valueDisplayNames);
 
@@ -79,6 +81,7 @@ public:
 	/// @param externalValueDelta 外部からの値変更量
 	/// @return 値が変更された場合true
 	bool update(int32 externalValueDelta);
+	bool enabled() const { return !m_isEnabled || m_isEnabled(); }
 
 	// 注意: これらの列挙子の値はNocoUI側のvalueArrowIndexにも使用されるので順番を入れ替えないこと
 	enum ArrowType

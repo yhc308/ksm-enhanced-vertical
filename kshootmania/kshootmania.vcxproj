@@ -482,6 +482,7 @@
     <ClInclude Include="src\MusicGame\Graphics\GraphicsDefines.hpp" />
     <ClInclude Include="src\MusicGame\Graphics\GraphicsMain.hpp" />
     <ClInclude Include="src\MusicGame\Graphics\Highway\Highway3DGraphics.hpp" />
+    <ClInclude Include="src\MusicGame\Graphics\Highway\HighwayArrival.hpp" />
     <ClInclude Include="src\MusicGame\Graphics\Highway\HighwayRenderTexture.hpp" />
     <ClInclude Include="src\MusicGame\Graphics\Highway\KeyBeamGraphics.hpp" />
     <ClInclude Include="src\MusicGame\Graphics\Highway\Note\ButtonNoteGraphics.hpp" />
@@ -642,6 +643,7 @@
     <ClInclude Include="src\Diagnostics\EnhancedMenuFixture.hpp" />
     <ClInclude Include="src\Diagnostics\JudgeSettingFixture.hpp" />
     <ClInclude Include="src\Diagnostics\RenderGeometryFixture.hpp" />
+    <ClInclude Include="src\Diagnostics\LaserRenderFixture.hpp" />
     <ClInclude Include="src\Diagnostics\SkinPresetFixture.hpp" />
     <ClInclude Include="src\Graphics\GameRenderContext.hpp" />
     <ClCompile Include="src\HighScore\AdditionalScoreIO.cpp" />
@@ -681,6 +683,22 @@
     <ClInclude Include="src\Vertical\VerticalResources.hpp" />
     <ClInclude Include="src\Vertical\VerticalSelfTest.hpp" />
     <ClInclude Include="src\Vertical\VerticalTunnelWarp.hpp" />
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <Manifest>
+      <AdditionalManifestFiles>$(ProjectDir)app.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Common\CommandLine.hpp" />
+    <ClCompile Include="src\Common\ErrorReporting.cpp" />
+    <ClInclude Include="src\Common\ErrorReporting.hpp" />
+    <ClInclude Include="src\Common\CsvUtils.hpp" />
+    <ClInclude Include="src\Common\SongLoadDiagnostics.hpp" />
+    <ClInclude Include="src\Diagnostics\ChartLoadFixture.hpp" />
+    <ClInclude Include="src\Diagnostics\UnicodePathFixture.hpp" />
+    <ClInclude Include="src\Diagnostics\ErrorReportFixture.hpp" />
+    <Manifest Include="app.manifest" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

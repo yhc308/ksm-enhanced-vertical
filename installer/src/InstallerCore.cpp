@@ -1,4 +1,4 @@
-﻿#include "InstallerCore.hpp"
+#include "InstallerCore.hpp"
 #include <bcrypt.h>
 #include <compressapi.h>
 #include <tlhelp32.h>
@@ -10,6 +10,8 @@
 #include <sstream>
 #include <cstring>
 #include <memory>
+#include <map>
+#include <array>
 
 namespace Setup
 {
@@ -35,6 +37,106 @@ namespace Setup
 			for (auto& c : text) c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
 			return text;
 		}
+		std::string UpdateBlockReason(const Json& state, const Json& package)
+		{
+			const auto old = state.value("version", ""), next = package.value("version", "");
+			const auto parts = [](const std::string& value) { std::smatch m; std::array<unsigned long, 4> v{}; Need(std::regex_match(value, m, std::regex("([0-9]+)\\.([0-9]+)\\.([0-9]+)-beta\\.?([0-9]+)")), "version", "Unknown version format"); for (size_t i = 0; i < v.size(); ++i) v[i] = std::stoul(m[i + 1]); return v; };
+			if (old == next) return "This version is already installed";
+			if (parts(old) > parts(next)) return "Downgrading an installed mod is not supported";
+			const std::set<std::string> supported{"0.4.0-beta.1", "0.5.1-beta1", "0.5.2-beta2", "0.5.4-beta4"};
+			return supported.count(old) ? "" : "Installed version has no verified update path";
+		}
+		// Parse file-backed PE metadata only; never load or execute a user's DLL.
+		class PeImage
+		{
+			const Bytes& data;
+			std::string path;
+			size_t optional = 0;
+			std::vector<IMAGE_SECTION_HEADER> sections;
+			DWORD headers = 0, directories = 0, imageSize = 0;
+			void Check(bool condition, const char* reason) const
+			{
+				Need(condition, "dependency_invalid", path + ": " + reason);
+			}
+			template<class T> T At(size_t offset) const
+			{
+				Check(offset <= data.size() && sizeof(T) <= data.size() - offset, "Truncated PE image");
+				T value{}; memcpy(&value, data.data() + offset, sizeof(T)); return value;
+			}
+			size_t Offset(DWORD rva, size_t size = 1) const
+			{
+				if (rva < headers && size <= size_t(headers) - rva && rva <= data.size() && size <= data.size() - rva) return rva;
+				for (const auto& section : sections)
+				{
+					if (rva < section.VirtualAddress) continue;
+					const size_t delta = size_t(rva) - section.VirtualAddress;
+					if (delta >= section.SizeOfRawData || size > section.SizeOfRawData - delta) continue;
+					const uint64_t offset = uint64_t(section.PointerToRawData) + delta;
+					Check(offset <= data.size() && size <= data.size() - size_t(offset), "Invalid PE section range");
+					return size_t(offset);
+				}
+				Check(false, "PE address has no file-backed data"); return 0;
+			}
+			std::string String(DWORD address) const
+			{
+				std::string value;
+				for (uint64_t i = 0; i < 4096; ++i)
+				{
+					Check(uint64_t(address) + i <= MAXDWORD, "Invalid PE string address");
+					const auto c = At<unsigned char>(Offset(DWORD(uint64_t(address) + i)));
+					if (!c) return value;
+					value.push_back(char(c));
+				}
+				Check(false, "Unterminated PE string"); return {};
+			}
+		public:
+			PeImage(const Bytes& data, std::string path) : data(data), path(std::move(path))
+			{
+				const auto dos = At<IMAGE_DOS_HEADER>(0);
+				Check(dos.e_magic == IMAGE_DOS_SIGNATURE && dos.e_lfanew >= 0, "Invalid DOS signature");
+				const size_t nt = size_t(dos.e_lfanew);
+				Check(At<DWORD>(nt) == IMAGE_NT_SIGNATURE, "Invalid PE signature");
+				const auto file = At<IMAGE_FILE_HEADER>(nt + sizeof(DWORD));
+				Need(file.Machine == IMAGE_FILE_MACHINE_AMD64, "dependency_architecture", this->path + ": Expected x64 DLL");
+				Check((file.Characteristics & IMAGE_FILE_DLL) != 0, "Expected a DLL image");
+				Check(file.NumberOfSections > 0 && file.NumberOfSections <= 96 && file.SizeOfOptionalHeader >= sizeof(IMAGE_OPTIONAL_HEADER64), "Invalid PE headers");
+				optional = nt + sizeof(DWORD) + sizeof(IMAGE_FILE_HEADER);
+				const auto header = At<IMAGE_OPTIONAL_HEADER64>(optional);
+				Check(header.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC && header.NumberOfRvaAndSizes <= IMAGE_NUMBEROF_DIRECTORY_ENTRIES, "Invalid PE32+ header");
+				headers = header.SizeOfHeaders; directories = header.NumberOfRvaAndSizes; imageSize = header.SizeOfImage;
+				Check(headers <= data.size(), "Truncated PE headers");
+				for (size_t i = 0; i < file.NumberOfSections; ++i)
+					sections.push_back(At<IMAGE_SECTION_HEADER>(optional + file.SizeOfOptionalHeader + i * sizeof(IMAGE_SECTION_HEADER)));
+			}
+			std::set<std::string> Exports() const
+			{
+				if (!directories) return {};
+				const auto directory = At<IMAGE_DATA_DIRECTORY>(optional + offsetof(IMAGE_OPTIONAL_HEADER64, DataDirectory));
+				if (!directory.VirtualAddress) return {};
+				Check(directory.Size >= sizeof(IMAGE_EXPORT_DIRECTORY), "Invalid export directory");
+				const auto exports = At<IMAGE_EXPORT_DIRECTORY>(Offset(directory.VirtualAddress, sizeof(IMAGE_EXPORT_DIRECTORY)));
+				Check(exports.NumberOfFunctions <= 65536 && exports.NumberOfNames <= 65536, "Export table too large");
+				std::set<std::string> result;
+				for (uint64_t i = 0; i < exports.NumberOfNames; ++i)
+				{
+					Check(uint64_t(exports.AddressOfNames) + i * 4 <= MAXDWORD && uint64_t(exports.AddressOfNameOrdinals) + i * 2 <= MAXDWORD, "Export table address overflow");
+					const auto name = At<DWORD>(Offset(DWORD(exports.AddressOfNames + i * 4), 4));
+					const auto ordinal = At<WORD>(Offset(DWORD(exports.AddressOfNameOrdinals + i * 2), 2));
+					Check(ordinal < exports.NumberOfFunctions && uint64_t(exports.AddressOfFunctions) + uint64_t(ordinal) * 4 <= MAXDWORD, "Invalid export ordinal");
+					const auto function = At<DWORD>(Offset(exports.AddressOfFunctions + ordinal * 4, 4));
+					if (!function) continue;
+					// Forwarders need another DLL and are outside the supported direct BASS contract.
+					Check(function < directory.VirtualAddress || uint64_t(function) >= uint64_t(directory.VirtualAddress) + directory.Size, "Forwarded DLL exports are unsupported");
+					// Packed original BASS exports can point into virtual-only section data.
+					bool mapped = false;
+					for (const auto& section : sections)
+						if (function >= section.VirtualAddress && uint64_t(function) - section.VirtualAddress < std::max(section.Misc.VirtualSize, section.SizeOfRawData)) mapped = true;
+					Check(mapped && function < imageSize, "Export address is outside the mapped image");
+					result.insert(String(name));
+				}
+				return result;
+			}
+		};
 		std::string Id()
 		{
 			unsigned char value[16];
@@ -249,6 +351,7 @@ namespace Setup
 			|| std::regex_match(path, std::regex("(imgs|skin_preview)/[a-z0-9_./-]+"))
 			|| std::regex_match(path, std::regex("mods/(enhanced|vertical)/[a-z0-9_./-]+"))
 			|| std::regex_match(path, std::regex("shaders/aps_color_dodge\\.(hlsl|frag|essl\\.frag)"))
+			|| path == "ui/parts/option_setting_item.noco"
 			|| std::regex_match(path, std::regex("ui/menu_(custom|judge|vertical)_icon\\.png")), "protected_path", "Not an owned mod path: " + relative);
 		Need(path.rfind("imgs/default/", 0) != 0 && path.find("/../") == std::string::npos, "unsafe_path", "Retired or unsafe payload path");
 	}
@@ -289,14 +392,21 @@ namespace Setup
 				if (Lower(value) != hash) continue;
 				matched = true;
 				Need(profile.at("runtimeContract") == kContract, "target", "Unsupported runtime contract");
-				if (installing) for (const auto& file : profile.at("requiredFiles"))
+				if (installing) for (const auto& library : profile.value("requiredLibraries", Json::array()))
 				{
-					const auto path = Safe(file.at("path"));
-					Need(std::filesystem::is_regular_file(path) && FileHash(path) == Lower(file.at("sha256")), "target", "Original resource contract mismatch: " + file.at("path").get<std::string>());
+					const auto name = library.at("path").get<std::string>();
+					Need(name == "bass.dll" || name == "bass_fx.dll", "package", "Unsupported dependency path");
+					const auto path = Safe(name);
+					Need(std::filesystem::is_regular_file(path), "dependency_missing", name + ": Required audio DLL is missing");
+					Need(std::filesystem::file_size(path) <= 128 * 1024 * 1024, "dependency_invalid", name + ": DLL image is too large");
+					const auto bytes = Read(path);
+					const auto exports = PeImage(bytes, name).Exports();
+					for (const auto& symbol : library.at("requiredExports"))
+						Need(exports.count(symbol.get<std::string>()) != 0, "dependency_export", name + ": Missing required function " + symbol.get<std::string>());
 				}
 			}
 		}
-		Need(matched, "target", "This installer supports the verified KSM 2.1.0 Windows build only");
+		Need(matched, "target", "kshootmania.exe: Unsupported original executable. Expected verified KSM 2.1.0 Windows x64; actual SHA256=" + hash);
 	}
 	void Engine::Say(const std::wstring& message) { if (progress) progress(message); }
 	void Engine::ReportProgress(int percent) { if (progressValue) progressValue(percent); }
@@ -309,7 +419,7 @@ namespace Setup
 	}
 	std::set<std::string> Engine::DirectoryParents(const Json& sources) const
 	{
-		Need(sources.is_array() && sources.size() <= 4096, "state", "Invalid directory source inventory");
+		Need(sources.is_array() && sources.size() <= 8192, "state", "Invalid directory source inventory");
 		std::set<std::string> parents, seen;
 		for (const auto& source : sources)
 		{
@@ -433,7 +543,7 @@ namespace Setup
 	Json Engine::LoadState()
 	{
 		auto state = ReadJson(Safe(kState));
-		Need((state.at("schemaVersion") == 2 || state.at("schemaVersion") == 3) && state.at("modId") == "ksm-enhanced-vertical", "state", "Unknown installation record");
+		Need((state.at("schemaVersion") == 2 || state.at("schemaVersion") == 3 || state.at("schemaVersion") == 4) && state.at("modId") == "ksm-enhanced-vertical", "state", "Unknown installation record");
 		const auto id = state.at("transaction").get<std::string>();
 		Need(std::regex_match(id, std::regex("[a-f0-9]{32}")) && state.at("files").is_array() && state.at("files").size() <= 4096, "state", "Invalid installation inventory");
 		std::set<std::string> seen;
@@ -486,7 +596,7 @@ namespace Setup
 		Need(journal.at("modId") == "ksm-enhanced-vertical" && journal.at("schemaVersion") == 1, "journal", "Unknown transaction journal");
 		const auto id = journal.at("transaction").get<std::string>();
 		const auto& operations = journal.at("operations");
-		Need(operations.is_array() && operations.size() <= 4097, "journal", "Invalid journal inventory");
+		Need(operations.is_array() && operations.size() <= 8193, "journal", "Invalid journal inventory");
 		std::set<std::string> paths;
 		for (const auto& op : operations)
 		{
@@ -505,7 +615,7 @@ namespace Setup
 	}
 	void Engine::Recover()
 	{
-		recoveredCleanup = nullptr;
+		recoveredCleanup = nullptr; recoveredAction.clear();
 		if (!std::filesystem::exists(Safe(kJournal))) return;
 		Say(L"Recovering interrupted operation...");
 		const auto journal = ReadJson(Safe(kJournal));
@@ -515,15 +625,15 @@ namespace Setup
 		if (journal.at("phase") == "applying") Rollback(journal);
 		else
 		{
-			Need(journal.at("operations").is_array() && journal.at("operations").size() <= 4097, "journal", "Invalid committed operations");
+			Need(journal.at("operations").is_array() && journal.at("operations").size() <= 8193, "journal", "Invalid committed operations");
 			for (const auto& op : journal.at("operations")) CheckOp(op);
-			if (journal.contains("directoryCleanup")) recoveredCleanup = CleanupDirectories(journal.at("directoryCleanup"));
+			if (journal.contains("directoryCleanup")) { recoveredCleanup = CleanupDirectories(journal.at("directoryCleanup")); recoveredAction = journal.value("action", "remove"); }
 		}
 		Erase(Safe(kJournal));
 	}
-	Json Engine::Transaction(const Json& operations, const std::string& id, const Json& cleanup, const Json& sources)
+	Json Engine::Transaction(const Json& operations, const std::string& id, const Json& cleanup, const Json& sources, const std::string& action)
 	{
-		Json journal{{"schemaVersion", 1}, {"modId", "ksm-enhanced-vertical"}, {"transaction", id}, {"phase", "applying"}, {"operations", operations}};
+		Json journal{{"action", action}, {"schemaVersion", 1}, {"modId", "ksm-enhanced-vertical"}, {"transaction", id}, {"phase", "applying"}, {"operations", operations}};
 		if (!sources.empty())
 		{
 			ValidateDirectories(cleanup, sources, true);
@@ -602,13 +712,107 @@ namespace Setup
 			++number;
 			ReportProgress(10 + int(50 * number / package.index.at("files").size()));
 		}
-		Json state{{"schemaVersion", 3}, {"modId", "ksm-enhanced-vertical"}, {"version", package.index.at("version")}, {"buildId", package.index.at("buildId")}, {"runtimeContract", kContract}, {"upstreamHash", FileHash(Safe("kshootmania.exe"))}, {"transaction", id}, {"files", entries}, {"createdDirectories", createdDirectories}};
+		Json state{{"schemaVersion", 4}, {"modId", "ksm-enhanced-vertical"}, {"version", package.index.at("version")}, {"buildId", package.index.at("buildId")}, {"installerRevision", package.index.value("installerRevision", "legacy")}, {"runtimeContract", kContract}, {"upstreamHash", FileHash(Safe("kshootmania.exe"))}, {"transaction", id}, {"files", entries}, {"createdDirectories", createdDirectories}};
 		const auto stage = base + "/stage/" + std::to_string(number) + ".bin";
 		const auto data = JsonBytes(state); Write(Safe(stage), data);
 		operations.push_back(Operation(kState, nullptr, nullptr, Hash(data), stage));
 		CheckIdle(); Transaction(operations, id);
 		return Json{{"status", "PASS"}, {"action", "install"}, {"version", state["version"]}, {"files", entries.size()}, {"message", "Installed. Original executable, settings, songs, skins and all records preserved."}};
 	}
+
+	Json Engine::Update()
+	{
+		const auto previous = LoadState();
+		const auto reason = UpdateBlockReason(previous, package.index);
+		Need(reason.empty(), "update_blocked", reason);
+		CheckTarget(true); CheckIdle(); package.Validate(); CheckCancel();
+		Need(FileHash(Safe("kshootmania.exe")) == Lower(previous.at("upstreamHash")), "target", "Original game changed since installation");
+		std::map<std::string, Json> old, next;
+		std::map<std::string, std::string> sourceNames;
+		uint64_t required = 16 * 1024 * 1024;
+		for (const auto& file : previous.at("files")) { old[Lower(file.at("path"))] = file; sourceNames[Lower(file.at("path"))] = file.at("path"); }
+		for (const auto& file : package.index.at("files")) { next[Lower(file.at("path"))] = file; sourceNames[Lower(file.at("path"))] = file.at("path"); required += file.at("size").get<uint64_t>() * 2; }
+		for (const auto& item : sourceNames)
+		{
+			const auto path = Safe(item.second); Writable(path);
+			if (std::filesystem::exists(path)) required += std::filesystem::file_size(path) * 3;
+		}
+		for (const auto& item : old) if (item.second.value("owned", true) && !item.second.at("originalHash").is_null()) required += std::filesystem::file_size(Safe(item.second.at("originalBackup"))) * 2;
+		ULARGE_INTEGER available{}; Win(GetDiskFreeSpaceExW(root.c_str(), &available, nullptr, nullptr), "Cannot inspect free space");
+#ifdef KSM_INSTALLER_TEST
+		if (package.index.value("fixture", false) && GetEnvironmentVariableW(L"KSM_SETUP_LOW_SPACE", nullptr, 0)) available.QuadPart = 0;
+#endif
+		Need(available.QuadPart >= required, "space", "Insufficient free space for update and rollback");
+		const auto id = Id(), base = ".ksm-enhanced-backup/" + id, recovery = ".ksm-enhanced-recovery/" + id;
+		Json entries = Json::array(), operations = Json::array(), preserved = Json::array(), recovered = Json::array(), sources = Json::array();
+		for (const auto& item : sourceNames) sources.push_back(item.second);
+		const auto oldDirectories = RemovalDirectories(previous);
+		std::set<std::string> newDirectories;
+		for (const auto& directory : oldDirectories) newDirectories.insert(directory.get<std::string>());
+		for (const auto& directory : DirectoryParents(sources))
+			if (directory != "imgs" && directory != "lang" && directory != "shaders" && directory != "ui" && !std::filesystem::exists(Safe(directory))) newDirectories.insert(directory);
+		size_t number = 0;
+		for (const auto& item : sourceNames)
+		{
+			CheckCancel();
+			const auto& key = item.first; const auto& name = item.second; const auto path = Safe(name);
+			const Json current = std::filesystem::exists(path) ? Json(FileHash(path)) : Json(nullptr);
+			const auto oldIt = old.find(key), newIt = next.find(key);
+			const bool tracked = oldIt != old.end(), incoming = newIt != next.end();
+			const auto original = base + "/original/" + std::to_string(number) + ".bin";
+			const auto undo = base + "/undo/" + std::to_string(number) + ".bin";
+			const auto stage = base + "/stage/" + std::to_string(number) + ".bin";
+			Json entry = tracked ? oldIt->second : Json{{"path", name}, {"kind", Kind(name)}, {"owned", false}, {"originalHash", nullptr}, {"originalBackup", nullptr}};
+			entry["path"] = name;
+			const bool wasOwned = tracked && entry.value("owned", true);
+			if (wasOwned && !entry.at("originalHash").is_null()) { Write(Safe(original), Read(Safe(entry.at("originalBackup")))); entry["originalBackup"] = original; }
+			const bool edited = tracked && current != entry.at("installedHash");
+			if (tracked && Kind(name) == "image" && (edited || entry.value("retainOnRemove", false)))
+			{
+				entry["retainOnRemove"] = true; entry["retired"] = !incoming;
+				entry["packageHash"] = incoming ? newIt->second.at("sha256") : Json(nullptr);
+				entries.push_back(entry); preserved.push_back(name); ++number; continue;
+			}
+			if (!incoming && !wasOwned) { ++number; continue; }
+			if (edited && !current.is_null()) { const auto saved = recovery + "/edited/" + name; Write(Safe(saved), Read(path)); recovered.push_back(saved); }
+			if (incoming)
+			{
+				const Json expected = newIt->second.at("sha256");
+				if (!wasOwned)
+				{
+					entry["owned"] = current != expected;
+					entry["originalHash"] = current != expected ? current : Json(nullptr);
+					entry["originalBackup"] = current != expected && !current.is_null() ? Json(original) : Json(nullptr);
+					if (!entry["originalBackup"].is_null()) Write(Safe(original), Read(path));
+				}
+				entry["installedHash"] = expected; entry["packageHash"] = expected; entry.erase("retired"); entry.erase("retainOnRemove");
+				entries.push_back(entry);
+				if (current != expected) { if (!current.is_null()) Write(Safe(undo), Read(path)); Write(Safe(stage), package.Extract(newIt->second)); operations.push_back(Operation(name, current, current.is_null() ? Json(nullptr) : Json(undo), expected, stage)); }
+			}
+			else
+			{
+				if (!current.is_null()) Write(Safe(undo), Read(path));
+				const auto target = entry.at("originalHash");
+				if (!target.is_null()) Write(Safe(stage), Read(Safe(entry.at("originalBackup"))));
+				operations.push_back(Operation(name, current, current.is_null() ? Json(nullptr) : Json(undo), target, target.is_null() ? Json(nullptr) : Json(stage)));
+			}
+			++number; ReportProgress(10 + int(50 * number / sourceNames.size()));
+		}
+		Need(entries.size() <= 4096, "state", "Updated inventory is too large");
+		Json retainedSources = Json::array(), directories = Json::array(), cleanup = Json::array();
+		for (const auto& entry : entries) retainedSources.push_back(entry.at("path"));
+		const auto parents = DirectoryParents(retainedSources);
+		for (const auto& directory : newDirectories) if (parents.count(directory)) directories.push_back(directory); else cleanup.push_back(directory);
+		Json state{{"schemaVersion", 4}, {"modId", "ksm-enhanced-vertical"}, {"version", package.index.at("version")}, {"buildId", package.index.at("buildId")}, {"installerRevision", package.index.value("installerRevision", "legacy")}, {"runtimeContract", kContract}, {"upstreamHash", previous.at("upstreamHash")}, {"transaction", id}, {"files", entries}, {"createdDirectories", directories}};
+		const auto undo = base + "/undo/" + std::to_string(number) + ".bin", stage = base + "/stage/" + std::to_string(number) + ".bin";
+		const auto before = Read(Safe(kState)), after = JsonBytes(state); Write(Safe(undo), before); Write(Safe(stage), after);
+		operations.push_back(Operation(kState, Hash(before), undo, Hash(after), stage));
+		ValidateDirectories(directories, retainedSources, true); CheckIdle();
+		const auto cleaned = Transaction(operations, id, cleanup, sources, "update");
+		Json result{{"status", "PASS"}, {"action", "update"}, {"previousVersion", previous.value("version", "legacy")}, {"version", state["version"]}, {"preservedImages", preserved}, {"recoveryFiles", recovered}, {"recoveryDirectory", recovered.empty() ? "" : recovery}, {"message", "Updated. Original installation backups and all user data preserved."}};
+		result.update(cleaned); return result;
+	}
+
 	Json Engine::Verify()
 	{
 		CheckTarget(false); const auto state = LoadState();
@@ -678,7 +882,7 @@ namespace Setup
 		operations.push_back(Operation(kState, Hash(before), undo, nullptr, nullptr));
 		Json directorySources = Json::array();
 		for (const auto& file : state.at("files")) directorySources.push_back(file.at("path"));
-		CheckIdle(); const auto cleanup = Transaction(operations, id, RemovalDirectories(state), directorySources);
+		CheckIdle(); const auto cleanup = Transaction(operations, id, RemovalDirectories(state), directorySources, "remove");
 		Json result{{"status", "PASS"}, {"action", "remove"}, {"preservedImages", preserved}, {"recoveryFiles", recovered}, {"recoveryDirectory", recovered.empty() ? "" : recovery}, {"message", "Mod removed. All records and settings preserved; edited images retained. Original language files restored."}};
 		result.update(cleanup); return result;
 	}
@@ -688,23 +892,24 @@ namespace Setup
 		if (std::filesystem::exists(Safe(kState)))
 		{
 			const auto state = LoadState();
-			return Json{{"status", "PASS"}, {"action", "inspect"}, {"installed", true}, {"version", state.value("version", state.value("buildId", "legacy"))}, {"sameVersion", state.value("version", "") == package.index.at("version")}, {"target", Utf8(root.wstring())}};
+			return Json{{"status", "PASS"}, {"action", "inspect"}, {"installed", true}, {"version", state.value("version", state.value("buildId", "legacy"))}, {"buildId", state.value("buildId", "legacy")}, {"installerRevision", state.value("installerRevision", "legacy")}, {"updateAvailable", UpdateBlockReason(state, package.index).empty()}, {"updateBlockedReason", UpdateBlockReason(state, package.index)}, {"sameVersion", state.value("version", "") == package.index.at("version") && state.value("buildId", "") == package.index.at("buildId") && state.value("installerRevision", "legacy") == package.index.value("installerRevision", "legacy")}, {"target", Utf8(root.wstring())}};
 		}
 		Need(!std::filesystem::exists(Safe("ksm-enhanced-vertical.exe")), "manual_install", "Manual installation without ownership metadata detected");
 		return Json{{"status", "PASS"}, {"action", "inspect"}, {"installed", false}, {"version", ""}, {"sameVersion", false}, {"target", Utf8(root.wstring())}};
 	}
 	Json Engine::Run(const std::string& action)
 	{
-		Need(action == "inspect" || action == "install" || action == "remove" || action == "verify", "arguments", "Unknown action");
+		Need(action == "inspect" || action == "install" || action == "update" || action == "remove" || action == "verify", "arguments", "Unknown action");
 		if (action == "inspect" && !std::filesystem::exists(Safe(kJournal))) return Inspect();
 		CheckIdle();
 		Handle lock(CreateFileW(Safe(".ksm-enhanced-install.lock").c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE, nullptr));
 		Win(lock.value != INVALID_HANDLE_VALUE, "Installer already running or target is not writable");
 		Recover();
 		Json result;
-		if (!recoveredCleanup.is_null() && action == "remove") result = Json{{"status", "PASS"}, {"action", "remove"}, {"message", "Committed removal recovered; empty-directory cleanup completed."}};
+		if (!recoveredCleanup.is_null() && action == recoveredAction) result = Json{{"status", "PASS"}, {"action", action}, {"message", "Committed operation recovered; empty-directory cleanup completed."}};
 		else if (action == "inspect") result = Inspect();
 		else if (action == "install") result = Install();
+		else if (action == "update") result = Update();
 		else if (action == "verify") result = Verify();
 		else result = Remove();
 		if (!recoveredCleanup.is_null()) { result.update(recoveredCleanup); result["cleanupRecovered"] = true; }

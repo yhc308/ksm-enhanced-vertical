@@ -1,4 +1,5 @@
-﻿#include "Graphics/ExScorePanel.hpp"
+﻿#include "Common/ErrorReporting.hpp"
+#include "Graphics/ExScorePanel.hpp"
 #include "SelectMenuSongItem.hpp"
 #include "Graphics/FontUtils.hpp"
 #include "Scenes/Select/SelectDifficultyMenu.hpp"
@@ -92,7 +93,7 @@ void SelectMenuSongItem::decide(const SelectMenuEventContext& context, int32 dif
 	// 譜面ファイルの存在チェック
 	if (!FileSystem::Exists(chartFilePath))
 	{
-		context.fnShowErrorDialog(I18n::Get(I18n::Play::ErrorChartFileNotFound));
+		context.fnShowErrorDialog(ErrorReporting::FormatMessage(ErrorReporting::FileUnavailable(ErrorReporting::Stage::Chart, chartFilePath)));
 		return;
 	}
 
@@ -119,7 +120,7 @@ void SelectMenuSongItem::decideAutoPlay(const SelectMenuEventContext& context, i
 	// 譜面ファイルの存在チェック
 	if (!FileSystem::Exists(chartFilePath))
 	{
-		context.fnShowErrorDialog(I18n::Get(I18n::Play::ErrorChartFileNotFound));
+		context.fnShowErrorDialog(ErrorReporting::FormatMessage(ErrorReporting::FileUnavailable(ErrorReporting::Stage::Chart, chartFilePath)));
 		return;
 	}
 
@@ -244,10 +245,10 @@ void SelectMenuSongItem::setCanvasParamsTopBottom(const SelectMenuEventContext& 
 
 	// 曲名・アーティスト名・ジャケット画像は常に描画するため、代替カーソル値を使用して取得
 	const int32 altDifficultyIdx = SelectDifficultyMenu::GetAlternativeCursor(difficultyIdx,
-		[this](int32 idx)
-		{
-			return chartInfoPtr(idx) != nullptr;
-		});
+																			  [this](int32 idx)
+																			  {
+																				  return chartInfoPtr(idx) != nullptr;
+																			  });
 	const SelectChartInfo* pAltChartInfo = chartInfoPtr(altDifficultyIdx);
 	if (pAltChartInfo == nullptr)
 	{
@@ -257,8 +258,8 @@ void SelectMenuSongItem::setCanvasParamsTopBottom(const SelectMenuEventContext& 
 
 	// レベルとメダルは、中央で選択中の難易度がこの曲に存在する場合のみ表示
 	// (単一譜面の場合は常に表示)
-	int32 levelIndex = -1; // -1は非表示
-	int32 medalIndex = -1; // -1は非表示
+	int32 levelIndex = -1;		   // -1は非表示
+	int32 medalIndex = -1;		   // -1は非表示
 	int32 highScoreGradeIndex = 0; // グレードは「-」表示にするため0
 	int32 gaugePercentage = 0;
 	const SelectChartInfo* pDisplayChartInfo = m_isSingleChartItem ? pAltChartInfo : pChartInfo;
@@ -280,34 +281,34 @@ void SelectMenuSongItem::setCanvasParamsTopBottom(const SelectMenuEventContext& 
 	const FilePath artistImgPath = pAltChartInfo->artistImgFilePath();
 	const bool hasArtistImg = !artistImgPath.isEmpty() && FileSystem::IsFile(artistImgPath);
 	const SongInfoTextDisplayParams titleParams = hasTitleImg
-		? SongInfoTextDisplayParams{}
-		: MakeSongInfoTextDisplayParams(pAltChartInfo->title(), pAltChartInfo->titleTranslit());
+													  ? SongInfoTextDisplayParams{}
+													  : MakeSongInfoTextDisplayParams(pAltChartInfo->title(), pAltChartInfo->titleTranslit());
 	const SongInfoTextDisplayParams artistParams = hasArtistImg
-		? SongInfoTextDisplayParams{}
-		: MakeSongInfoTextDisplayParams(pAltChartInfo->artist(), pAltChartInfo->artistTranslit());
+													   ? SongInfoTextDisplayParams{}
+													   : MakeSongInfoTextDisplayParams(pAltChartInfo->artist(), pAltChartInfo->artistTranslit());
 
 	canvas.setSubCanvasParamValuesByTag(tag, {
-		{ U"isSong", true },
-		{ U"isDirectory", false },
-		{ U"isSubDirectory", false },
-		{ U"isCourse", false },
-		{ U"title", titleParams.text },
-		{ U"titleTranslit", titleParams.translitText },
-		{ U"titleTranslitFadeRate", titleParams.translitFadeRate },
-		{ U"titleImgFilePath", titleImgPath },
-		{ U"artist", artistParams.text },
-		{ U"artistTranslit", artistParams.translitText },
-		{ U"artistTranslitFadeRate", artistParams.translitFadeRate },
-		{ U"artistImgFilePath", artistImgPath },
-		{ U"levelIndex", levelIndex },
-		{ U"medalIndex", medalIndex },
-		{ U"highScoreGradeIndex", highScoreGradeIndex },
-		{ U"gaugePercentage", gaugePercentage },
-		{ U"jacketFilePath", jacketPath },
-		{ U"jacketActive", !jacketPath.isEmpty() && FileSystem::IsFile(jacketPath) },
-		{ U"iconFilePath", iconPath },
-		{ U"iconActive", !iconPath.isEmpty() && FileSystem::IsFile(iconPath) },
-	});
+												 { U"isSong", true },
+												 { U"isDirectory", false },
+												 { U"isSubDirectory", false },
+												 { U"isCourse", false },
+												 { U"title", titleParams.text },
+												 { U"titleTranslit", titleParams.translitText },
+												 { U"titleTranslitFadeRate", titleParams.translitFadeRate },
+												 { U"titleImgFilePath", titleImgPath },
+												 { U"artist", artistParams.text },
+												 { U"artistTranslit", artistParams.translitText },
+												 { U"artistTranslitFadeRate", artistParams.translitFadeRate },
+												 { U"artistImgFilePath", artistImgPath },
+												 { U"levelIndex", levelIndex },
+												 { U"medalIndex", medalIndex },
+												 { U"highScoreGradeIndex", highScoreGradeIndex },
+												 { U"gaugePercentage", gaugePercentage },
+												 { U"jacketFilePath", jacketPath },
+												 { U"jacketActive", !jacketPath.isEmpty() && FileSystem::IsFile(jacketPath) },
+												 { U"iconFilePath", iconPath },
+												 { U"iconActive", !iconPath.isEmpty() && FileSystem::IsFile(iconPath) },
+											 });
 }
 
 void SelectMenuSongItem::showInFileManager(int32 difficultyIdx) const
@@ -389,9 +390,9 @@ void SelectMenuSongItem::setDifficultyLevelDisplayParams(noco::Canvas& canvas) c
 		const bool exists = m_chartInfos[i] != nullptr;
 		const int32 levelIndex = exists ? m_chartInfos[i]->level() - 1 : -1;
 		canvas.setSubCanvasParamValuesByTag(U"center", {
-			{ U"difficulty{}Enabled"_fmt(i), exists },
-			{ U"difficulty{}LevelIndex"_fmt(i), levelIndex },
-			{ U"difficulty{}StyleState"_fmt(i), U"" },
-		});
+														   { U"difficulty{}Enabled"_fmt(i), exists },
+														   { U"difficulty{}LevelIndex"_fmt(i), levelIndex },
+														   { U"difficulty{}StyleState"_fmt(i), U"" },
+													   });
 	}
 }

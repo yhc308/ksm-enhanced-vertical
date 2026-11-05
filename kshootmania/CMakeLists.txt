@@ -9,8 +9,6 @@ if (NOT CMAKE_CONFIGURATION_TYPES AND
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-option(KSM_ENABLE_DIAGNOSTICS "Enable opt-in mod diagnostic command-line fixtures" OFF)
-
 option(OUTPUT_LICENSE_TXT "Output license.txt on startup" OFF)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/App)
@@ -32,8 +30,6 @@ add_executable(kshootmania
 	${GAME_SRC_FILES}
 	src/Main.cpp
 )
-
-target_compile_definitions(kshootmania PRIVATE KSM_ENABLE_DIAGNOSTICS=$<BOOL:${KSM_ENABLE_DIAGNOSTICS}>)
 
 if(APPLE)
     set_target_properties(kshootmania PROPERTIES
@@ -293,4 +289,14 @@ elseif(UNIX)
             ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources/assets
         )
     endif()
+endif()
+
+# Optional ASIO runtime dependencies are loaded dynamically from the executable directory.
+if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    foreach(addon bassasio bassmix)
+        add_custom_command(TARGET kshootmania POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_SOURCE_DIR}/ksmaudio/ThirdParty_Windows/${addon}/x64/${addon}.dll"
+                "$<TARGET_FILE_DIR:kshootmania>/${addon}.dll")
+    endforeach()
 endif()

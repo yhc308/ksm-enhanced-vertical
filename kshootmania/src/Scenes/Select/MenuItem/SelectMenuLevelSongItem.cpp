@@ -1,4 +1,5 @@
-﻿#include "Graphics/ExScorePanel.hpp"
+﻿#include "Common/ErrorReporting.hpp"
+#include "Graphics/ExScorePanel.hpp"
 #include "SelectMenuLevelSongItem.hpp"
 #include "RuntimeConfig.hpp"
 
@@ -65,7 +66,7 @@ void SelectMenuLevelSongItem::decide(const SelectMenuEventContext& context, [[ma
 	const FilePath chartFilePath = FilePath{ m_chartInfo->chartFilePath() };
 	if (!FileSystem::Exists(chartFilePath))
 	{
-		context.fnShowErrorDialog(I18n::Get(I18n::Play::ErrorChartFileNotFound));
+		context.fnShowErrorDialog(ErrorReporting::FormatMessage(ErrorReporting::FileUnavailable(ErrorReporting::Stage::Chart, chartFilePath)));
 		return;
 	}
 
@@ -82,7 +83,7 @@ void SelectMenuLevelSongItem::decideAutoPlay(const SelectMenuEventContext& conte
 	const FilePath chartFilePath = FilePath{ m_chartInfo->chartFilePath() };
 	if (!FileSystem::Exists(chartFilePath))
 	{
-		context.fnShowErrorDialog(I18n::Get(I18n::Play::ErrorChartFileNotFound));
+		context.fnShowErrorDialog(ErrorReporting::FormatMessage(ErrorReporting::FileUnavailable(ErrorReporting::Stage::Chart, chartFilePath)));
 		return;
 	}
 

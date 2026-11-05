@@ -9,6 +9,8 @@ namespace ConfigIni
 {
 	namespace Key
 	{
+		constexpr StringView kRememberEffRate = U"remember_effrate";
+		constexpr StringView kLastEffRate = U"last_effrate";
 		// Option > Display / Sound Settings
 		constexpr StringView kFullScreen = U"fullscr";
 		constexpr StringView kWindowResolution = U"windowsize";
@@ -19,6 +21,7 @@ namespace ConfigIni
 		constexpr StringView kAlwaysShowOtherFolders = U"showalldir";
 		constexpr StringView kHideAllFolder = U"hide_itemall";
 		constexpr StringView kMasterVolume = U"mastervol";
+		constexpr StringView kAsioJudgmentCorrection = U"asio_judgment_correction_ms";
 		constexpr StringView kAudioBackend = U"audio_backend";
 		constexpr StringView kVsync = U"vsync";
 

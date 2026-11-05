@@ -1,5 +1,7 @@
 ﻿#include "MusicGame/Judgment/ExScore.hpp"
 #include "SelectMenuCacheDb.hpp"
+#include "Common/SongLoadDiagnostics.hpp"
+#include "Common/CsvUtils.hpp"
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <filesystem>
 #include "Common/Encoding.hpp"
@@ -7,7 +9,7 @@
 
 namespace
 {
-	constexpr int32 kSchemaVersion = 3;
+	constexpr int32 kSchemaVersion = 4;
 	constexpr StringView kDbFileName = U"cache.sqlite3";
 
 	struct SourceFileInfo
@@ -72,20 +74,9 @@ namespace
 
 	FilePath CacheDirectoryPath(FilePathView directoryPath)
 	{
-		const FilePath fullPath = FileSystem::FullPath(directoryPath);
-		FilePath relativePath = FsUtils::RelativePathFromSongsDir(fullPath);
-		relativePath.replace(U'\\', U'/');
-
-		if (relativePath.isEmpty() || relativePath == U".")
-		{
-			relativePath = U"_root";
-		}
-		else if (relativePath.starts_with(U'/') || relativePath.starts_with(U"../") || relativePath == U".." || relativePath.includes(U':'))
-		{
-			relativePath = FileSystem::PathAppend(U"_external", Format(StablePathHash(fullPath)));
-		}
-
-		return FileSystem::PathAppend(CacheBasePath(), relativePath);
+		// Keep cache paths short even when the source folder is deeply nested.
+		// IsCacheValid also checks the full source path, not just this hash.
+		return FileSystem::PathAppend(FileSystem::PathAppend(CacheBasePath(), U"v4"), Format(StablePathHash(FileSystem::FullPath(directoryPath))));
 	}
 
 	FilePath DbPath(FilePathView directoryPath)
@@ -97,12 +88,15 @@ namespace
 	{
 		Array<FilePath> directories =
 			FileSystem::DirectoryContents(path, Recursive::No)
-				.filter([](FilePathView p) { return FileSystem::IsDirectory(p); });
+				.filter([](FilePathView p)
+						{
+							return FileSystem::IsDirectory(p);
+						});
 
 		directories.sort_by([](const FilePath& a, const FilePath& b)
-		{
-			return FsUtils::DirectoryNameByDirectoryPath(a).lowercased() < FsUtils::DirectoryNameByDirectoryPath(b).lowercased();
-		});
+							{
+								return FsUtils::DirectoryNameByDirectoryPath(a).lowercased() < FsUtils::DirectoryNameByDirectoryPath(b).lowercased();
+							});
 
 		return directories;
 	}
@@ -121,11 +115,7 @@ namespace
 		}
 
 		const String extension = FileSystem::Extension(path).lowercased();
-		return extension == U"ksh"
-			|| extension == U"kson"
-			|| extension == U"kco"
-			|| filename.lowercased() == U"foldername.csv"
-			|| filename.lowercased() == U"conf.ini";
+		return extension == U"ksh" || extension == U"kson" || extension == U"kco" || filename.lowercased() == U"foldername.csv" || filename.lowercased() == U"conf.ini";
 	}
 
 	Array<SourceFileInfo> CollectSourceFiles(FilePathView baseDirectoryPath)
@@ -146,9 +136,9 @@ namespace
 		}
 
 		files.sort_by([](const SourceFileInfo& a, const SourceFileInfo& b)
-		{
-			return a.relativePath < b.relativePath;
-		});
+					  {
+						  return a.relativePath < b.relativePath;
+					  });
 		return files;
 	}
 
@@ -177,24 +167,11 @@ namespace
 		const Array<String> lines = Encoding::ReadTextFileLinesShiftJISOrUTF8BasedOnBOM(csvPath);
 		for (const String& line : lines)
 		{
-			const Array<String> parts = line.split(U',');
-			if (parts.size() < 2)
-			{
+			const auto parts = CsvUtils::ParseRow(line);
+			if (!parts || parts->size() < 2)
 				continue;
-			}
-
-			auto removeQuotes = [](String str) -> String
-			{
-				str = str.trimmed();
-				if (str.length() >= 2 && str.starts_with(U'"') && str.ends_with(U'"'))
-				{
-					return str.substr(1, str.length() - 2);
-				}
-				return str;
-			};
-
-			const String folderName = removeQuotes(parts[0]);
-			const String displayName = removeQuotes(parts[1]);
+			const String& folderName = (*parts)[0];
+			const String& displayName = (*parts)[1];
 			if (!folderName.isEmpty())
 			{
 				// displayNameが空文字列の場合はサブフォルダ見出しを非表示化
@@ -244,39 +221,51 @@ namespace
 				continue;
 			}
 
-			kson::MetaChartData chartData = SelectChartInfo::LoadMetaChartData(chartFilePath);
-
-			if (chartData.error != kson::ErrorType::None)
+			try
 			{
-				Logger << U"[ksm warning] SelectMenuCacheDb: Chart Loading Error (error:'{}', chartFilePath:'{}')"_fmt(Unicode::FromUTF8(kson::GetErrorString(chartData.error)), chartFilePath);
-				continue;
+				kson::MetaChartData chartData = SelectChartInfo::LoadMetaChartData(chartFilePath);
+	
+				if (chartData.error != kson::ErrorType::None)
+				{
+					SongLoadDiagnostics::Write(U"chart metadata", chartFilePath, Unicode::FromUTF8(kson::GetErrorString(chartData.error)));
+					continue;
+				}
+	
+				int32 difficultyIdx = chartData.meta.difficulty.idx;
+				if (difficultyIdx < 0 || kNumDifficulties <= difficultyIdx)
+				{
+					Logger << U"[ksm warning] SelectMenuCacheDb: Difficulty index out of range (difficultyIdx:{}, chartFilePath:'{}')"_fmt(difficultyIdx, chartFilePath);
+					difficultyIdx = kNumDifficulties - 1;
+					chartData.meta.difficulty.idx = difficultyIdx;
+				}
+	
+				pRows->push_back(ChartRow{
+					.songDirectoryRelativePath = FileSystem::RelativePath(songDirPath, baseDirectoryPath),
+					.sectionDirectoryRelativePath = sectionDirPath.isEmpty() ? FilePath{} : FileSystem::RelativePath(sectionDirPath, baseDirectoryPath),
+					.sectionDisplayName = sectionDisplayName,
+					.skipSectionHeading = skipSectionHeading,
+					.visibleInDirectoryNameSort = visibleInDirectoryNameSort,
+					.visibleInAllNameSort = visibleInAllNameSort,
+					.sectionDirectoryIndex = sectionDirectoryIndex,
+					.songDirectoryIndex = songDirectoryIndex,
+					.chartFileIndex = static_cast<int32>(chartFileIndex),
+					.songSortKey = FsUtils::DirectoryNameByDirectoryPath(songDirPath).lowercased(),
+					.chartFileRelativePath = FileSystem::RelativePath(chartFilePath, baseDirectoryPath),
+					.chartData = chartData,
+					.exMaximum = MusicGame::Judgment::LoadChartExMaximum(chartFilePath),
+					.folderConfIni = FolderConfIni::Load(chartFilePath),
+				});
+				chartExists = true;
 			}
-
-			int32 difficultyIdx = chartData.meta.difficulty.idx;
-			if (difficultyIdx < 0 || kNumDifficulties <= difficultyIdx)
+			catch (const std::bad_alloc&) { throw; }
+			catch (const std::exception& error)
 			{
-				Logger << U"[ksm warning] SelectMenuCacheDb: Difficulty index out of range (difficultyIdx:{}, chartFilePath:'{}')"_fmt(difficultyIdx, chartFilePath);
-				difficultyIdx = kNumDifficulties - 1;
-				chartData.meta.difficulty.idx = difficultyIdx;
+				SongLoadDiagnostics::Write(U"select chart", chartFilePath, error);
 			}
-
-			pRows->push_back(ChartRow{
-				.songDirectoryRelativePath = FileSystem::RelativePath(songDirPath, baseDirectoryPath),
-				.sectionDirectoryRelativePath = sectionDirPath.isEmpty() ? FilePath{} : FileSystem::RelativePath(sectionDirPath, baseDirectoryPath),
-				.sectionDisplayName = sectionDisplayName,
-				.skipSectionHeading = skipSectionHeading,
-				.visibleInDirectoryNameSort = visibleInDirectoryNameSort,
-				.visibleInAllNameSort = visibleInAllNameSort,
-				.sectionDirectoryIndex = sectionDirectoryIndex,
-				.songDirectoryIndex = songDirectoryIndex,
-				.chartFileIndex = static_cast<int32>(chartFileIndex),
-				.songSortKey = FsUtils::DirectoryNameByDirectoryPath(songDirPath).lowercased(),
-				.chartFileRelativePath = FileSystem::RelativePath(chartFilePath, baseDirectoryPath),
-				.chartData = chartData,
-				.exMaximum = MusicGame::Judgment::LoadChartExMaximum(chartFilePath),
-				.folderConfIni = FolderConfIni::Load(chartFilePath),
-			});
-			chartExists = true;
+			catch (const Error& error)
+			{
+				SongLoadDiagnostics::Write(U"select chart", chartFilePath, error.what());
+			}
 		}
 		return chartExists;
 	}
@@ -421,9 +410,7 @@ namespace
 			{
 				return false;
 			}
-			if (Unicode::FromUTF8(query.getColumn(0).getString()) != sourceFiles[index].relativePath
-				|| query.getColumn(1).getInt64() != sourceFiles[index].mtime
-				|| static_cast<uint64>(query.getColumn(2).getInt64()) != sourceFiles[index].size)
+			if (Unicode::FromUTF8(query.getColumn(0).getString()) != sourceFiles[index].relativePath || query.getColumn(1).getInt64() != sourceFiles[index].mtime || static_cast<uint64>(query.getColumn(2).getInt64()) != sourceFiles[index].size)
 			{
 				return false;
 			}
@@ -577,7 +564,19 @@ namespace
 			folderConfIni.offsetMs = query.getColumn("folder_offset_ms").getInt();
 			folderConfIni.tweetOption = Unicode::FromUTF8(query.getColumn("folder_tweet_option").getString());
 
-			const FilePath chartPath = FileSystem::PathAppend(baseDirectoryPath, Unicode::FromUTF8(query.getColumn("chart_path").getString()));
+			const FilePath chartRelativePath = Unicode::FromUTF8(query.getColumn("chart_path").getString());
+			const auto validRelativePath = [](const FilePath& path)
+			{
+				const String normalized = String{ path }.replaced(U'\\', U'/');
+				return !normalized.starts_with(U'/') && !normalized.includes(U':') &&
+					!normalized.split(U'/').includes(U"..");
+			};
+			if (meta.difficulty.idx < 0 || meta.difficulty.idx >= kNumDifficulties ||
+				!validRelativePath(chartRelativePath) ||
+				!validRelativePath(Unicode::FromUTF8(query.getColumn("song_dir").getString())) ||
+				!validRelativePath(Unicode::FromUTF8(query.getColumn("section_dir").getString())))
+				throw std::runtime_error{ "Invalid song cache row" };
+			const FilePath chartPath = FileSystem::PathAppend(baseDirectoryPath, chartRelativePath);
 			const FilePath songDirRel = Unicode::FromUTF8(query.getColumn("song_dir").getString());
 			const FilePath sectionDirRel = Unicode::FromUTF8(query.getColumn("section_dir").getString());
 
@@ -623,12 +622,23 @@ namespace
 		{
 			return loadOnce(forceRebuild);
 		}
-		catch (const std::exception& e)
+		catch (const std::bad_alloc&) { throw; }
+		catch (const std::exception& error)
 		{
-			Logger << U"[ksm warning] SelectMenuCacheDb::{} failed. Fallback to rebuild. (path:'{}', error:'{}')"_fmt(fnName, directoryPath, Unicode::FromUTF8(e.what()));
-			FileSystem::Remove(dbPath);
-			return loadOnce(true);
+			SongLoadDiagnostics::Write(fnName, directoryPath, error);
 		}
+		catch (const Error& error)
+		{
+			SongLoadDiagnostics::Write(fnName, directoryPath, error.what());
+		}
+
+		// Cache storage is optional. Preserve the failing DB for diagnosis and
+		// build a transient index using exactly the normal row ordering.
+		SongLoadDiagnostics::Write(U"cache fallback", directoryPath, U"Using an in-memory song index");
+		SQLite::Database memoryDb(":memory:", SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+		CreateSchema(memoryDb);
+		Rebuild(memoryDb, baseDirectoryPath, CollectSourceFiles(baseDirectoryPath));
+		return ReadChartRows(memoryDb, baseDirectoryPath, whereClause, orderByClause);
 	}
 
 	Array<SelectCachedSongEntry> GroupRowsAsSongEntries(const Array<ChartRowResult>& rows)

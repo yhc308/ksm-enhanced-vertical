@@ -7,6 +7,7 @@
 #include "KeyBeamGraphics.hpp"
 #include "Note/ButtonNoteGraphics.hpp"
 #include "Note/LaserNoteGraphics.hpp"
+#include "Vertical/VerticalLaneGeometry.hpp"
 
 namespace MusicGame::Graphics
 {
@@ -26,16 +27,24 @@ namespace MusicGame::Graphics
 		MeshData m_meshData;
 		DynamicMesh m_mesh;
 		DynamicMesh m_verticalMesh;
+		MeshData m_verticalMeshData{ MeshData::Grid(kHighwayPlaneSizeWide, 1, 2) };
 		bool m_trianglesFlipped = false;
+		bool m_verticalTrianglesFlipped = false;
+		Vertical::LaneSpan m_displayLaneSpan{};
 		Float3 m_displayNoteAnchor{ 0, 0, 0 };
 
 	public:
 		Highway3DGraphics();
 
-		void update(const ViewStatus& viewStatus);
+		void update(const ViewStatus& viewStatus, const BasicCamera3D* displayCamera = nullptr);
+		const Vertical::LaneSpan& displayLaneSpan() const { return m_displayLaneSpan; }
 		Float3 displayNoteAnchor() const
 		{
 			return m_displayNoteAnchor;
+		}
+		const MeshData& displayMesh() const
+		{
+			return GameRender::VerticalEnabled() ? m_verticalMeshData : m_meshData;
 		}
 		const MeshData& sourceMesh() const
 		{
