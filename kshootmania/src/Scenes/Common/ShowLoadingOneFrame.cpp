@@ -1,7 +1,10 @@
 ﻿#include "ShowLoadingOneFrame.hpp"
+#include "Vertical/VerticalModConfig.hpp"
+#include "Vertical/VerticalLayout.hpp"
 
 ShowLoadingOneFrame::ShowLoadingOneFrame(LoadingBgMode bgMode)
-	: m_bgMode(bgMode)
+	: m_bgMode(bgMode), m_vertical(Vertical::ModConfig::Load().enabled),
+	  m_bgTexture(TextureAsset(m_vertical ? U"bg2_vertical.png" : CommonTexture::kMainBG))
 {
 }
 
@@ -15,7 +18,17 @@ void ShowLoadingOneFrame::draw() const
 	switch (m_bgMode)
 	{
 	case LoadingBgMode::kMainBg:
-		FitToHeight(m_bgTexture).drawAt(Scene::Center());
+		if (m_vertical)
+		{
+			const auto view = Vertical::Viewport::Fit(Scene::Width(), Scene::Height());
+			const Transformer2D transform{ Mat3x2::Identity(), Transformer2D::Target::SetLocal };
+			Scene::Rect().draw(Palette::Black);
+			m_bgTexture.fitted(720 * view.scale, 1280 * view.scale).drawAt(Scene::Center());
+		}
+		else
+		{
+			FitToHeight(m_bgTexture).drawAt(Scene::Center());
+		}
 		break;
 	case LoadingBgMode::kBlack:
 		{

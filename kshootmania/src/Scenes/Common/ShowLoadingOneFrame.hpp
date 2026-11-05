@@ -18,7 +18,8 @@ class ShowLoadingOneFrame : public Co::SequenceBase<void>
 {
 private:
 	const LoadingBgMode m_bgMode;
-	const Texture m_bgTexture{ TextureAsset(CommonTexture::kMainBG) };
+	const bool m_vertical;
+	const Texture m_bgTexture;
 	const Texture m_loadingTexture{ TextureAsset(CommonTexture::kLoading) };
 
 	Co::Task<void> start() override;
