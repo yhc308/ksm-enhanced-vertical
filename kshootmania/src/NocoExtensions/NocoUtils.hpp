@@ -65,6 +65,10 @@ namespace NocoUtils
 	/// @brief imgsフォルダ外のテクスチャキャッシュをクリア
 	void UnloadExternalTextures();
 
+	/// @brief Keep external (jacket) textures cached across folder changes, clearing them only once more
+	/// than maxKept are loaded. Re-opening a folder then needs no synchronous jacket reloads.
+	void TrimExternalTextures(size_t maxKept);
+
 	/// @brief SubCanvas内のコンポーネントを名前で取得
 	/// @tparam TComponent 取得するコンポーネントの型
 	/// @param pCanvas キャンバスのポインタ

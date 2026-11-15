@@ -1,5 +1,6 @@
 ﻿#include "SkinPreset.hpp"
 #include "I18n/I18n.hpp"
+#include "Graphics/AsyncTextureLoader.hpp"
 #include <cstdio>
 #ifdef _WIN32
 #include <Siv3D/Windows/Windows.hpp>
@@ -176,7 +177,10 @@ namespace SkinPreset
 										  normalized.replace(U'\\', U'/');
 										  if (normalized.starts_with(U"imgs/"))
 											  return LoadTexture(path, mip ? TextureDesc::Mipped : TextureDesc::Unmipped);
-										  return Texture{ noco::Asset::GetFullPath(path), mip ? TextureDesc::Mipped : TextureDesc::Unmipped };
+										  // Jackets and other external images decode on worker threads (see AsyncTextureLoader)
+										  if (auto texture = AsyncTextureLoader::TryGet(path, noco::Asset::GetFullPath(path), mip ? TextureDesc::Mipped : TextureDesc::Unmipped))
+											  return *texture;
+										  return Texture{};
 									  });
 	}
 
@@ -187,9 +191,10 @@ namespace SkinPreset
 			return it->second;
 		const auto base = FileSystem::PathAppend(GetBaseImageDirectory(), name);
 		const auto selected = g_currentSettings.folder == U"default" ? base : FileSystem::PathAppend(GetUserSkinDirectory(), g_currentSettings.folder + U"/" + name);
-		// Unknown legacy background/icon names retain the original caller's fallback.
+		// Unknown legacy background/icon names retain the original caller's fallback. Cached as well, so
+		// song select (which resolves skin icons on every cursor move) doesn't check the disk again each time.
 		if (!FileSystem::IsFile(base) && !FileSystem::IsFile(selected))
-			return selected;
+			return g_resolvedImagePaths[name] = selected;
 		FilePath path;
 		// Decode validation also treats corrupt images as missing, once per selection.
 		if (FileSystem::IsFile(selected) && !Image{ selected }.isEmpty())

@@ -12,6 +12,7 @@
 #include <CoTaskLib.hpp>
 #include <NocoUI.hpp>
 #include "Common/FrameRateLimit.hpp"
+#include "Graphics/AsyncTextureLoader.hpp"
 #include "Common/IMEUtils.hpp"
 #include "Common/AssetManagement.hpp"
 #include "Addon/AutoMuteAddon.hpp"
@@ -565,6 +566,15 @@ void KSMMain()
 	{
 		return;
 	}
+	// Generate printable ASCII glyphs up front, so timing text ("+12.3ms", FAST/SLOW), scores and menus
+	// never generate glyphs mid-play on their first appearance.
+	{
+		String ascii;
+		for (char32 ch = U' '; ch <= U'~'; ++ch)
+			ascii.push_back(ch);
+		AssetManagement::SystemFont().preload(ascii);
+		AssetManagement::SystemFontBold().preload(ascii);
+	}
 
 	// Vsync設定を反映("0;120"または"1"の形式)
 	const Array<String> vsyncParts = String{ ConfigIni::GetString(ConfigIni::Key::kVsync, U"0;300") }.split(U';');
@@ -814,6 +824,7 @@ void KSMMain()
 		ksmaudio::qa::FrameBegin();
 		if (!System::Update())
 			break;
+		AsyncTextureLoader::Update();
 		ksmaudio::qa::Phase("main.update");
 		if (ksmaudio::qa::writerFailed)
 			throw Error{ U"QA logging failed. Check free disk space and folder permissions." };
@@ -953,6 +964,7 @@ void KSMMain()
 			break;
 		}
 	}
+	AsyncTextureLoader::Shutdown();
 
 	if (warpBench)
 	{

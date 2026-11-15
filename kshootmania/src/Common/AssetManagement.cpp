@@ -67,29 +67,33 @@ namespace AssetManagement
 			{
 				FontAsset::Unregister(kFontAssetSystemBold);
 			}
+			// SDF rather than MSDF: same outline/shadow support, but a CJK glyph takes ~2.3 ms to generate
+			// instead of ~8.7 ms. MSDF made song select stall 70-400 ms whenever titles with new characters
+			// scrolled into view (measured with --glyph-bench and --frame-log).
 #ifdef __linux
 			constexpr StringView kResourceDir = U"resources/";
-			FontAsset::Register(kFontAssetSystem, FontMethod::MSDF, 44, kResourceDir + fontPath, FontStyle::Default);
-			FontAsset::Register(kFontAssetSystemBold, FontMethod::MSDF, 44, kResourceDir + fontPath, FontStyle::Bold);
+			FontAsset::Register(kFontAssetSystem, FontMethod::SDF, 44, kResourceDir + fontPath, FontStyle::Default);
+			FontAsset::Register(kFontAssetSystemBold, FontMethod::SDF, 44, kResourceDir + fontPath, FontStyle::Bold);
 #else
-			FontAsset::Register(kFontAssetSystem, FontMethod::MSDF, 44, Resource(fontPath), FontStyle::Default);
-			FontAsset::Register(kFontAssetSystemBold, FontMethod::MSDF, 44, Resource(fontPath), FontStyle::Bold);
+			FontAsset::Register(kFontAssetSystem, FontMethod::SDF, 44, Resource(fontPath), FontStyle::Default);
+			FontAsset::Register(kFontAssetSystemBold, FontMethod::SDF, 44, Resource(fontPath), FontStyle::Bold);
 #endif
 			// Keep the selected language's glyph shapes first. Fallback fonts only
 			// supply missing characters in song names; never rewrite their paths.
+			// (The CJK fallbacks use SDF too, for the same glyph-generation cost reason as above.)
 			static const Array<Font> fallbackFonts = []
 			{
 				Array<Font> fonts;
 				for (const auto path : { kFontResourcePathJa, kFontResourcePathSc, kFontResourcePathTc })
 				{
 #ifdef __linux
-					fonts.emplace_back(FontMethod::MSDF, 44, Resource(U"resources/" + String{ path }));
+					fonts.emplace_back(FontMethod::SDF, 44, Resource(U"resources/" + String{ path }));
 #else
-					fonts.emplace_back(FontMethod::MSDF, 44, Resource(path));
+					fonts.emplace_back(FontMethod::SDF, 44, Resource(path));
 #endif
 				}
 				if (Font::IsAvailable(Typeface::CJK_Regular_KR))
-					fonts.emplace_back(FontMethod::MSDF, 44, Typeface::CJK_Regular_KR);
+					fonts.emplace_back(FontMethod::SDF, 44, Typeface::CJK_Regular_KR);
 #ifdef _WIN32
 				const FilePath emojiPath = FileSystem::PathAppend(FileSystem::GetFolderPath(SpecialFolder::SystemFonts), U"seguiemj.ttf");
 				if (FileSystem::IsFile(emojiPath))

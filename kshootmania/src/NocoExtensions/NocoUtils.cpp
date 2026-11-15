@@ -10,6 +10,23 @@ namespace NocoUtils
 		});
 	}
 
+	void TrimExternalTextures(size_t maxKept)
+	{
+		size_t external = 0;
+		noco::Asset::UnloadTexturesIf([&external](const auto& pair)
+		{
+			if (!pair.first.starts_with(U"imgs/"))
+			{
+				++external;
+			}
+			return false; // counting pass only
+		});
+		if (external > maxKept)
+		{
+			UnloadExternalTextures();
+		}
+	}
+
 	Co::Task<void> WaitForTweenByTag(std::shared_ptr<noco::Canvas> canvas, const char32* tag)
 	{
 		co_await Co::WaitUntil([canvas, tag]

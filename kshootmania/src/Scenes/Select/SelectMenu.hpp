@@ -65,6 +65,9 @@ private:
 
 	Optional<ErrorReporting::Report> m_directoryLoadErrorPending;
 
+	// Identifies the current menu contents, so the folder's glyphs are queued once per change
+	String m_glyphPrewarmSignature;
+
 	bool m_searchActive = false;
 
 	String m_searchQuery;
