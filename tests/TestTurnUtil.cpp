@@ -136,8 +136,7 @@ TEST_CASE("MakeSRandomNoteLanes generates valid assignment", "[TurnUtil]")
 {
 	// ロングノーツと同時押しを含む譜面で複数回生成し、常に妥当な配置になることを確認
 	kson::ChartData chartData;
-	chartData.beat.bpm.emplace(0, 120.0); // Pulse-to-time conversion requires a BPM at the origin.
-
+	chartData.beat.bpm.emplace(0, 120.0);
 	chartData.note.bt[0].emplace(0, kson::Interval{ .length = 480 }); // ロング(0〜480)
 	chartData.note.bt[1].emplace(0, kson::Interval{ .length = 0 });
 	chartData.note.fx[0].emplace(0, kson::Interval{ .length = 240 });	// FXロング(0〜240)
@@ -187,6 +186,67 @@ TEST_CASE("MakeSRandomNoteLanes avoids fast jacks", "[TurnUtil]")
 	}
 }
 
+TEST_CASE("MakeSRandomNoteLanes keeps notes on disabled lanes in place", "[TurnUtil]")
+{
+	kson::ChartData chartData;
+	chartData.beat.bpm.emplace(0, 120.0);
+	chartData.note.bt[0].emplace(0, kson::Interval{ .length = 0 });
+	chartData.note.bt[3].emplace(0, kson::Interval{ .length = 240 });
+	chartData.note.fx[0].emplace(0, kson::Interval{ .length = 0 });
+	chartData.note.bt[1].emplace(240, kson::Interval{ .length = 0 });
+	chartData.note.fx[1].emplace(240, kson::Interval{ .length = 120 });
+	chartData.note.fx[0].emplace(480, kson::Interval{ .length = 0 });
+
+	// 列挙順(pulse昇順、同pulse内はレーン昇順): BT-A(0), BT-D(0), FX-L(0), BT-B(240), FX-R(240), FX-L(480)
+	const Array<std::size_t> originalLanes{ 0, 3, 4, 1, 5, 4 };
+
+	// BTが対象外の場合、BTノーツは元のレーンのままで、FXノーツはFXレーン内にのみ配置される
+	for (int32 i = 0; i < 100; ++i)
+	{
+		const Array<std::size_t> noteLanes = MusicGame::MakeSRandomNoteLanes(chartData, 1.0, { false, false, false, false, true, true });
+		REQUIRE(noteLanes.size() == originalLanes.size());
+		for (std::size_t j = 0U; j < noteLanes.size(); ++j)
+		{
+			if (originalLanes[j] < kson::kNumBTLanesSZ)
+			{
+				REQUIRE(noteLanes[j] == originalLanes[j]);
+			}
+			else
+			{
+				REQUIRE(noteLanes[j] >= kson::kNumBTLanesSZ);
+			}
+		}
+
+		kson::ChartData copied = chartData;
+		REQUIRE(MusicGame::ApplySRandomNoteLanes(&copied, noteLanes));
+		REQUIRE(AllNotes(copied) == AllNotes(chartData));
+		REQUIRE(HasNoOverlap(copied));
+	}
+
+	// FXが対象外の場合、FXノーツは元のレーンのままで、BTノーツはBTレーン内にのみ配置される
+	for (int32 i = 0; i < 100; ++i)
+	{
+		const Array<std::size_t> noteLanes = MusicGame::MakeSRandomNoteLanes(chartData, 1.0, { true, true, true, true, false, false });
+		REQUIRE(noteLanes.size() == originalLanes.size());
+		for (std::size_t j = 0U; j < noteLanes.size(); ++j)
+		{
+			if (originalLanes[j] >= kson::kNumBTLanesSZ)
+			{
+				REQUIRE(noteLanes[j] == originalLanes[j]);
+			}
+			else
+			{
+				REQUIRE(noteLanes[j] < kson::kNumBTLanesSZ);
+			}
+		}
+
+		kson::ChartData copied = chartData;
+		REQUIRE(MusicGame::ApplySRandomNoteLanes(&copied, noteLanes));
+		REQUIRE(AllNotes(copied) == AllNotes(chartData));
+		REQUIRE(HasNoOverlap(copied));
+	}
+}
+
 TEST_CASE("MakeFXNoteDestinations maps original FX notes to destination lanes", "[TurnUtil]")
 {
 	kson::ChartData chartData;
@@ -206,4 +266,38 @@ TEST_CASE("MakeFXNoteDestinations maps original FX notes to destination lanes", 
 	// FX-Rのチップの配置先はBT-A
 	REQUIRE(destinations[1].size() == 1);
 	REQUIRE(destinations[1].at(200) == 0);
+}
+
+TEST_CASE("MakeFXChipKeySoundPulses maps key sound pulses to destination lanes", "[TurnUtil]")
+{
+	kson::KeySoundInvokeListFX chipEvent;
+	chipEvent["clap"][0].emplace(100, kson::KeySoundInvokeFX{});
+	chipEvent["clap"][1].emplace(200, kson::KeySoundInvokeFX{});
+	chipEvent["snare"][1].emplace(300, kson::KeySoundInvokeFX{});
+
+	// S-RANDOMでない場合は元のFXレーンのまま
+	{
+		const auto pulses = MusicGame::MakeFXChipKeySoundPulses(chipEvent, nullptr);
+		for (std::size_t laneIdx = 0U; laneIdx < kson::kNumBTLanesSZ; ++laneIdx)
+		{
+			REQUIRE(pulses[laneIdx].empty());
+		}
+		REQUIRE(pulses[4] == HashSet<kson::Pulse>{ 100 });
+		REQUIRE(pulses[5] == HashSet<kson::Pulse>{ 200, 300 });
+	}
+
+	// S-RANDOMの場合は配置先レーンへ移す(対応するノーツがないキー音は対象外)
+	{
+		std::array<kson::ByPulse<std::size_t>, kson::kNumFXLanesSZ> destinations;
+		destinations[0].emplace(100, 2); // FX-L(100)はBT-Cへ
+		destinations[1].emplace(200, 4); // FX-R(200)はFX-Lへ
+
+		const auto pulses = MusicGame::MakeFXChipKeySoundPulses(chipEvent, &destinations);
+		REQUIRE(pulses[0].empty());
+		REQUIRE(pulses[1].empty());
+		REQUIRE(pulses[2] == HashSet<kson::Pulse>{ 100 });
+		REQUIRE(pulses[3].empty());
+		REQUIRE(pulses[4] == HashSet<kson::Pulse>{ 200 });
+		REQUIRE(pulses[5].empty());
+	}
 }

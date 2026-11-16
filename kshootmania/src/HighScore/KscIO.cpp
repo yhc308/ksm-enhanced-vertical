@@ -215,6 +215,13 @@ namespace KscIO
 			return true;
 		}
 
+		KscValue ApplyPlayResultByGameMode(const KscValue& origKscValue, const MusicGame::PlayResult& playResult)
+		{
+			return playResult.playOption.gameMode == MusicGame::GameMode::kCourseMode
+				? origKscValue.applyPlayResultForCourse(playResult)
+				: origKscValue.applyPlayResult(playResult);
+		}
+
 		bool CreateNewKscFile(FilePathView kscFilePath, const MusicGame::PlayResult& playResult, const KscKey& condition)
 		{
 			TextWriter writer(kscFilePath, TextEncoding::UTF8_NO_BOM);
@@ -222,7 +229,7 @@ namespace KscIO
 			{
 				return false;
 			}
-			const KscValue kscValue = KscValue{}.applyPlayResult(playResult);
+			const KscValue kscValue = ApplyPlayResultByGameMode(KscValue{}, playResult);
 			writer.write(U"{}={}\n"_fmt(condition.toString(), kscValue.toString()));
 			return true;
 		}
@@ -242,9 +249,7 @@ namespace KscIO
 					return false;
 				}
 				const KscValue& origKscValue = origHighScoreInfo.kscValueOf(gaugeType);
-				const KscValue newKscValue = playResult.playOption.gameMode == MusicGame::GameMode::kCourseMode
-												 ? origKscValue.applyPlayResultForCourse(playResult)
-												 : origKscValue.applyPlayResult(playResult);
+				const KscValue newKscValue = ApplyPlayResultByGameMode(origKscValue, playResult);
 				const String replace = search + newKscValue.toString();
 
 				TextReader reader(kscFilePath);

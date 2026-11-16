@@ -55,7 +55,7 @@ namespace
 		return s_currentEditingTextExists || s_prevEditingTextExists;
 	}
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
 	struct PlatformKeyState
 	{
 		bool previousPressed = false;
@@ -240,7 +240,7 @@ namespace
 				{
 					continue;
 				}
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
 				bool isPlatformKey = false;
 				for (size_t i = 0; i < kPlatformKeys.size(); ++i)
 				{
@@ -274,12 +274,22 @@ namespace
 		return false;
 	}
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
 	void UpdatePlatformKeyboard()
 	{
+#if defined(__linux__)
+		KSMPlatformLinux_UpdateKeyboardState();
+
+		// ウィンドウが非アクティブの場合は押されていない扱い
+		const bool isWindowFocused = Window::GetState().focused;
+#endif
 		for (size_t i = 0; i < kPlatformKeys.size(); ++i)
 		{
+#ifdef __APPLE__
 			const bool pressed = KSMPlatformMacOS_IsKeyPressed(kPlatformKeys[i].nativeCode);
+#else
+			const bool pressed = isWindowFocused && KSMPlatformLinux_IsKeyPressed(kPlatformKeys[i].nativeCode);
+#endif
 			s_platformKeyStates[i].update(pressed);
 		}
 	}
@@ -493,6 +503,13 @@ void KeyConfig::SetConfigValueByCommaSeparated(ConfigSet targetConfigSet, String
 			if (kConfigSetDeviceTypes[targetConfigSet] == InputDeviceType::Gamepad)
 			{
 				// ゲームパッドは「デバイス番号*32+ボタン番号」形式で保存されている
+				if (code / 32 >= static_cast<int32>(Gamepad.MaxPlayerCount))
+				{
+					// デバイス番号が範囲外の場合は無効化(範囲外参照を防ぐため)
+					Logger << U"[ksm warning] Key configuration ({}) has invalid gamepad index! (value:{})"_fmt(kConfigSetNames[targetConfigSet], code);
+					s_configSetArray[targetConfigSet][i] = Input();
+					continue;
+				}
 				s_configSetArray[targetConfigSet][i] = Input(InputDeviceType::Gamepad, static_cast<uint8>(code % 32), static_cast<uint8>(code / 32));
 			}
 			else
@@ -547,8 +564,8 @@ void KeyConfig::Update()
 	s_virtualDownButtonsThisFrame = s_virtualDownButtonsPending;
 	s_virtualDownButtonsPending.fill(false);
 
-#ifdef __APPLE__
-	// macOSプラットフォーム特有のキーボード状態を更新
+#if defined(__APPLE__) || defined(__linux__)
+	// プラットフォーム特有のキーボード状態を更新
 	UpdatePlatformKeyboard();
 #endif
 
@@ -719,7 +736,7 @@ bool KeyConfig::PhysicalDown(Button button)
 			{
 				continue;
 			}
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
 			bool isPlatformKey = false;
 			for (size_t i = 0; i < kPlatformKeys.size(); ++i)
 			{
@@ -870,7 +887,7 @@ bool KeyConfig::Up(Button button)
 			{
 				continue;
 			}
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
 			bool isPlatformKey = false;
 			for (size_t i = 0; i < kPlatformKeys.size(); ++i)
 			{
@@ -898,6 +915,23 @@ bool KeyConfig::Up(Button button)
 		else if (input.up())
 		{
 			return true;
+		}
+	}
+
+	// FXの場合はLR両押しキーの状態も反映
+	if (button == kButtonFX_L || button == kButtonFX_R)
+	{
+		for (const auto& configSet : s_configSetArray)
+		{
+			const auto& fxLRInput = configSet[kButtonFX_LR];
+			if (ignoreKeyboard && fxLRInput.deviceType() == InputDeviceType::Keyboard)
+			{
+				continue;
+			}
+			if (fxLRInput.up())
+			{
+				return true;
+			}
 		}
 	}
 

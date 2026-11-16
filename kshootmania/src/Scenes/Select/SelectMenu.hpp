@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <CoTaskLib.hpp>
 #include "SelectFolderState.hpp"
 #include "Common/ErrorReporting.hpp"
 #include "SelectHighScoreCache.hpp"
@@ -13,6 +14,7 @@ using RefreshSongPreviewYN = YesNo<struct RefreshSongPreviewYN_tag>;
 using SaveToConfigIniYN = YesNo<struct SaveToConfigIniYN_tag>;
 using SongPreviewOnlyYN = YesNo<struct SongPreviewOnlyYN_tag>;
 using ReloadFromDiskYN = YesNo<struct ReloadFromDiskYN_tag>;
+using CheckFileChangesYN = YesNo<struct CheckFileChangesYN_tag>;
 
 enum class SelectMenuShakeDirection
 {
@@ -57,6 +59,12 @@ private:
 	static constexpr int32 kNumTopItems = kNumDisplayItems / 2;
 	static constexpr int32 kNumBottomItems = kNumDisplayItems - kNumTopItems - 1;
 
+	// 表示範囲の外側で、ジャケット画像を先に読み込んでおく項目数(上下それぞれ)
+	static constexpr int32 kNumJacketPreloadItems = 8;
+
+	// 表示範囲の外側で、グリフを事前生成しておく項目数(上下それぞれ)
+	static constexpr int32 kNumGlyphPreloadItems = 16;
+
 	const SelectMenuEventContext m_eventContext;
 
 	std::shared_ptr<noco::Canvas> m_selectSceneCanvas;
@@ -90,17 +98,32 @@ private:
 
 	const ksmaudio::Sample m_folderSelectSe{"se/sel_dir.wav"};
 
-	bool openDirectory(FilePathView directoryPath, PlaySeYN playSe, RefreshSongPreviewYN refreshSongPreview = RefreshSongPreviewYN::Yes, SaveToConfigIniYN saveToConfigIni = SaveToConfigIniYN::Yes);
+	Optional<Co::ScopedTaskRunner> m_folderLoadingRunner;
 
-	bool openDirectoryWithNameSort(FilePathView directoryPath);
+	/// @brief ディレクトリの譜面情報を読み込んでからフォルダを開く(読み込みに時間がかかる場合は複数フレームに分けて読み込む)
+	/// @param directoryPaths 読み込むディレクトリ
+	/// @param checkFileChanges ファイルの変更を確認するか
+	/// @param fnOpenFolder 読み込み完了時に実行する処理
+	/// @param fnCancel 読み込みのキャンセル時に実行する処理
+	void openFolderAfterLoading(const Array<FilePath>& directoryPaths, CheckFileChangesYN checkFileChanges, std::function<void()> fnOpenFolder, std::function<void()> fnCancel = nullptr);
 
-	bool openDirectoryWithLevelSort(FilePathView directoryPath);
+	void restoreSavedFolder(StringView savedDirectory, int32 cursor, int32 difficultyIdx);
 
-	bool openAllFolder(PlaySeYN playSe, RefreshSongPreviewYN refreshSongPreview = RefreshSongPreviewYN::Yes, SaveToConfigIniYN saveToConfigIni = SaveToConfigIniYN::Yes);
+	void reloadCurrentDirectoryImpl(RefreshSongPreviewYN refreshSongPreview, ReloadFromDiskYN reloadFromDisk, CheckFileChangesYN checkFileChanges);
 
-	bool openAllFolderWithNameSort();
+	void onReloadCurrentDirectoryCanceled();
 
-	bool openAllFolderWithLevelSort();
+	bool openDirectory(FilePathView directoryPath, PlaySeYN playSe, RefreshSongPreviewYN refreshSongPreview = RefreshSongPreviewYN::Yes, SaveToConfigIniYN saveToConfigIni = SaveToConfigIniYN::Yes, CheckFileChangesYN checkFileChanges = CheckFileChangesYN::Yes);
+
+	bool openDirectoryWithNameSort(FilePathView directoryPath, CheckFileChangesYN checkFileChanges);
+
+	bool openDirectoryWithLevelSort(FilePathView directoryPath, CheckFileChangesYN checkFileChanges);
+
+	bool openAllFolder(PlaySeYN playSe, RefreshSongPreviewYN refreshSongPreview = RefreshSongPreviewYN::Yes, SaveToConfigIniYN saveToConfigIni = SaveToConfigIniYN::Yes, CheckFileChangesYN checkFileChanges = CheckFileChangesYN::Yes);
+
+	bool openAllFolderWithNameSort(CheckFileChangesYN checkFileChanges);
+
+	bool openAllFolderWithLevelSort(CheckFileChangesYN checkFileChanges);
 
 	bool openFavoriteFolder(FilePathView specialPath, PlaySeYN playSe, RefreshSongPreviewYN refreshSongPreview = RefreshSongPreviewYN::Yes, SaveToConfigIniYN saveToConfigIni = SaveToConfigIniYN::Yes);
 
@@ -121,6 +144,21 @@ private:
 	void resetSongInfoTextDisplayTimer();
 
 	void refreshContentCanvasParams();
+
+	int32 visibleTopItemCount() const;
+
+	int32 visibleBottomItemCount() const;
+
+	/// @brief 表示中の項目の英字表記のフェードの進行度だけを更新する
+	void refreshTranslitFadeRates();
+
+	/// @brief 表示中の項目とその周辺の項目のジャケット画像を別スレッドで読み込む
+	/// @param difficultyIdx 現在選択中の難易度のインデックス(0～3)
+	void preloadJacketTextures(int32 difficultyIdx);
+
+	/// @brief 表示範囲外の項目のグリフの事前生成を要求
+	/// @param difficultyIdx 現在選択中の難易度のインデックス(0～3)
+	void preloadGlyphs(int32 difficultyIdx);
 
 	void refreshSongPreview();
 
@@ -153,6 +191,10 @@ public:
 
 	void update(SongPreviewOnlyYN songPreviewOnly = SongPreviewOnlyYN::No);
 
+	/// @brief フォルダを複数フレームに分けて読み込み中か
+	[[nodiscard]]
+	bool isLoadingFolder() const;
+
 	/// @brief クリックによる決定・難易度変更を処理(Shift押下中はオートプレイとして決定)
 	void updateClickDecide();
 
@@ -173,7 +215,7 @@ public:
 
 	void fadeOutSongPreviewForExit(Duration duration);
 
-	void reloadCurrentDirectory(RefreshSongPreviewYN refreshSongPreview, ReloadFromDiskYN reloadFromDisk);
+	void reloadCurrentDirectory(RefreshSongPreviewYN refreshSongPreview, ReloadFromDiskYN reloadFromDisk, CheckFileChangesYN checkFileChanges = CheckFileChangesYN::Yes);
 
 	void forceReloadCurrentDirectory();
 

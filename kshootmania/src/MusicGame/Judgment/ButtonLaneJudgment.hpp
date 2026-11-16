@@ -23,6 +23,7 @@ namespace MusicGame::Judgment
 		const GaugeType m_gaugeType;
 		FastSlowMode m_fastSlowMode;
 		const Button m_keyConfigButton;
+		const HashSet<kson::Pulse> m_fxChipKeySoundPulses; // このレーンのキー音付きFXチップノーツのpulse
 		const std::map<kson::Pulse, double> m_pulseToSec;
 
 		bool m_isLockedForExit = false;
@@ -39,7 +40,7 @@ namespace MusicGame::Judgment
 		void finishChipVisual(kson::Pulse pulse, ChipAnimType type, double time, double drawTime, ButtonLaneStatus& status);
 		double errorWindowSec() const;
 
-		void processKeyDown(const kson::ChartData& chartData, const kson::ByPulse<kson::Interval>& lane, kson::Pulse currentPulse, double currentTimeSec, double currentTimeSecForDraw, ButtonLaneStatus& laneStatusRef, JudgmentHandler& judgmentHandlerRef);
+		void processKeyDown(const kson::ByPulse<kson::Interval>& lane, kson::Pulse currentPulse, double currentTimeSec, double currentTimeSecForDraw, ButtonLaneStatus& laneStatusRef, JudgmentHandler& judgmentHandlerRef);
 
 		void processKeyPressed(const kson::ByPulse<kson::Interval>& lane, kson::Pulse currentPulse, const ButtonLaneStatus& laneStatusRef, JudgmentHandler& judgmentHandlerRef);
 
@@ -48,7 +49,9 @@ namespace MusicGame::Judgment
 	public:
 		ButtonLaneJudgment(JudgmentPlayMode judgmentPlayMode, GaugeType gaugeType, FastSlowMode fastSlowMode, Button keyConfigButton, const kson::ByPulse<kson::Interval>& lane, const kson::BeatInfo& beatInfo, const kson::TimingCache& timingCache, bool skinPreview = false);
 
-		void update(const kson::ChartData& chartData, const kson::ByPulse<kson::Interval>& lane, kson::Pulse currentPulse, kson::Pulse currentPulseForDraw, double currentTimeSec, double currentTimeSecForDraw, ButtonLaneStatus& laneStatusRef, JudgmentHandler& judgmentHandlerRef);
+		ButtonLaneJudgment(JudgmentPlayMode judgmentPlayMode, GaugeType gaugeType, FastSlowMode fastSlowMode, Button keyConfigButton, const kson::ByPulse<kson::Interval>& lane, const HashSet<kson::Pulse>& fxChipKeySoundPulses, const kson::BeatInfo& beatInfo, const kson::TimingCache& timingCache, bool skinPreview = false);
+
+		void update(const kson::ByPulse<kson::Interval>& lane, kson::Pulse currentPulse, kson::Pulse currentPulseForDraw, double currentTimeSec, double currentTimeSecForDraw, ButtonLaneStatus& laneStatusRef, JudgmentHandler& judgmentHandlerRef);
 
 		bool applyPreviewChip(kson::Pulse pulse, JudgmentResult result, double exampleMs, double time, double drawTime, ButtonLaneStatus& status, JudgmentHandler& handler);
 		void resetSettingsLoop(const kson::ByPulse<kson::Interval>& lane);

@@ -155,7 +155,25 @@ bool SelectMenuLevelSongItem::handleDifficultyChange(
 	return false;
 }
 
+bool SelectMenuLevelSongItem::handleDifficultyClick(
+	const SelectMenuEventContext& context,
+	int32 clickedDifficultyIdx) const
+{
+	if (clickedDifficultyIdx < 0 || kNumDifficulties <= clickedDifficultyIdx || m_siblings[clickedDifficultyIdx].menuIndex < 0)
+	{
+		return false;
+	}
+
+	context.fnJumpToItemWithDifficulty(m_siblings[clickedDifficultyIdx].menuIndex, clickedDifficultyIdx);
+	return true;
+}
+
 bool SelectMenuLevelSongItem::isFavoriteRegisterableItemType() const
+{
+	return true;
+}
+
+bool SelectMenuLevelSongItem::isLevelSortSongItem() const
 {
 	return true;
 }
@@ -173,7 +191,12 @@ void SelectMenuLevelSongItem::setCanvasParamsCenter(const SelectMenuEventContext
 	for (int32 i = 0; i < kNumDifficulties; ++i)
 	{
 		const bool exists = m_siblings[i].menuIndex >= 0;
-		const int32 levelIndex = exists ? m_siblings[i].level - 1 : -1;
+		int32 levelIndex = exists ? m_siblings[i].level - 1 : -1;
+		if (i == m_difficultyIdx && m_chartInfo != nullptr)
+		{
+			// 同一難易度の譜面が複数ある場合、兄弟難易度には先に追加された項目が入るため、自身の難易度は自身の譜面のレベルを表示
+			levelIndex = m_chartInfo->level() - 1;
+		}
 		canvas.setSubCanvasParamValuesByTag(U"center", {
 														   { U"difficulty{}Enabled"_fmt(i), exists },
 														   { U"difficulty{}LevelIndex"_fmt(i), levelIndex },
@@ -257,6 +280,16 @@ void SelectMenuLevelSongItem::setCanvasParamsTopBottom(const SelectMenuEventCont
 											 });
 }
 
+FilePath SelectMenuLevelSongItem::jacketFilePathCenter([[maybe_unused]] int32 difficultyIdx) const
+{
+	return m_chartInfo != nullptr ? m_chartInfo->jacketFilePath() : FilePath{};
+}
+
+FilePath SelectMenuLevelSongItem::jacketFilePathTopBottom([[maybe_unused]] int32 difficultyIdx) const
+{
+	return m_chartInfo != nullptr ? m_chartInfo->jacketFilePath() : FilePath{};
+}
+
 void SelectMenuLevelSongItem::showInFileManager([[maybe_unused]] int32 difficultyIdx) const
 {
 	if (m_chartInfo == nullptr)
@@ -275,4 +308,12 @@ Optional<String> SelectMenuLevelSongItem::relativePathToCopy([[maybe_unused]] in
 	String relativePath = FsUtils::RelativePathFromSongsDir(m_chartInfo->chartFilePath());
 	relativePath.replace(U'\\', U'/');
 	return relativePath;
+}
+
+void SelectMenuLevelSongItem::requestGlyphPreload([[maybe_unused]] int32 difficultyIdx) const
+{
+	if (m_chartInfo != nullptr)
+	{
+		RequestSongInfoGlyphPreload(*m_chartInfo);
+	}
 }

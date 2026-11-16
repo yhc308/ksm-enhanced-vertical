@@ -15,6 +15,7 @@
 #include "Common/IMEUtils.hpp"
 #include "Common/AssetManagement.hpp"
 #include "Addon/AutoMuteAddon.hpp"
+#include "Addon/GlyphPreloadAddon.hpp"
 #include "Addon/CommonSEAddon.hpp"
 #include "Addon/DisableIMEAddon.hpp"
 #include "ksmaudio/ksmaudio.hpp"
@@ -42,6 +43,11 @@
 
 #ifdef __APPLE__
 #include <ksmplatform_macos/input_method.h>
+#endif
+
+#if defined(_WIN32) && KSM_ENABLE_DIAGNOSTICS
+// Silent visual QA uses software rendering and never takes the user's game GPU.
+SIV3D_SET(ModDiagnostics::Arguments().contains(U"--silent-qa") ? s3d::EngineOption::D3D11Driver::WARP : s3d::EngineOption::D3D11Driver::Hardware)
 #endif
 
 void CreateHighScoreBackup()
@@ -396,7 +402,7 @@ void KSMMain()
 	LicenseManager::DisableDefaultTrigger();
 
 	// ウィンドウタイトル
-	Window::SetTitle(U"K-Shoot Mania V2.1.0 - Enhanced Vertical Mod 0.5.4-beta4 (Unofficial Build)");
+	Window::SetTitle(U"K-Shoot Mania V2.2.0 - Enhanced Vertical Mod 0.5.4-beta4 (Unofficial Build)");
 
 	// カレントディレクトリを設定
 	// (ChangeCurrentDirectoryはここ以外は基本的に使用禁止。どうしても使う必要がある場合は必ずResourceDirectoryPathに戻すこと)
@@ -478,6 +484,20 @@ void KSMMain()
 	// (BASS初期化失敗時ダイアログの文言に必要なのでBASS初期化前に行う)
 	I18n::LoadLanguage(ConfigIni::GetString(ConfigIni::Key::kLanguage));
 
+	// Diagnostic-only silent host: verify the mock DLL before any audio initialization.
+	const bool silentQa = ModDiagnostics::Arguments().contains(U"--silent-qa");
+#ifdef _WIN32
+	if (silentQa)
+	{
+		const auto path = FsUtils::GetResourcePath(U"bassasio.dll").toWstr();
+		const HMODULE mock = ::LoadLibraryExW(path.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+		if (!mock || !::GetProcAddress(mock, "FakeAsioSilentOnly"))
+			throw Error{ U"Silent QA requires the isolated mock output DLL; no audio device was opened" };
+		ConfigIni::SetString(ConfigIni::Key::kAudioBackend, U"asio:KSM Mock ASIO");
+		ksmaudio::SetMute(true);
+		ksmaudio::SetMasterVolume(0.0);
+	}
+#endif
 	// 音声処理を初期化
 #ifdef _WIN32
 	const String configuredOutput{ ConfigIni::GetString(ConfigIni::Key::kAudioBackend) };
@@ -489,7 +509,7 @@ void KSMMain()
 															  AudioOutputSettings::Log(Unicode::FromUTF8(phase));
 															  ksmaudio::qa::Event("STARTUP_AUDIO", 0, 0, phase);
 															  ksmaudio::qa::Phase("startup.audio");
-														  });
+														  }, !silentQa);
 #else
 	const bool audioInitialized = ksmaudio::Init(nullptr);
 #endif
@@ -521,8 +541,10 @@ void KSMMain()
 
 	// マスターボリュームを適用
 	{
+		constexpr int32 kMasterVolumeMin = 0;
+		constexpr int32 kMasterVolumeMax = 100;
 		constexpr int32 kMasterVolumeDefault = 100;
-		const int32 masterVolume = ConfigIni::GetInt(ConfigIni::Key::kMasterVolume, kMasterVolumeDefault);
+		const int32 masterVolume = Clamp(ConfigIni::GetInt(ConfigIni::Key::kMasterVolume, kMasterVolumeDefault), kMasterVolumeMin, kMasterVolumeMax);
 		ksmaudio::SetMasterVolume(previewMode ? 0.0 : masterVolume / 100.0);
 	}
 
@@ -568,7 +590,7 @@ void KSMMain()
 
 	// Vsync設定を反映("0;120"または"1"の形式)
 	const Array<String> vsyncParts = String{ ConfigIni::GetString(ConfigIni::Key::kVsync, U"0;300") }.split(U';');
-	const bool vsyncEnabled = vsyncParts[0] == U"1";
+	const bool vsyncEnabled = !vsyncParts.isEmpty() && vsyncParts[0] == U"1";
 	Graphics::SetVSyncEnabled(vsyncEnabled);
 
 	// フレームレート制限(Vsync有効時は無効化)
@@ -586,9 +608,11 @@ void KSMMain()
 
 	Addon::Register(CommonSEAddon::kAddonName, std::make_unique<CommonSEAddon>(), 2);
 
-#if defined(_WIN32) || defined(__APPLE__)
+#if defined(_WIN32) || defined(__APPLE__) || defined(__linux__)
 	Addon::Register(DisableIMEAddon::kAddonName, std::make_unique<DisableIMEAddon>(), 3);
 #endif
+
+	Addon::Register(GlyphPreloadAddon::kAddonName, std::make_unique<GlyphPreloadAddon>(), 4);
 
 	// 毎フレーム連続してアセット生成した時の警告を無効化
 	// (楽曲選択でのスクロールにおいては、正常系でもテクスチャ読み込みが毎フレーム発生するため)
@@ -597,6 +621,7 @@ void KSMMain()
 #if defined(_WIN32) || defined(__APPLE__)
 	// 起動時はIME無効化を一度実行
 	// (これは起動時のものなので、IME無効化設定とは関係なく必ず実行)
+	// (Linuxでは無効化した状態が続くため実行しない)
 	IMEUtils::DetachIMEContext();
 #endif
 
@@ -795,6 +820,7 @@ void KSMMain()
 	bool previewSelectMoved = false;
 	int previewPrepareFrame = 0;
 	const bool fastPreview = ModDiagnostics::Arguments().contains(U"--vertical-preview-fast");
+	const bool selectLoadingProbe = ModDiagnostics::Arguments().contains(U"--select-220-force-loading");
 	const bool warpBench = previewHUD && ModDiagnostics::Arguments().contains(U"--vertical-preview-benchmark");
 	const bool warpSequence = previewHUD && ModDiagnostics::Arguments().contains(U"--vertical-preview-sequence");
 	std::array<double, 960> warpFrameTimes{};
@@ -932,14 +958,14 @@ void KSMMain()
 		}
 		if (previewPrepare && previewPrepareFrame < 3 && previewTimer.sF() >= std::array<double, 3>{ .25, 1.25, 2.5 }[previewPrepareFrame])
 			ScreenCapture::SaveCurrentFrame(U"vertical-prepare-stage-{}.png"_fmt(previewPrepareFrame++));
-		if (previewMode && !warpBench && !displayTest && !previewCaptured && previewTimer.sF() >= (fastPreview ? .8 : 2.0))
+		if (previewMode && !warpBench && !displayTest && !previewCaptured && previewTimer.sF() >= (selectLoadingProbe ? 5.0 : fastPreview ? .8 : 2.0))
 		{
 			ScreenCapture::SaveCurrentFrame(previewResult ? U"vertical-result-preview.png" : previewPrepare ? U"vertical-prepare-preview.png"
 																						 : previewTitle		? U"vertical-title-preview.png"
 																											: (previewOptions ? U"vertical-options-preview.png" : (previewLegacyOptions ? U"vertical-option-scene-preview.png" : (previewSettings ? U"vertical-settings-preview.png" : (previewSelect ? U"vertical-select-preview.png" : U"vertical-hud-preview.png")))));
 			previewCaptured = true;
 		}
-		if (previewMode && !warpBench && !displayTest && !Vertical::OptionProbe::active() && previewTimer.sF() >= (fastPreview ? 1.1 : 3.2))
+		if (previewMode && !warpBench && !displayTest && !Vertical::OptionProbe::active() && previewTimer.sF() >= (selectLoadingProbe ? 7.0 : fastPreview ? 1.1 : 3.2))
 			break;
 
 #ifdef __APPLE__

@@ -38,7 +38,10 @@ namespace MusicGame::Audio
 	}
 
 	LaserSlamSE::LaserSlamSE(const kson::ChartData& chartData, const kson::TimingCache& timingCache, FilePathView parentPath, bool isAutoPlaySE, double folderVolumeScale)
-		: m_defaultSlamSound(kDefaultSlamSoundPath, GetMaxPolyphony(chartData)), m_isAutoPlaySE(isAutoPlaySE), m_folderVolumeScale(folderVolumeScale)
+		: m_defaultSlamSound(kDefaultSlamSoundPath, GetMaxPolyphony(chartData))
+		, m_isAutoPlaySE(isAutoPlaySE)
+		, m_folderVolumeScale(folderVolumeScale)
+		, m_autoPlaySESectionCursors{ chartData.note.laser[0].begin(), chartData.note.laser[1].begin() }
 	{
 		// SE自動再生モード用にPulseから秒数への変換マップを作成
 		if (m_isAutoPlaySE)
@@ -142,7 +145,7 @@ namespace MusicGame::Audio
 			const kson::RelPulse slamRy = slamY - graphSectionY;
 			if (!graphSection.v.contains(slamRy))
 			{
-				assert(false && "graph value must exist here");
+				// LASERセクションが重なっている場合は点が見つからないことがある
 				return 1.0;
 			}
 			const auto& graphPoint = graphSection.v.at(slamRy);
@@ -155,8 +158,16 @@ namespace MusicGame::Audio
 		{
 			const auto& lane = chartData.note.laser.at(i);
 
-			for (const auto& [graphSectionY, graphSection] : lane)
+			// 全ての直角が再生済みのセクションはスキップ
+			auto& sectionCursor = m_autoPlaySESectionCursors[i];
+			while (sectionCursor != lane.end() && (sectionCursor->second.v.empty() || sectionCursor->first + sectionCursor->second.v.rbegin()->first <= m_autoPlaySELastPulses[i]))
 			{
+				++sectionCursor;
+			}
+
+			for (auto sectionItr = sectionCursor; sectionItr != lane.end(); ++sectionItr)
+			{
+				const auto& [graphSectionY, graphSection] = *sectionItr;
 				for (const auto& [slamRy, graphPoint] : graphSection.v)
 				{
 					if (kson::AlmostEquals(graphPoint.v.vf, graphPoint.v.v))
@@ -306,7 +317,7 @@ namespace MusicGame::Audio
 				const kson::RelPulse slamRy = slamY - graphSectionY;
 				if (!graphSection.v.contains(slamRy))
 				{
-					assert(false && "graph value must exist here");
+					// LASERセクションが重なっている場合は点が見つからないことがある
 					return 1.0;
 				}
 				const auto& graphPoint = graphSection.v.at(slamRy);

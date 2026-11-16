@@ -1,7 +1,6 @@
-﻿#include "MusicGame/Judgment/ExScore.hpp"
+﻿#include "Common/SongLoadDiagnostics.hpp"
+#include "MusicGame/Judgment/ExScore.hpp"
 #include "SelectMenuCacheDb.hpp"
-#include "Common/SongLoadDiagnostics.hpp"
-#include "Common/CsvUtils.hpp"
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <filesystem>
 #include "Common/Encoding.hpp"
@@ -9,7 +8,7 @@
 
 namespace
 {
-	constexpr int32 kSchemaVersion = 4;
+	constexpr int32 kSchemaVersion = 5;
 	constexpr StringView kDbFileName = U"cache.sqlite3";
 
 	struct SourceFileInfo
@@ -17,6 +16,8 @@ namespace
 		FilePath relativePath;
 		int64 mtime = 0;
 		uint64 size = 0;
+
+		bool operator==(const SourceFileInfo&) const = default;
 	};
 
 	struct ChartRow
@@ -42,22 +43,15 @@ namespace
 		return std::filesystem::path{ String{ path }.toUTF32() };
 	}
 
-	int64 GetWriteTimeMs(FilePathView path)
+	// パスのnative()の文字列をStringに変換
+	// (不正なUTF-8を含むファイル名でもpath::u32string()のように例外にならないよう、FileSystem::DirectoryContentsと同じ変換を使う)
+	String FromNativePath(const std::filesystem::path::string_type& nativePath)
 	{
-		std::error_code ec;
-		const auto writeTime = std::filesystem::last_write_time(ToStdPath(path), ec);
-		if (ec)
-		{
-			return 0;
-		}
-		return std::chrono::duration_cast<std::chrono::milliseconds>(writeTime.time_since_epoch()).count();
-	}
-
-	uint64 GetFileSize(FilePathView path)
-	{
-		std::error_code ec;
-		const auto size = std::filesystem::file_size(ToStdPath(path), ec);
-		return ec ? 0 : static_cast<uint64>(size);
+#ifdef _WIN32
+		return Unicode::FromWstring(nativePath);
+#else
+		return Unicode::FromUTF8(nativePath);
+#endif
 	}
 
 	uint64 StablePathHash(FilePathView path)
@@ -69,14 +63,13 @@ namespace
 	FilePath CacheBasePath()
 	{
 		const FilePath songsParentPath = FileSystem::ParentPath(FsUtils::SongsDirectoryPath());
-		return FileSystem::PathAppend(FileSystem::PathAppend(songsParentPath, U"cache"), U"songs_index");
+		return FileSystem::PathAppend(FileSystem::PathAppend(FileSystem::PathAppend(songsParentPath, U"cache"), U"songs_index"), U"v5-ksm220");
 	}
 
 	FilePath CacheDirectoryPath(FilePathView directoryPath)
 	{
-		// Keep cache paths short even when the source folder is deeply nested.
-		// IsCacheValid also checks the full source path, not just this hash.
-		return FileSystem::PathAppend(FileSystem::PathAppend(CacheBasePath(), U"v4"), Format(StablePathHash(FileSystem::FullPath(directoryPath))));
+		// IsCacheValid also checks the full source path against a hash collision.
+		return FileSystem::PathAppend(CacheBasePath(), Format(StablePathHash(FileSystem::FullPath(directoryPath))));
 	}
 
 	FilePath DbPath(FilePathView directoryPath)
@@ -88,57 +81,89 @@ namespace
 	{
 		Array<FilePath> directories =
 			FileSystem::DirectoryContents(path, Recursive::No)
-				.filter([](FilePathView p)
-						{
-							return FileSystem::IsDirectory(p);
-						});
+				.filter([](FilePathView p) { return FileSystem::IsDirectory(p); });
 
 		directories.sort_by([](const FilePath& a, const FilePath& b)
-							{
-								return FsUtils::DirectoryNameByDirectoryPath(a).lowercased() < FsUtils::DirectoryNameByDirectoryPath(b).lowercased();
-							});
+		{
+			return FsUtils::DirectoryNameByDirectoryPath(a).lowercased() < FsUtils::DirectoryNameByDirectoryPath(b).lowercased();
+		});
 
 		return directories;
 	}
 
-	bool IsSourceFile(FilePathView path)
+	bool IsSourceFile(const String& filename)
 	{
-		if (!FileSystem::IsFile(path))
-		{
-			return false;
-		}
-
-		const String filename = FileSystem::FileName(path);
 		if (filename == kDbFileName)
 		{
 			return false;
 		}
 
-		const String extension = FileSystem::Extension(path).lowercased();
-		return extension == U"ksh" || extension == U"kson" || extension == U"kco" || filename.lowercased() == U"foldername.csv" || filename.lowercased() == U"conf.ini";
+		const String lowercased = filename.lowercased();
+		return lowercased.ends_with(U".ksh")
+			|| lowercased.ends_with(U".kson")
+			|| lowercased.ends_with(U".kco")
+			|| lowercased == U"foldername.csv"
+			|| lowercased == U"conf.ini";
 	}
 
 	Array<SourceFileInfo> CollectSourceFiles(FilePathView baseDirectoryPath)
 	{
 		Array<SourceFileInfo> files;
-		for (const auto& path : FileSystem::DirectoryContents(baseDirectoryPath, Recursive::Yes))
+
+		// ディレクトリ列挙で得た情報をそのまま使い、ファイル毎の情報取得の回数を減らす
+		const std::filesystem::path basePath = ToStdPath(FileSystem::FullPath(baseDirectoryPath));
+		const std::size_t basePathLength = basePath.native().size();
+#ifdef _WIN32
+		// Windows版のFileSystem::DirectoryContentsと同様に、ジャンクション・シンボリックリンクのディレクトリの中のファイルも取得する
+		constexpr auto kDirectoryOptions = std::filesystem::directory_options::skip_permission_denied | std::filesystem::directory_options::follow_directory_symlink;
+#else
+		constexpr auto kDirectoryOptions = std::filesystem::directory_options::skip_permission_denied;
+#endif
+		std::error_code ec;
+		for (std::filesystem::recursive_directory_iterator it(basePath, kDirectoryOptions, ec), end; it != end; it.increment(ec))
 		{
-			if (!IsSourceFile(path))
+			if (ec)
+			{
+				break;
+			}
+
+			const std::filesystem::directory_entry& entry = *it;
+			if (!entry.is_regular_file(ec))
 			{
 				continue;
 			}
 
+			const std::filesystem::path& path = entry.path();
+			const String filename = FromNativePath(path.filename().native());
+			if (!IsSourceFile(filename))
+			{
+				continue;
+			}
+
+			String relativePath = FromNativePath(path.native().substr(basePathLength));
+			relativePath.replace(U'\\', U'/');
+			if (relativePath.starts_with(U'/'))
+			{
+				relativePath.erase(0, 1);
+			}
+
+			const auto writeTime = entry.last_write_time(ec);
+			const int64 mtime = ec ? 0 : std::chrono::duration_cast<std::chrono::milliseconds>(writeTime.time_since_epoch()).count();
+			ec.clear();
+			const auto size = entry.file_size(ec);
+			ec.clear();
+
 			files.push_back(SourceFileInfo{
-				.relativePath = FileSystem::RelativePath(path, baseDirectoryPath),
-				.mtime = GetWriteTimeMs(path),
-				.size = GetFileSize(path),
+				.relativePath = std::move(relativePath),
+				.mtime = mtime,
+				.size = static_cast<uint64>(size),
 			});
 		}
 
 		files.sort_by([](const SourceFileInfo& a, const SourceFileInfo& b)
-					  {
-						  return a.relativePath < b.relativePath;
-					  });
+		{
+			return a.relativePath < b.relativePath;
+		});
 		return files;
 	}
 
@@ -167,11 +192,24 @@ namespace
 		const Array<String> lines = Encoding::ReadTextFileLinesShiftJISOrUTF8BasedOnBOM(csvPath);
 		for (const String& line : lines)
 		{
-			const auto parts = CsvUtils::ParseRow(line);
-			if (!parts || parts->size() < 2)
+			const Array<String> parts = line.split(U',');
+			if (parts.size() < 2)
+			{
 				continue;
-			const String& folderName = (*parts)[0];
-			const String& displayName = (*parts)[1];
+			}
+
+			auto removeQuotes = [](String str) -> String
+			{
+				str = str.trimmed();
+				if (str.length() >= 2 && str.starts_with(U'"') && str.ends_with(U'"'))
+				{
+					return str.substr(1, str.length() - 2);
+				}
+				return str;
+			};
+
+			const String folderName = removeQuotes(parts[0]);
+			const String displayName = removeQuotes(parts[1]);
 			if (!folderName.isEmpty())
 			{
 				// displayNameが空文字列の場合はサブフォルダ見出しを非表示化
@@ -199,6 +237,33 @@ namespace
 		return none;
 	}
 
+	// 譜面ファイルの相対パスを取得(FileSystem::RelativePath(chartFilePath, baseDirectoryPath)と同じ結果を返す)
+	FilePath ChartFileRelativePath(FilePathView chartFilePath, FilePathView songDirPath, FilePathView songDirectoryRelativePath, FilePathView baseDirectoryPath)
+	{
+		// 譜面ファイルのパスはリンク先のパスになっている場合があるため、楽曲フォルダ直下にあるかを確認
+		const bool endsWithSlash = songDirPath.ends_with(U'/');
+		const size_t filenamePos = songDirPath.size() + (endsWithSlash ? 0 : 1);
+		const bool isInSongDir = chartFilePath.size() > filenamePos && chartFilePath.starts_with(songDirPath) && (endsWithSlash || chartFilePath[songDirPath.size()] == U'/');
+		if (isInSongDir && !songDirectoryRelativePath.isEmpty() && songDirectoryRelativePath != U"./")
+		{
+			const StringView filename = chartFilePath.substr(filenamePos);
+			std::error_code ec;
+			if (!filename.includes(U'/') && !std::filesystem::is_symlink(ToStdPath(chartFilePath), ec) && !ec)
+			{
+				// シンボリックリンクでないファイルは、楽曲フォルダの相対パスにファイル名を追加したものを相対パスとして使用
+				FilePath relativePath{ songDirectoryRelativePath };
+				if (!relativePath.ends_with(U'/'))
+				{
+					relativePath.push_back(U'/');
+				}
+				relativePath.append(filename);
+				return relativePath;
+			}
+		}
+
+		return FileSystem::RelativePath(chartFilePath, baseDirectoryPath);
+	}
+
 	bool AppendChartRows(
 		Array<ChartRow>* pRows,
 		FilePathView baseDirectoryPath,
@@ -213,6 +278,16 @@ namespace
 	{
 		bool chartExists = false;
 		const Array<FilePath> chartFiles = FsUtils::GetChartFilePathsPreferringKson(songDirPath);
+		if (chartFiles.isEmpty())
+		{
+			return false;
+		}
+
+		// 楽曲フォルダ内の譜面で共通の値(conf.iniはパッケージフォルダ単位のため、最初の譜面から取得)
+		const FilePath songDirectoryRelativePath = FileSystem::RelativePath(songDirPath, baseDirectoryPath);
+		const FilePath sectionDirectoryRelativePath = sectionDirPath.isEmpty() ? FilePath{} : FileSystem::RelativePath(sectionDirPath, baseDirectoryPath);
+		const FolderConfIni folderConfIni = FolderConfIni::Load(chartFiles.front());
+
 		for (size_t chartFileIndex = 0; chartFileIndex < chartFiles.size(); ++chartFileIndex)
 		{
 			const auto& chartFilePath = chartFiles[chartFileIndex];
@@ -223,97 +298,88 @@ namespace
 
 			try
 			{
-				kson::MetaChartData chartData = SelectChartInfo::LoadMetaChartData(chartFilePath);
-	
-				if (chartData.error != kson::ErrorType::None)
-				{
-					SongLoadDiagnostics::Write(U"chart metadata", chartFilePath, Unicode::FromUTF8(kson::GetErrorString(chartData.error)));
-					continue;
-				}
-	
-				int32 difficultyIdx = chartData.meta.difficulty.idx;
-				if (difficultyIdx < 0 || kNumDifficulties <= difficultyIdx)
-				{
-					Logger << U"[ksm warning] SelectMenuCacheDb: Difficulty index out of range (difficultyIdx:{}, chartFilePath:'{}')"_fmt(difficultyIdx, chartFilePath);
-					difficultyIdx = kNumDifficulties - 1;
-					chartData.meta.difficulty.idx = difficultyIdx;
-				}
-	
-				pRows->push_back(ChartRow{
-					.songDirectoryRelativePath = FileSystem::RelativePath(songDirPath, baseDirectoryPath),
-					.sectionDirectoryRelativePath = sectionDirPath.isEmpty() ? FilePath{} : FileSystem::RelativePath(sectionDirPath, baseDirectoryPath),
-					.sectionDisplayName = sectionDisplayName,
-					.skipSectionHeading = skipSectionHeading,
-					.visibleInDirectoryNameSort = visibleInDirectoryNameSort,
-					.visibleInAllNameSort = visibleInAllNameSort,
-					.sectionDirectoryIndex = sectionDirectoryIndex,
-					.songDirectoryIndex = songDirectoryIndex,
-					.chartFileIndex = static_cast<int32>(chartFileIndex),
-					.songSortKey = FsUtils::DirectoryNameByDirectoryPath(songDirPath).lowercased(),
-					.chartFileRelativePath = FileSystem::RelativePath(chartFilePath, baseDirectoryPath),
-					.chartData = chartData,
-					.exMaximum = MusicGame::Judgment::LoadChartExMaximum(chartFilePath),
-					.folderConfIni = FolderConfIni::Load(chartFilePath),
-				});
-				chartExists = true;
+			kson::MetaChartData chartData = SelectChartInfo::LoadMetaChartData(chartFilePath);
+
+			if (chartData.error != kson::ErrorType::None)
+			{
+				Logger << U"[ksm warning] SelectMenuCacheDb: Chart Loading Error (error:'{}', chartFilePath:'{}')"_fmt(Unicode::FromUTF8(kson::GetErrorString(chartData.error)), chartFilePath);
+				continue;
+			}
+
+			int32 difficultyIdx = chartData.meta.difficulty.idx;
+			if (difficultyIdx < 0 || kNumDifficulties <= difficultyIdx)
+			{
+				Logger << U"[ksm warning] SelectMenuCacheDb: Difficulty index out of range (difficultyIdx:{}, chartFilePath:'{}')"_fmt(difficultyIdx, chartFilePath);
+				difficultyIdx = kNumDifficulties - 1;
+				chartData.meta.difficulty.idx = difficultyIdx;
+			}
+
+			pRows->push_back(ChartRow{
+				.songDirectoryRelativePath = songDirectoryRelativePath,
+				.sectionDirectoryRelativePath = sectionDirectoryRelativePath,
+				.sectionDisplayName = sectionDisplayName,
+				.skipSectionHeading = skipSectionHeading,
+				.visibleInDirectoryNameSort = visibleInDirectoryNameSort,
+				.visibleInAllNameSort = visibleInAllNameSort,
+				.sectionDirectoryIndex = sectionDirectoryIndex,
+				.songDirectoryIndex = songDirectoryIndex,
+				.chartFileIndex = static_cast<int32>(chartFileIndex),
+				.songSortKey = FsUtils::DirectoryNameByDirectoryPath(songDirPath).lowercased(),
+				.chartFileRelativePath = ChartFileRelativePath(chartFilePath, songDirPath, songDirectoryRelativePath, baseDirectoryPath),
+				.chartData = chartData,
+				.exMaximum = MusicGame::Judgment::LoadChartExMaximum(chartFilePath),
+				.folderConfIni = folderConfIni,
+			});
+			chartExists = true;
 			}
 			catch (const std::bad_alloc&) { throw; }
-			catch (const std::exception& error)
-			{
-				SongLoadDiagnostics::Write(U"select chart", chartFilePath, error);
-			}
-			catch (const Error& error)
-			{
-				SongLoadDiagnostics::Write(U"select chart", chartFilePath, error.what());
-			}
+			catch (const std::exception& error) { SongLoadDiagnostics::Write(U"chart metadata", chartFilePath, error); }
+			catch (const Error& error) { SongLoadDiagnostics::Write(U"chart metadata", chartFilePath, error.what()); }
 		}
 		return chartExists;
 	}
 
-	Array<ChartRow> CollectChartRows(FilePathView baseDirectoryPath)
+	// 楽曲フォルダ1つ分(サブフォルダを含む)の譜面を追加
+	void AppendSongDirectoryChartRows(
+		Array<ChartRow>* pRows,
+		FilePathView baseDirectoryPath,
+		const HashTable<String, String>& folderNameTable,
+		const Array<FilePath>& songDirectories,
+		size_t songDirectoryIndex)
 	{
-		Array<ChartRow> rows;
-		const HashTable<String, String> folderNameTable = LoadFolderNameTable(baseDirectoryPath);
+		const auto& songDirectory = songDirectories[songDirectoryIndex];
+		const Array<FilePath> subDirs = GetSubDirectories(songDirectory);
+		const bool directChartExists = AppendChartRows(
+			pRows,
+			baseDirectoryPath,
+			songDirectory,
+			U"",
+			none,
+			false,
+			true,
+			subDirs.isEmpty(),
+			-1,
+			static_cast<int32>(songDirectoryIndex));
 
-		const Array<FilePath> songDirectories = GetSubDirectories(baseDirectoryPath);
-		for (size_t songDirectoryIndex = 0; songDirectoryIndex < songDirectories.size(); ++songDirectoryIndex)
+		for (size_t subDirIndex = 0; subDirIndex < subDirs.size(); ++subDirIndex)
 		{
-			const auto& songDirectory = songDirectories[songDirectoryIndex];
-			const Array<FilePath> subDirs = GetSubDirectories(songDirectory);
-			const bool directChartExists = AppendChartRows(
-				&rows,
+			const auto& subDir = subDirs[subDirIndex];
+			const String folderName = FsUtils::DirectoryNameByDirectoryPath(songDirectory);
+			const Optional<String> displayName = GetDisplayNameFromFolderNameTable(folderNameTable, folderName);
+			const bool skipHeading = displayName.has_value() && displayName->isEmpty();
+
+			AppendChartRows(
+				pRows,
 				baseDirectoryPath,
+				subDir,
 				songDirectory,
-				U"",
-				none,
-				false,
+				displayName,
+				directChartExists ? true : skipHeading,
+				!directChartExists,
 				true,
-				subDirs.isEmpty(),
-				-1,
-				static_cast<int32>(songDirectoryIndex));
-
-			for (size_t subDirIndex = 0; subDirIndex < subDirs.size(); ++subDirIndex)
-			{
-				const auto& subDir = subDirs[subDirIndex];
-				const String folderName = FsUtils::DirectoryNameByDirectoryPath(songDirectory);
-				const Optional<String> displayName = GetDisplayNameFromFolderNameTable(folderNameTable, folderName);
-				const bool skipHeading = displayName.has_value() && displayName->isEmpty();
-
-				AppendChartRows(
-					&rows,
-					baseDirectoryPath,
-					subDir,
-					songDirectory,
-					displayName,
-					directChartExists ? true : skipHeading,
-					!directChartExists,
-					true,
-					static_cast<int32>(songDirectoryIndex),
-					static_cast<int32>(subDirIndex));
-			}
+				static_cast<int32>(songDirectoryIndex),
+				static_cast<int32>(subDirIndex));
 		}
-
-		return rows;
 	}
 
 	void CreateSchema(SQLite::Database& db)
@@ -382,6 +448,14 @@ namespace
 
 	bool IsCacheValid(SQLite::Database& db, FilePathView baseDirectoryPath, const Array<SourceFileInfo>& sourceFiles)
 	{
+		// DBファイルを新規作成した直後はテーブルが存在しない
+		if (!db.tableExists("cache_meta"))
+		{
+			return false;
+		}
+
+		if (GetMeta(db, U"directory_path") != FileSystem::FullPath(baseDirectoryPath))
+			return false;
 		const Optional<String> schemaVersion = GetMeta(db, U"schema_version");
 		const Optional<String> sourceFileCount = GetMeta(db, U"source_file_count");
 		const Optional<String> latestSourceMtime = GetMeta(db, U"latest_source_mtime_ms");
@@ -410,7 +484,9 @@ namespace
 			{
 				return false;
 			}
-			if (Unicode::FromUTF8(query.getColumn(0).getString()) != sourceFiles[index].relativePath || query.getColumn(1).getInt64() != sourceFiles[index].mtime || static_cast<uint64>(query.getColumn(2).getInt64()) != sourceFiles[index].size)
+			if (Unicode::FromUTF8(query.getColumn(0).getString()) != sourceFiles[index].relativePath
+				|| query.getColumn(1).getInt64() != sourceFiles[index].mtime
+				|| static_cast<uint64>(query.getColumn(2).getInt64()) != sourceFiles[index].size)
 			{
 				return false;
 			}
@@ -420,11 +496,8 @@ namespace
 		return index == sourceFiles.size() && FileSystem::FullPath(baseDirectoryPath) == GetMeta(db, U"directory_path").value_or(U"");
 	}
 
-	void Rebuild(SQLite::Database& db, FilePathView baseDirectoryPath, const Array<SourceFileInfo>& sourceFiles)
+	void WriteCache(SQLite::Database& db, FilePathView baseDirectoryPath, const Array<SourceFileInfo>& sourceFiles, const Array<ChartRow>& chartRows)
 	{
-		FolderConfIni::ClearCache();
-		const Array<ChartRow> chartRows = CollectChartRows(baseDirectoryPath);
-
 		SQLite::Transaction transaction(db);
 		db.exec("DROP TABLE IF EXISTS cache_meta");
 		db.exec("DROP TABLE IF EXISTS source_files");
@@ -451,14 +524,15 @@ namespace
 
 		{
 			SQLite::Statement query(db,
-									"INSERT INTO charts("
-									"ex_maximum, chart_path, song_dir, section_dir, section_display_name, skip_section_heading,"
-									"visible_in_directory_name_sort, visible_in_all_name_sort, section_directory_index, song_directory_index, chart_file_index, song_sort_key,"
-									"difficulty_idx, level,"
-									"title, title_translit, title_img_filename, artist, artist_translit, artist_img_filename, chart_author,"
-									"disp_bpm, std_bpm, jacket_filename, jacket_author, icon_filename, information,"
-									"bgm_filename, bgm_vol, preview_offset, preview_duration, folder_volume_scale, folder_offset_ms, folder_tweet_option"
-									") VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+				"INSERT INTO charts("
+				"ex_maximum,"
+				"chart_path, song_dir, section_dir, section_display_name, skip_section_heading,"
+				"visible_in_directory_name_sort, visible_in_all_name_sort, section_directory_index, song_directory_index, chart_file_index, song_sort_key,"
+				"difficulty_idx, level,"
+				"title, title_translit, title_img_filename, artist, artist_translit, artist_img_filename, chart_author,"
+				"disp_bpm, std_bpm, jacket_filename, jacket_author, icon_filename, information,"
+				"bgm_filename, bgm_vol, preview_offset, preview_duration, folder_volume_scale, folder_offset_ms, folder_tweet_option"
+				") VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
 			for (const auto& row : chartRows)
 			{
@@ -527,118 +601,334 @@ namespace
 		bool visibleInAllNameSort = true;
 		int32 sectionDirectoryIndex = -1;
 		int32 songDirectoryIndex = -1;
+		int32 chartFileIndex = -1;
 	};
 
-	Array<ChartRowResult> ReadChartRows(SQLite::Database& db, FilePathView baseDirectoryPath, StringView whereClause, StringView orderByClause)
+	// 読み込み済みのディレクトリの内容
+	// (選曲画面に戻るたびにDBを読み直さないよう、キャッシュの元になるファイルの一覧が変わっていなければ再利用する)
+	struct MemoryCacheEntry
+	{
+		Array<SourceFileInfo> sourceFiles;
+		Array<ChartRowResult> rows;
+	};
+
+	HashTable<FilePath, MemoryCacheEntry> s_memoryCache;
+
+	// ディレクトリ内の全譜面の行を、セクション・楽曲フォルダ・譜面ファイルの順で取得
+	Array<ChartRowResult> ReadChartRows(SQLite::Database& db, FilePathView baseDirectoryPath)
 	{
 		Array<ChartRowResult> rows;
 
-		const std::string sql = "SELECT * FROM charts " + whereClause.toUTF8() + " ORDER BY " + orderByClause.toUTF8();
+		// 列名での検索を避けるため、列の順番を固定して取得する
+		const std::string sql = "SELECT ex_maximum,"
+			"chart_path, song_dir, section_dir, section_display_name, skip_section_heading,"
+			"visible_in_directory_name_sort, visible_in_all_name_sort, section_directory_index, song_directory_index, chart_file_index, song_sort_key,"
+			"difficulty_idx, level,"
+			"title, title_translit, title_img_filename, artist, artist_translit, artist_img_filename, chart_author,"
+			"disp_bpm, std_bpm, jacket_filename, jacket_author, icon_filename, information,"
+			"bgm_filename, bgm_vol, preview_offset, preview_duration, folder_volume_scale, folder_offset_ms, folder_tweet_option"
+			" FROM charts ORDER BY section_directory_index, song_directory_index, chart_file_index";
 		SQLite::Statement query(db, sql);
 		while (query.executeStep())
 		{
+			int32 col = 0;
+			const int64 exMaximum = query.getColumn(col++).getInt64();
+			const FilePath chartPath = FileSystem::PathAppend(baseDirectoryPath, Unicode::FromUTF8(query.getColumn(col++).getString()));
+			const FilePath songDirRel = Unicode::FromUTF8(query.getColumn(col++).getString());
+			const FilePath sectionDirRel = Unicode::FromUTF8(query.getColumn(col++).getString());
+			const SQLite::Column sectionDisplayNameColumn = query.getColumn(col++);
+			Optional<String> sectionDisplayName = sectionDisplayNameColumn.isNull()
+				? Optional<String>{}
+				: Optional<String>{ Unicode::FromUTF8(sectionDisplayNameColumn.getString()) };
+			const bool skipSectionHeading = query.getColumn(col++).getInt() != 0;
+			const bool visibleInDirectoryNameSort = query.getColumn(col++).getInt() != 0;
+			const bool visibleInAllNameSort = query.getColumn(col++).getInt() != 0;
+			const int32 sectionDirectoryIndex = query.getColumn(col++).getInt();
+			const int32 songDirectoryIndex = query.getColumn(col++).getInt();
+			const int32 chartFileIndex = query.getColumn(col++).getInt();
+			String songSortKey = Unicode::FromUTF8(query.getColumn(col++).getString());
+
 			kson::MetaChartData chartData;
 			auto& meta = chartData.meta;
-			meta.difficulty.idx = query.getColumn("difficulty_idx").getInt();
-			meta.level = query.getColumn("level").getInt();
-			meta.title = query.getColumn("title").getString();
-			meta.titleTranslit = query.getColumn("title_translit").getString();
-			meta.titleImgFilename = query.getColumn("title_img_filename").getString();
-			meta.artist = query.getColumn("artist").getString();
-			meta.artistTranslit = query.getColumn("artist_translit").getString();
-			meta.artistImgFilename = query.getColumn("artist_img_filename").getString();
-			meta.chartAuthor = query.getColumn("chart_author").getString();
-			meta.dispBPM = query.getColumn("disp_bpm").getString();
-			meta.stdBPM = query.getColumn("std_bpm").getDouble();
-			meta.jacketFilename = query.getColumn("jacket_filename").getString();
-			meta.jacketAuthor = query.getColumn("jacket_author").getString();
-			meta.iconFilename = query.getColumn("icon_filename").getString();
-			meta.information = query.getColumn("information").getString();
-			chartData.audio.bgm.filename = query.getColumn("bgm_filename").getString();
-			chartData.audio.bgm.vol = query.getColumn("bgm_vol").getDouble();
-			chartData.audio.bgm.preview.offset = query.getColumn("preview_offset").getInt();
-			chartData.audio.bgm.preview.duration = query.getColumn("preview_duration").getInt();
+			meta.difficulty.idx = query.getColumn(col++).getInt();
+			meta.level = query.getColumn(col++).getInt();
+			meta.title = query.getColumn(col++).getString();
+			meta.titleTranslit = query.getColumn(col++).getString();
+			meta.titleImgFilename = query.getColumn(col++).getString();
+			meta.artist = query.getColumn(col++).getString();
+			meta.artistTranslit = query.getColumn(col++).getString();
+			meta.artistImgFilename = query.getColumn(col++).getString();
+			meta.chartAuthor = query.getColumn(col++).getString();
+			meta.dispBPM = query.getColumn(col++).getString();
+			meta.stdBPM = query.getColumn(col++).getDouble();
+			meta.jacketFilename = query.getColumn(col++).getString();
+			meta.jacketAuthor = query.getColumn(col++).getString();
+			meta.iconFilename = query.getColumn(col++).getString();
+			meta.information = query.getColumn(col++).getString();
+			chartData.audio.bgm.filename = query.getColumn(col++).getString();
+			chartData.audio.bgm.vol = query.getColumn(col++).getDouble();
+			chartData.audio.bgm.preview.offset = query.getColumn(col++).getInt();
+			chartData.audio.bgm.preview.duration = query.getColumn(col++).getInt();
 
 			FolderConfIni folderConfIni;
-			folderConfIni.volumeScale = query.getColumn("folder_volume_scale").getDouble();
-			folderConfIni.offsetMs = query.getColumn("folder_offset_ms").getInt();
-			folderConfIni.tweetOption = Unicode::FromUTF8(query.getColumn("folder_tweet_option").getString());
+			folderConfIni.volumeScale = query.getColumn(col++).getDouble();
+			folderConfIni.offsetMs = query.getColumn(col++).getInt();
+			folderConfIni.tweetOption = Unicode::FromUTF8(query.getColumn(col++).getString());
 
-			const FilePath chartRelativePath = Unicode::FromUTF8(query.getColumn("chart_path").getString());
 			const auto validRelativePath = [](const FilePath& path)
 			{
 				const String normalized = String{ path }.replaced(U'\\', U'/');
-				return !normalized.starts_with(U'/') && !normalized.includes(U':') &&
-					!normalized.split(U'/').includes(U"..");
+				return !normalized.starts_with(U'/') && !normalized.split(U'/').includes(U"..");
 			};
-			if (meta.difficulty.idx < 0 || meta.difficulty.idx >= kNumDifficulties ||
-				!validRelativePath(chartRelativePath) ||
-				!validRelativePath(Unicode::FromUTF8(query.getColumn("song_dir").getString())) ||
-				!validRelativePath(Unicode::FromUTF8(query.getColumn("section_dir").getString())))
+			const auto chartRelativePath = FileSystem::RelativePath(chartPath, baseDirectoryPath);
+			if (meta.difficulty.idx < 0 || meta.difficulty.idx >= kNumDifficulties || exMaximum < 0 ||
+				!validRelativePath(chartRelativePath) || !validRelativePath(songDirRel) || !validRelativePath(sectionDirRel))
 				throw std::runtime_error{ "Invalid song cache row" };
-			const FilePath chartPath = FileSystem::PathAppend(baseDirectoryPath, chartRelativePath);
-			const FilePath songDirRel = Unicode::FromUTF8(query.getColumn("song_dir").getString());
-			const FilePath sectionDirRel = Unicode::FromUTF8(query.getColumn("section_dir").getString());
-
+			const int32 difficultyIdx = meta.difficulty.idx;
 			rows.push_back(ChartRowResult{
-				.chartInfo = std::make_shared<SelectChartInfo>(chartPath, chartData, folderConfIni, query.getColumn("ex_maximum").getInt64()),
-				.difficultyIdx = meta.difficulty.idx,
-				.songSortKey = Unicode::FromUTF8(query.getColumn("song_sort_key").getString()),
+				.chartInfo = std::make_shared<SelectChartInfo>(chartPath, std::move(chartData), std::move(folderConfIni), exMaximum),
+				.difficultyIdx = difficultyIdx,
+				.songSortKey = std::move(songSortKey),
 				.songDirectoryPath = FileSystem::PathAppend(baseDirectoryPath, songDirRel),
 				.sectionDirectoryPath = sectionDirRel.isEmpty() ? FilePath{} : FileSystem::PathAppend(baseDirectoryPath, sectionDirRel),
-				.sectionDisplayName = query.getColumn("section_display_name").isNull()
-										  ? Optional<String>{}
-										  : Optional<String>{ Unicode::FromUTF8(query.getColumn("section_display_name").getString()) },
-				.skipSectionHeading = query.getColumn("skip_section_heading").getInt() != 0,
-				.visibleInDirectoryNameSort = query.getColumn("visible_in_directory_name_sort").getInt() != 0,
-				.visibleInAllNameSort = query.getColumn("visible_in_all_name_sort").getInt() != 0,
-				.sectionDirectoryIndex = query.getColumn("section_directory_index").getInt(),
-				.songDirectoryIndex = query.getColumn("song_directory_index").getInt(),
+				.sectionDisplayName = std::move(sectionDisplayName),
+				.skipSectionHeading = skipSectionHeading,
+				.visibleInDirectoryNameSort = visibleInDirectoryNameSort,
+				.visibleInAllNameSort = visibleInAllNameSort,
+				.sectionDirectoryIndex = sectionDirectoryIndex,
+				.songDirectoryIndex = songDirectoryIndex,
+				.chartFileIndex = chartFileIndex,
 			});
 		}
 
 		return rows;
 	}
 
-	Array<ChartRowResult> LoadDirectoryRows(FilePathView directoryPath, bool forceRebuild, StringView whereClause, StringView orderByClause, StringView fnName)
+	int32 CountChartFiles(const Array<SourceFileInfo>& sourceFiles)
 	{
-		const FilePath baseDirectoryPath = FileSystem::FullPath(directoryPath);
-		const FilePath dbPath = DbPath(baseDirectoryPath);
-
-		const auto loadOnce = [&](bool rebuild) -> Array<ChartRowResult>
+		int32 count = 0;
+		for (const auto& sourceFile : sourceFiles)
 		{
-			const Array<SourceFileInfo> sourceFiles = CollectSourceFiles(baseDirectoryPath);
-			FileSystem::CreateDirectories(FileSystem::ParentPath(dbPath));
-			SQLite::Database db(dbPath.toUTF8(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
-			CreateSchema(db);
-			if (rebuild || !IsCacheValid(db, baseDirectoryPath, sourceFiles))
+			const String lowercased = sourceFile.relativePath.lowercased();
+			if (lowercased.ends_with(U".ksh") || lowercased.ends_with(U".kson"))
 			{
-				Rebuild(db, baseDirectoryPath, sourceFiles);
+				++count;
 			}
-			return ReadChartRows(db, baseDirectoryPath, whereClause, orderByClause);
+		}
+		return count;
+	}
+
+	// ディレクトリ内の全譜面の行の読み込み処理
+	// (advance()の1回の呼び出しでは処理の一部のみ行う)
+	class DirectoryRowsLoader
+	{
+	private:
+		enum class Phase
+		{
+			kCollectSourceFiles,
+			kOpenDb,
+			kCollectChartRows,
+			kWriteCache,
+			kFinished,
 		};
 
-		try
+		FilePath m_directoryPath;
+		FilePath m_baseDirectoryPath;
+		FilePath m_dbPath;
+		bool m_forceRebuild;
+		bool m_checkFileChanges;
+		String m_fnName;
+
+		Phase m_phase = Phase::kCollectSourceFiles;
+		bool m_isRetrying = false;
+		bool m_memoryOnly = false;
+		Array<SourceFileInfo> m_sourceFiles;
+		std::unique_ptr<SQLite::Database> m_db;
+
+		// キャッシュDBの再生成用
+		HashTable<String, String> m_folderNameTable;
+		Array<FilePath> m_songDirectories;
+		size_t m_songDirectoryIndex = 0;
+		Array<ChartRow> m_chartRows;
+
+		Optional<int32> m_totalChartCount;
+		int32 m_loadedChartCount = 0;
+
+		void finish()
 		{
-			return loadOnce(forceRebuild);
-		}
-		catch (const std::bad_alloc&) { throw; }
-		catch (const std::exception& error)
-		{
-			SongLoadDiagnostics::Write(fnName, directoryPath, error);
-		}
-		catch (const Error& error)
-		{
-			SongLoadDiagnostics::Write(fnName, directoryPath, error.what());
+			m_db.reset();
+			m_loadedChartCount = m_totalChartCount.value_or(0);
+			m_phase = Phase::kFinished;
 		}
 
-		// Cache storage is optional. Preserve the failing DB for diagnosis and
-		// build a transient index using exactly the normal row ordering.
-		SongLoadDiagnostics::Write(U"cache fallback", directoryPath, U"Using an in-memory song index");
-		SQLite::Database memoryDb(":memory:", SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
-		CreateSchema(memoryDb);
-		Rebuild(memoryDb, baseDirectoryPath, CollectSourceFiles(baseDirectoryPath));
-		return ReadChartRows(memoryDb, baseDirectoryPath, whereClause, orderByClause);
+		void advanceImpl()
+		{
+			switch (m_phase)
+			{
+			case Phase::kCollectSourceFiles:
+				{
+					const auto it = m_forceRebuild ? s_memoryCache.end() : s_memoryCache.find(m_baseDirectoryPath);
+					if (it != s_memoryCache.end() && !m_checkFileChanges)
+					{
+						// ファイルの変更を確認しない場合は、読み込み済みの内容をそのまま再利用する
+						m_totalChartCount = CountChartFiles(it->second.sourceFiles);
+						finish();
+						break;
+					}
+
+					m_sourceFiles = CollectSourceFiles(m_baseDirectoryPath);
+					m_totalChartCount = CountChartFiles(m_sourceFiles);
+					if (it != s_memoryCache.end() && m_sourceFiles == it->second.sourceFiles)
+					{
+						finish();
+						break;
+					}
+					m_phase = Phase::kOpenDb;
+				}
+				break;
+
+			case Phase::kOpenDb:
+				if (!m_memoryOnly)
+					FileSystem::CreateDirectories(FileSystem::ParentPath(m_dbPath));
+				m_db = std::make_unique<SQLite::Database>(m_memoryOnly ? ":memory:" : m_dbPath.toUTF8(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+				if (m_forceRebuild || !IsCacheValid(*m_db, m_baseDirectoryPath, m_sourceFiles))
+				{
+					FolderConfIni::ClearCache();
+					m_folderNameTable = LoadFolderNameTable(m_baseDirectoryPath);
+					m_songDirectories = GetSubDirectories(m_baseDirectoryPath);
+					m_songDirectoryIndex = 0;
+					m_chartRows.clear();
+					m_phase = Phase::kCollectChartRows;
+				}
+				else
+				{
+					s_memoryCache[m_baseDirectoryPath] = MemoryCacheEntry{ .sourceFiles = std::move(m_sourceFiles), .rows = ReadChartRows(*m_db, m_baseDirectoryPath) };
+					finish();
+				}
+				break;
+
+			case Phase::kCollectChartRows:
+				if (m_songDirectoryIndex < m_songDirectories.size())
+				{
+					AppendSongDirectoryChartRows(&m_chartRows, m_baseDirectoryPath, m_folderNameTable, m_songDirectories, m_songDirectoryIndex);
+					++m_songDirectoryIndex;
+					m_loadedChartCount = Min(static_cast<int32>(m_chartRows.size()), m_totalChartCount.value_or(0));
+				}
+				else
+				{
+					m_phase = Phase::kWriteCache;
+				}
+				break;
+
+			case Phase::kWriteCache:
+				WriteCache(*m_db, m_baseDirectoryPath, m_sourceFiles, m_chartRows);
+				m_chartRows.clear();
+				s_memoryCache[m_baseDirectoryPath] = MemoryCacheEntry{ .sourceFiles = std::move(m_sourceFiles), .rows = ReadChartRows(*m_db, m_baseDirectoryPath) };
+				finish();
+				break;
+
+			case Phase::kFinished:
+				break;
+			}
+		}
+
+	public:
+		DirectoryRowsLoader(FilePathView directoryPath, bool forceRebuild, bool checkFileChanges, StringView fnName)
+			: m_directoryPath(directoryPath)
+			, m_baseDirectoryPath(FileSystem::FullPath(directoryPath))
+			, m_dbPath(DbPath(m_baseDirectoryPath))
+			, m_forceRebuild(forceRebuild)
+			, m_checkFileChanges(checkFileChanges)
+			, m_fnName(fnName)
+		{
+		}
+
+		void advance()
+		{
+			try
+			{
+				advanceImpl();
+			}
+			catch (const std::bad_alloc&) { throw; }
+			catch (const std::exception& error)
+			{
+				SongLoadDiagnostics::Write(m_fnName, m_directoryPath, error);
+				recover();
+			}
+			catch (const Error& error)
+			{
+				SongLoadDiagnostics::Write(m_fnName, m_directoryPath, error.what());
+				recover();
+			}
+		}
+
+	private:
+		void recover()
+		{
+			m_db.reset();
+			if (!m_isRetrying)
+			{
+				FileSystem::Remove(m_dbPath);
+				m_isRetrying = true;
+			}
+			else if (!m_memoryOnly)
+			{
+				// A non-writable cache must not make valid songs disappear.
+				m_memoryOnly = true;
+				SongLoadDiagnostics::Write(U"cache fallback", m_directoryPath, U"Using an in-memory song index");
+			}
+			else
+			{
+				s_memoryCache.erase(m_baseDirectoryPath);
+				finish();
+				return;
+			}
+			m_forceRebuild = true;
+			m_phase = Phase::kCollectSourceFiles;
+		}
+
+	public:
+
+		bool isFinished() const
+		{
+			return m_phase == Phase::kFinished;
+		}
+
+		// キャッシュの元になるファイルの一覧を取得済みか(取得済みであれば全譜面数が確定している)
+		bool isSourceFilesCollected() const
+		{
+			return m_totalChartCount.has_value();
+		}
+
+		// 読み込んだ行を取得(読み込みに失敗した場合は空)
+		Array<ChartRowResult> rows() const
+		{
+			if (const auto it = s_memoryCache.find(m_baseDirectoryPath); it != s_memoryCache.end())
+			{
+				return it->second.rows;
+			}
+			return {};
+		}
+
+		int32 totalChartCount() const
+		{
+			return m_totalChartCount.value_or(0);
+		}
+
+		int32 loadedChartCount() const
+		{
+			return m_loadedChartCount;
+		}
+	};
+
+	Array<ChartRowResult> LoadDirectoryRows(FilePathView directoryPath, bool forceRebuild, bool checkFileChanges, StringView fnName)
+	{
+		DirectoryRowsLoader loader{ directoryPath, forceRebuild, checkFileChanges, fnName };
+		while (!loader.isFinished())
+		{
+			loader.advance();
+		}
+		return loader.rows();
 	}
 
 	Array<SelectCachedSongEntry> GroupRowsAsSongEntries(const Array<ChartRowResult>& rows)
@@ -712,41 +1002,126 @@ namespace
 	}
 }
 
-Array<SelectCachedSongEntry> SelectMenuCacheDb::LoadDirectoryForNameSort(FilePathView directoryPath, bool forceRebuild)
+Array<SelectCachedSongEntry> SelectMenuCacheDb::LoadDirectoryForNameSort(FilePathView directoryPath, bool forceRebuild, bool checkFileChanges)
 {
-	return GroupRowsAsSongEntries(LoadDirectoryRows(
-		directoryPath,
-		forceRebuild,
-		U"WHERE visible_in_directory_name_sort != 0",
-		U"CASE WHEN section_directory_index < 0 THEN 0 ELSE 1 END, section_directory_index, song_directory_index, chart_file_index",
-		U"LoadDirectoryForNameSort"));
+	Array<ChartRowResult> rows = LoadDirectoryRows(directoryPath, forceRebuild, checkFileChanges, U"LoadDirectoryForNameSort");
+	rows.remove_if([](const ChartRowResult& row) { return !row.visibleInDirectoryNameSort; });
+
+	// 楽曲フォルダ直下の譜面(セクションなし)を先頭に、以降はセクション・楽曲フォルダ・譜面ファイルの順
+	std::stable_sort(rows.begin(), rows.end(), [](const ChartRowResult& a, const ChartRowResult& b)
+	{
+		return (a.sectionDirectoryIndex < 0 ? 0 : 1) < (b.sectionDirectoryIndex < 0 ? 0 : 1);
+	});
+	return GroupRowsAsSongEntries(rows);
 }
 
-Array<SelectCachedSongEntry> SelectMenuCacheDb::LoadDirectoryForAllNameSort(FilePathView directoryPath, bool forceRebuild)
+Array<SelectCachedSongEntry> SelectMenuCacheDb::LoadDirectoryForAllNameSort(FilePathView directoryPath, bool forceRebuild, bool checkFileChanges)
 {
-	return GroupRowsAsSongEntries(LoadDirectoryRows(
-		directoryPath,
-		forceRebuild,
-		U"WHERE visible_in_all_name_sort != 0",
-		U"song_sort_key, section_directory_index, song_directory_index, chart_file_index",
-		U"LoadDirectoryForAllNameSort"));
+	Array<ChartRowResult> rows = LoadDirectoryRows(directoryPath, forceRebuild, checkFileChanges, U"LoadDirectoryForAllNameSort");
+	rows.remove_if([](const ChartRowResult& row) { return !row.visibleInAllNameSort; });
+	std::stable_sort(rows.begin(), rows.end(), [](const ChartRowResult& a, const ChartRowResult& b)
+	{
+		return a.songSortKey < b.songSortKey;
+	});
+	return GroupRowsAsSongEntries(rows);
 }
 
-Array<SelectCachedChartEntry> SelectMenuCacheDb::LoadDirectoryForLevelSort(FilePathView directoryPath, bool forceRebuild)
+Array<SelectCachedChartEntry> SelectMenuCacheDb::LoadDirectoryForLevelSort(FilePathView directoryPath, bool forceRebuild, bool checkFileChanges)
 {
-	return RowsToChartEntries(LoadDirectoryRows(
-		directoryPath,
-		forceRebuild,
-		U"",
-		U"section_directory_index, song_directory_index, chart_file_index",
-		U"LoadDirectoryForLevelSort"));
+	return RowsToChartEntries(LoadDirectoryRows(directoryPath, forceRebuild, checkFileChanges, U"LoadDirectoryForLevelSort"));
+}
+
+struct SelectMenuCacheDb::Loader::Impl
+{
+	Array<std::unique_ptr<DirectoryRowsLoader>> directoryLoaders;
+
+	// キャッシュの元になるファイルの一覧を取得済みのディレクトリ数
+	size_t sourceFilesCollectedCount = 0;
+
+	// 読み込み完了済みのディレクトリ数
+	size_t finishedCount = 0;
+};
+
+SelectMenuCacheDb::Loader::Loader(const Array<FilePath>& directoryPaths, bool checkFileChanges)
+	: m_pImpl(std::make_unique<Impl>())
+{
+	for (const auto& directoryPath : directoryPaths)
+	{
+		m_pImpl->directoryLoaders.push_back(std::make_unique<DirectoryRowsLoader>(directoryPath, false, checkFileChanges, U"Loader"));
+	}
+}
+
+SelectMenuCacheDb::Loader::~Loader() = default;
+
+SelectMenuCacheDb::Loader::Loader(Loader&&) noexcept = default;
+
+SelectMenuCacheDb::Loader& SelectMenuCacheDb::Loader::operator=(Loader&&) noexcept = default;
+
+void SelectMenuCacheDb::Loader::advance(Duration timeLimit)
+{
+	const Stopwatch stopwatch{ StartImmediately::Yes };
+	auto& directoryLoaders = m_pImpl->directoryLoaders;
+
+	// 全譜面数を確定させるため、先に全ディレクトリのファイルの一覧を取得
+	while (m_pImpl->sourceFilesCollectedCount < directoryLoaders.size())
+	{
+		auto& directoryLoader = *directoryLoaders[m_pImpl->sourceFilesCollectedCount];
+		if (directoryLoader.isSourceFilesCollected() || directoryLoader.isFinished())
+		{
+			++m_pImpl->sourceFilesCollectedCount;
+			continue;
+		}
+		directoryLoader.advance();
+		if (stopwatch.elapsed() >= timeLimit)
+		{
+			return;
+		}
+	}
+
+	while (m_pImpl->finishedCount < directoryLoaders.size())
+	{
+		auto& directoryLoader = *directoryLoaders[m_pImpl->finishedCount];
+		if (directoryLoader.isFinished())
+		{
+			++m_pImpl->finishedCount;
+			continue;
+		}
+		directoryLoader.advance();
+		if (stopwatch.elapsed() >= timeLimit)
+		{
+			return;
+		}
+	}
+}
+
+bool SelectMenuCacheDb::Loader::isFinished() const
+{
+	return m_pImpl->finishedCount >= m_pImpl->directoryLoaders.size();
+}
+
+Optional<SelectMenuCacheDb::Loader::Progress> SelectMenuCacheDb::Loader::progress() const
+{
+	if (m_pImpl->sourceFilesCollectedCount < m_pImpl->directoryLoaders.size())
+	{
+		return none;
+	}
+
+	Progress progress;
+	for (const auto& directoryLoader : m_pImpl->directoryLoaders)
+	{
+		progress.loadedChartCount += directoryLoader->loadedChartCount();
+		progress.totalChartCount += directoryLoader->totalChartCount();
+	}
+	return progress;
 }
 
 void SelectMenuCacheDb::Invalidate(FilePathView directoryPath)
 {
 	if (!directoryPath.empty() && FileSystem::IsDirectory(directoryPath))
 	{
-		FileSystem::Remove(DbPath(FileSystem::FullPath(directoryPath)));
+		const FilePath baseDirectoryPath = FileSystem::FullPath(directoryPath);
+		s_memoryCache.erase(baseDirectoryPath);
+		FileSystem::Remove(DbPath(baseDirectoryPath));
 	}
 }
 

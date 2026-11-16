@@ -45,7 +45,7 @@ namespace MusicGame
 		}
 
 		// 譜面データを読み込み、Turn変換とPlayModeフィルタを適用
-		kson::ChartData LoadChartDataWithTurn(const GameCreateInfo& createInfo, NoteArrangement* pNoteArrangementOut, Optional<SRandomFXAudioMapping>* pSRandomFXAudioMappingOut, std::array<HashSet<kson::Pulse>, kson::kNumLaserLanesSZ>* pLaserCurvedPulses)
+		kson::ChartData LoadChartDataWithTurn(const GameCreateInfo& createInfo, NoteArrangement* pNoteArrangementOut, Optional<SRandomFXAudioMapping>* pSRandomFXAudioMappingOut, std::array<HashSet<kson::Pulse>, kNumSRandomLanesSZ>* pFXChipKeySoundPulsesOut, std::array<HashSet<kson::Pulse>, kson::kNumLaserLanesSZ>* pLaserCurvedPulses, Audio::LegacyLaserTailIntervals* pLegacyLaserTailIntervalsOut)
 		{
 			auto chartData = FsUtils::HasKsonExtension(createInfo.chartFilePath)
 								 ? kson::LoadKsonChartData(createInfo.chartFilePath.toUTF8())
@@ -57,6 +57,9 @@ namespace MusicGame
 
 			// Off/Hideモードフィルタを適用
 			ApplyPlayModeFilter(chartData, createInfo.playOption);
+
+			// 譜面上の区間の長さで判定するため、LASERセクションを変更する前に取得
+			*pLegacyLaserTailIntervalsOut = Audio::MakeLegacyLaserTailIntervals(chartData);
 
 			// テストプレイの場合、開始小節より手前のノーツを削除
 			if (createInfo.playOption.isTestPlayWithStartMeasure())
@@ -113,14 +116,31 @@ namespace MusicGame
 			// (音声エフェクト・キー音は元FXレーン基準のまま扱うため、turn適用前のFXノーツと配置先の対応関係を保持)
 			if (createInfo.playOption.turnMode == TurnMode::kSRandom)
 			{
-				const Array<std::size_t> sRandomNoteLanes = MakeSRandomNoteLanes(chartData, createInfo.playOption.nonZeroPlaybackSpeed());
-				*pSRandomFXAudioMappingOut = SRandomFXAudioMapping{
+				// Hide/Offのレーン種別は判定されないため配置の対象外にする
+				const auto isJudged = [](JudgmentPlayMode mode) { return mode == JudgmentPlayMode::kOn || mode == JudgmentPlayMode::kAuto; };
+				const bool btEnabled = isJudged(createInfo.playOption.effectiveBtJudgmentPlayMode());
+				const bool fxEnabled = isJudged(createInfo.playOption.effectiveFxJudgmentPlayMode());
+				const std::array<bool, kNumSRandomLanesSZ> laneEnabled = { btEnabled, btEnabled, btEnabled, btEnabled, fxEnabled, fxEnabled };
+				const Array<std::size_t> sRandomNoteLanes = MakeSRandomNoteLanes(chartData, createInfo.playOption.nonZeroPlaybackSpeed(), laneEnabled);
+				*pSRandomFXAudioMappingOut = SRandomFXAudioMapping
+				{
 					.fxLanesForAudio = chartData.note.fx,
 					.fxNoteDestinations = MakeFXNoteDestinations(chartData, sRandomNoteLanes),
 				};
-				ApplySRandomNoteLanes(&chartData, sRandomNoteLanes);
-				pNoteArrangementOut->sRandomNoteLanes = sRandomNoteLanes;
+				if (ApplySRandomNoteLanes(&chartData, sRandomNoteLanes))
+				{
+					pNoteArrangementOut->sRandomNoteLanes = sRandomNoteLanes;
+				}
+				else
+				{
+					// 適用に失敗した場合(同一レーン内でノーツが重なる不正な譜面など)は元の配置のままとし、音声エフェクト・キー音の対応表も適用しない
+					Logger << U"[ksm warning] GameMain: Failed to apply S-RANDOM note lanes. The original note arrangement is used.";
+					pSRandomFXAudioMappingOut->reset();
+				}
 			}
+
+			// キー音付きFXチップノーツのpulseを配置後のレーン基準で列挙
+			*pFXChipKeySoundPulsesOut = MakeFXChipKeySoundPulses(chartData.audio.keySound.fx.chipEvent, pSRandomFXAudioMappingOut->has_value() ? &(*pSRandomFXAudioMappingOut)->fxNoteDestinations : nullptr);
 
 			// 曲線を持つレーザー点のPulseを列挙
 			if (pLaserCurvedPulses != nullptr)
@@ -327,13 +347,14 @@ namespace MusicGame
 	}
 
 	GameMain::GameMain(const GameCreateInfo& createInfo)
-		: m_chartFilePath(createInfo.chartFilePath), m_parentPath(FileSystem::ParentPath(createInfo.chartFilePath)), m_chartData(LoadChartDataWithTurn(createInfo, &m_noteArrangement, &m_sRandomFXAudioMapping, &m_laserCurvedPulses)), m_timingCache(kson::CreateTimingCache(m_chartData.beat)), m_playOption(createInfo.playOption), m_settingsChartOffset((m_chartData.audio.bgm.offset + createInfo.folderConfIni.offsetMs) / 1000.0 / createInfo.playOption.nonZeroPlaybackSpeed()), m_judgmentMain(std::make_unique<Judgment::JudgmentMain>(
+		: m_chartFilePath(createInfo.chartFilePath), m_parentPath(FileSystem::ParentPath(createInfo.chartFilePath)), m_chartData(LoadChartDataWithTurn(createInfo, &m_noteArrangement, &m_sRandomFXAudioMapping, &m_fxChipKeySoundPulses, &m_laserCurvedPulses, &m_legacyLaserTailIntervals)), m_timingCache(kson::CreateTimingCache(m_chartData.beat)), m_playOption(createInfo.playOption), m_settingsChartOffset((m_chartData.audio.bgm.offset + createInfo.folderConfIni.offsetMs) / 1000.0 / createInfo.playOption.nonZeroPlaybackSpeed()), m_judgmentMain(std::make_unique<Judgment::JudgmentMain>(
 																																																																																																																							   m_chartData,
 																																																																																																																							   m_timingCache,
+				 m_fxChipKeySoundPulses,
 																																																																																																																							   createInfo.playOption,
 																																																																																																																							   createInfo.courseContinuation,
 																																																																																																																							   createInfo.playOption.gameMode)),
-		  m_camSystem(m_chartData), m_highwayScroll(m_chartData), m_bgm(CreateBGM(m_chartData, m_parentPath, createInfo.playOption, createInfo.folderConfIni)), m_assistTick(createInfo.assistTickMode), m_laserSlamSE(m_chartData, m_timingCache, m_parentPath, createInfo.playOption.isAutoPlaySE, createInfo.folderConfIni.volumeScale), m_fxChipSE(m_chartData, m_timingCache, m_parentPath, createInfo.playOption.isAutoPlaySE, createInfo.folderConfIni.volumeScale), m_hardFailedSound("se/play_hardfailed.wav"), m_audioEffectMain(m_bgm, m_chartData, m_timingCache, m_parentPath, createInfo.playOption.effectiveAudioProcDelayMs() / 1000.0, m_chartData.audio.bgm.vol * createInfo.folderConfIni.volumeScale), m_hispeedSettingMenu(createInfo.playOption.availableHispeedTypes, createInfo.playOption.hispeedSetting, kson::GetEffectiveStdBPM(m_chartData), GetInitialBPM(m_chartData)), m_graphicsMain(std::make_unique<Graphics::GraphicsMain>(m_chartData, m_timingCache, m_parentPath, createInfo.playOption))
+		  m_camSystem(m_chartData), m_highwayScroll(m_chartData), m_bgm(CreateBGM(m_chartData, m_parentPath, createInfo.playOption, createInfo.folderConfIni)), m_assistTick(createInfo.assistTickMode), m_laserSlamSE(m_chartData, m_timingCache, m_parentPath, createInfo.playOption.isAutoPlaySE, createInfo.folderConfIni.volumeScale), m_fxChipSE(m_chartData, m_timingCache, m_parentPath, createInfo.playOption.isAutoPlaySE, createInfo.folderConfIni.volumeScale), m_hardFailedSound("se/play_hardfailed.wav"), m_audioEffectMain(m_bgm, m_chartData, m_timingCache, m_parentPath, createInfo.playOption.effectiveAudioProcDelayMs() / 1000.0, m_chartData.audio.bgm.vol * createInfo.folderConfIni.volumeScale), m_hispeedSettingMenu(createInfo.playOption.availableHispeedTypes, createInfo.playOption.hispeedSetting, kson::GetEffectiveStdBPM(m_chartData), GetInitialBPM(m_chartData)), m_graphicsMain(std::make_unique<Graphics::GraphicsMain>(m_chartData, m_timingCache, m_fxChipKeySoundPulses, m_parentPath, createInfo.playOption))
 	{
 	}
 
@@ -427,7 +448,7 @@ namespace MusicGame
 																	  ? m_sRandomFXAudioMapping->fxLanesForAudio
 																	  : m_chartData.note.fx;
 		ksmaudio::qa::Phase("game.effects");
-		m_audioEffectMain.update(m_bgm, m_chartData, fxNoteLanesForAudio, m_timingCache, {
+		m_audioEffectMain.update(m_bgm, m_chartData, fxNoteLanesForAudio, m_legacyLaserTailIntervals, m_timingCache, {
 																							 .longFXPressed = longFXPressed,
 																							 .laserIsOnOrNone = laserIsOnOrNone,
 																						 },
@@ -538,7 +559,7 @@ namespace MusicGame
 		const GameRender::Scope renderScope{ m_renderContext };
 		if (!m_playOption.skinPreview)
 			return;
-		auto next = std::make_unique<Graphics::GraphicsMain>(m_chartData, m_timingCache, m_parentPath, m_playOption);
+		auto next = std::make_unique<Graphics::GraphicsMain>(m_chartData, m_timingCache, m_fxChipKeySoundPulses, m_parentPath, m_playOption);
 		next->update(m_gameStatus, m_viewStatus, m_timingCache);
 		m_graphicsMain.swap(next);
 	}
@@ -555,7 +576,7 @@ namespace MusicGame
 		m_fxChipSE.resetPreviewPlayback();
 		m_audioEffectMain.resetPreviewPlayback();
 		m_bgm.restartAtChartTime(SecondsF{ chartTime });
-		m_judgmentMain = std::make_unique<Judgment::JudgmentMain>(m_chartData, m_timingCache, m_playOption, none, GameMode::kNormal);
+		m_judgmentMain = std::make_unique<Judgment::JudgmentMain>(m_chartData, m_timingCache, m_fxChipKeySoundPulses, m_playOption, none, GameMode::kNormal);
 		m_gameStatus = GameStatus{};
 		m_viewStatus = ViewStatus{};
 		m_previewResetValues.reset();
@@ -574,7 +595,8 @@ namespace MusicGame
 		m_inputFeedbackLocked = true;
 		m_judgmentMain->clearTimingFeedback();
 		m_viewStatus.timingFeedback.reset();
-		m_isAborted = !m_judgmentMain->isFinished();
+		const bool isHardFailed = m_gameStatus.playFinishStatus.has_value() && m_gameStatus.playFinishStatus->isHardFailed;
+		m_isAborted = !isHardFailed && !m_judgmentMain->isFinished();
 		m_judgmentMain->lockForExit();
 	}
 

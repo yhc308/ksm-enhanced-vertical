@@ -255,109 +255,86 @@ namespace MusicGame::Graphics
 		}
 
 		void DrawLaserSlam(int32 laneIdx, int32 positionY, const kson::GraphPoint& point, int32 slamHeight, const Texture& laserNoteTexture, int32 laserNoteTextureRow, int32 xScale, double topShiftX)
-
 		{
-
 			const Vec2 positionStart = {
-
 				LaserPointX(point.v.v, xScale),
-
 				positionY
-
 			};
 
 			const Vec2 positionEnd = {
-
 				LaserPointX(point.v.vf, xScale),
-
 				positionY
-
 			};
 
 			// 直角レーザーの角のテクスチャを描画
-
 			const bool isLeftToRight = (point.v.v < point.v.vf);
-
 			const int32 yOffset = -slamHeight / 2;
-
 			const double yScale = static_cast<double>(Abs(slamHeight)) / kLaserTextureSize.y;
 
 			// 始点側(v)の角テクスチャ
-
 			if (slamHeight > 0)
-
 			{
-
 				// scroll_speedが正の場合、奥方向(上)に太さを持つ
-
 				laserNoteTexture(kLaserTextureSize.x * laneIdx, kLaserTextureSize.y * laserNoteTextureRow, kLaserTextureSize).mirrored(isLeftToRight).scaled(LaserScale(), yScale).drawAt(positionStart + Vec2{ 0, yOffset });
 			}
-
 			else
-
 			{
-
 				// scroll_speedが負の場合、手前方向(下)に太さを持つ(上下反転)
-
 				laserNoteTexture(kLaserTextureSize.x * laneIdx, kLaserTextureSize.y * laserNoteTextureRow, kLaserTextureSize).mirrored(isLeftToRight).flipped().scaled(LaserScale(), yScale).drawAt(positionStart + Vec2{ 0, yOffset });
 			}
 
 			const double slamWidth = Abs(positionEnd.x - positionStart.x);
-
 			const double innerWidth = Max(slamWidth - LaserLineWidth(), 0.0);
-
 			if (topShiftX * (positionEnd.x - positionStart.x) > 0.0 && Abs(topShiftX) > innerWidth)
-
 			{
-
 				const double innerX = positionEnd.x + (isLeftToRight ? -LaserLineWidth() / 2 : LaserLineWidth() / 2);
-
 				const Vec2 innerTop{ innerX, positionY - slamHeight };
-
 				const Vec2 shiftedInnerTop{ innerX + topShiftX, positionY - slamHeight };
-
 				const Vec2 innerBottom{ innerX, positionY };
 
 				// 終点側(vf)の角テクスチャの頂点移動で隙間が空かないよう内側の三角形を埋める
-
 				Quad{ innerTop, shiftedInnerTop, innerBottom, innerBottom }(laserNoteTexture(kLaserTextureSize.x * laneIdx + kOnePixelTextureSourceOffset, kLaserTextureSize.y * laserNoteTextureRow, kOnePixelTextureSourceSize, kLaserTextureSize.y)).draw();
 			}
 
 			// 終点側(vf)の角テクスチャ(直角レーザーの曲線描画時の変形のためにQuadで描画)
-
+			const double clampedTopShiftX = ClampSlamTopShift(positionStart.x, positionEnd.x, topShiftX);
 			{
-
 				const double endX = positionEnd.x;
-
 				const Vec2 junctionLeft{ endX - LaserLineWidth() / 2 + topShiftX, positionY - slamHeight };
-
 				const Vec2 junctionRight{ endX + LaserLineWidth() / 2 + topShiftX, positionY - slamHeight };
-
 				const Vec2 barLeft{ endX - LaserLineWidth() / 2, positionY };
-
 				const Vec2 barRight{ endX + LaserLineWidth() / 2, positionY };
 
-				const auto textureRegion = laserNoteTexture(kLaserTextureSize.x * laneIdx, kLaserTextureSize.y * laserNoteTextureRow, kLaserTextureSize);
+				const Quad cornerQuad = isLeftToRight ? Quad{ barLeft, barRight, junctionRight, junctionLeft } : Quad{ barRight, barLeft, junctionLeft, junctionRight };
 
-				if (isLeftToRight)
-
+				if (clampedTopShiftX == topShiftX)
 				{
-
-					Quad{ barLeft, barRight, junctionRight, junctionLeft }(textureRegion).draw();
+					cornerQuad(laserNoteTexture(kLaserTextureSize.x * laneIdx, kLaserTextureSize.y * laserNoteTextureRow, kLaserTextureSize)).draw();
 				}
-
 				else
-
 				{
+					// 始点側(v)の角テクスチャと重ならないよう、傾きを制限した場合の内側の辺より内側は描画しない
+					// テクスチャ上の座標(u, v)では内側の辺は(0, 0)から(cutU, 1)を通る
+					const double cutU = Abs(topShiftX - clampedTopShiftX) / LaserLineWidth();
+					const double cornerU = Min(cutU, 1.0);
+					const double cornerV = Min(1.0 / cutU, 1.0);
+					const auto pointAt = [&cornerQuad](double u, double v)
+					{
+						return cornerQuad.p0 + (cornerQuad.p1 - cornerQuad.p0) * u + (cornerQuad.p3 - cornerQuad.p0) * v;
+					};
 
-					Quad{ barRight, barLeft, junctionLeft, junctionRight }(textureRegion).draw();
+					if (cornerU < 1.0)
+					{
+						Quad{ pointAt(cornerU, 0.0), pointAt(1.0, 0.0), pointAt(1.0, 1.0), pointAt(cornerU, 1.0) }(laserNoteTexture(kLaserTextureSize.x * (laneIdx + cornerU), kLaserTextureSize.y * laserNoteTextureRow, kLaserTextureSize.x * (1.0 - cornerU), kLaserTextureSize.y)).draw();
+					}
+
+					// 内側の辺に沿った三角形は、直角の頂点が(cornerU, 0)になるよう左右反転した領域を使い、頂点が3つのQuadで描画
+					Quad{ pointAt(cornerU, 0.0), pointAt(0.0, 0.0), pointAt(cornerU, cornerV), pointAt(cornerU, cornerV) }(laserNoteTexture(kLaserTextureSize.x * laneIdx, kLaserTextureSize.y * laserNoteTextureRow, kLaserTextureSize.x * cornerU, kLaserTextureSize.y * cornerV).mirrored()).draw();
 				}
 			}
 
 			// 直角レーザーの横線を描画
-
-			const Quad quad = LaserSlamLineQuad(positionStart, positionEnd, slamHeight, topShiftX);
-
+			const Quad quad = LaserSlamLineQuad(positionStart, positionEnd, slamHeight, clampedTopShiftX);
 			quad(laserNoteTexture(kLaserTextureSize.x * laneIdx + kOnePixelTextureSourceOffset, kLaserTextureSize.y * laserNoteTextureRow, kOnePixelTextureSourceSize, kLaserTextureSize.y)).draw();
 		}
 
@@ -570,10 +547,6 @@ namespace MusicGame::Graphics
 
 							topShiftX = (refPointX - endPointX) * static_cast<double>(slamHeight) / (positionY - refPositionY);
 
-							const double startPointX = LaserPointX(point.v.v, xScale);
-
-							topShiftX = ClampSlamTopShift(startPointX, endPointX, topShiftX);
-
 							break;
 						}
 					}
@@ -769,6 +742,18 @@ namespace MusicGame::Graphics
 			const bool hasNegativeScrollSpeed = highwayScrollContext.hasNegativeScrollSpeed();
 
 			auto itr = hasNegativeScrollSpeed ? lane.begin() : kson::ValueItrAt(lane, gameStatus.currentPulse);
+
+			// 直前のセクションの終端直角の横線・tailが判定ラインより下でまだ画面内に残っている場合があるため、その分だけ前のセクションから描画を開始
+			while (!hasNegativeScrollSpeed && itr != lane.begin())
+			{
+				const auto prevItr = std::prev(itr);
+				const kson::Pulse prevEndPulse = prevItr->first + prevItr->second.v.rbegin()->first;
+				if (highwayScrollContext.getPositionY(prevEndPulse) + kLaserShiftY - kLaserSlamHeightMax - kLaserTailHeightMax >= kHighwayTextureSize.y)
+				{
+					break;
+				}
+				itr = prevItr;
+			}
 
 			m_visibleLaserSections.clear();
 

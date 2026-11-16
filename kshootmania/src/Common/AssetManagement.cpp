@@ -69,11 +69,11 @@ namespace AssetManagement
 			}
 #ifdef __linux
 			constexpr StringView kResourceDir = U"resources/";
-			FontAsset::Register(kFontAssetSystem, FontMethod::MSDF, 44, kResourceDir + fontPath, FontStyle::Default);
-			FontAsset::Register(kFontAssetSystemBold, FontMethod::MSDF, 44, kResourceDir + fontPath, FontStyle::Bold);
+			FontAsset::Register(kFontAssetSystem, FontMethod::SDF, 44, kResourceDir + fontPath, FontStyle::Default);
+			FontAsset::Register(kFontAssetSystemBold, FontMethod::SDF, 44, kResourceDir + fontPath, FontStyle::Bold);
 #else
-			FontAsset::Register(kFontAssetSystem, FontMethod::MSDF, 44, Resource(fontPath), FontStyle::Default);
-			FontAsset::Register(kFontAssetSystemBold, FontMethod::MSDF, 44, Resource(fontPath), FontStyle::Bold);
+			FontAsset::Register(kFontAssetSystem, FontMethod::SDF, 44, Resource(fontPath), FontStyle::Default);
+			FontAsset::Register(kFontAssetSystemBold, FontMethod::SDF, 44, Resource(fontPath), FontStyle::Bold);
 #endif
 			// Keep the selected language's glyph shapes first. Fallback fonts only
 			// supply missing characters in song names; never rewrite their paths.
@@ -127,6 +127,9 @@ namespace AssetManagement
 			FontAsset::Unregister(kFontAssetSystemBold);
 		}
 		RegisterFontAssets();
+
+		// 登録し直すと生成済みのグリフは破棄されるため、事前生成の要求済みの文字もリセット
+		GlyphPreloadAddon::Reset();
 	}
 
 	Font SystemFont()

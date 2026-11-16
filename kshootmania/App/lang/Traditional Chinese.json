@@ -22,7 +22,7 @@
     "TurnSRandom": " S-RANDOM ",
     "PlaybackSpeed": "SONG SPEED: ",
     "AssistTick": "ASSIST TICK:  ",
-    "AssistTickOff": "    OFF     ",
+    "AssistTickOff": "     關     ",
     "AssistTickAuto": "    AUTO    ",
     "AssistTickInput": "   INPUT    ",
     "AutoSync": "Auto Sync:    ",
@@ -31,8 +31,8 @@
     "AutoSyncOnLow": "  開 (Low)  ",
     "AutoSyncOff": "    關     ",
     "FastSlow": "FAST/SLOW:    ",
-    "FastSlowHide": "    OFF     ",
-    "FastSlowShow": "   ORIGIN   ",
+    "FastSlowHide": "    隱藏    ",
+    "FastSlowShow": "    顯示    ",
     "FastSlowNew": "    NEW+    ",
     "TimingPosition": "TIMING POSITION:",
     "TimingMsDisplay": "±ms DISPLAY:",
@@ -48,7 +48,8 @@
     "PlayStatsClear": "  CLEAR  : ",
     "PlayStatsFullCombo": "FULLCOMBO: ",
     "PlayStatsPerfect": " PERFECT : ",
-    "SearchCloseResult": "關閉搜尋結果"
+    "SearchCloseResult": "關閉搜尋結果",
+    "AssistTickOn": "     開     "
   },
   "Play": {
     "ErrorChartFileNotFound": "找不到譜面檔案。",
@@ -96,7 +97,7 @@
     "LaserInputTypeMouseXY": "滑鼠 X/Y 訊號 (手台用)",
     "LaserInputTypeSlider": "滑桿訊號 (手台用)",
     "LaserInputTypeAnalogStickXY": "搖桿 X/Y 訊號 (循環)",
-    "AssistTickOff": "OFF",
+    "AssistTickOff": "關",
     "AssistTickAuto": "AUTO",
     "AssistTickInput": "INPUT",
     "DisableIMEOff": "關",
@@ -149,7 +150,7 @@
     "ItemAlwaysShowOtherFolders": "一律顯示其他資料夾",
     "ItemHideAllFolder": "隱藏\"All\"資料夾",
     "ItemMasterVolume": "主音量",
-    "ItemAudioBackend": "音訊輸出（重新啟動後生效）",
+    "ItemAudioBackend": "音訊輸出方式 (重新啟動後套用)",
     "ItemVsync": "垂直同步",
     "ItemDefaultBTJudgmentMode": "BT 音符預設判定模式",
     "ItemDefaultFXJudgmentMode": "FX 音符預設判定模式",
@@ -171,12 +172,23 @@
     "ItemHispeedTypeOMod": "Hi-Speed 25 - 2000",
     "ItemHispeedTypeCMod": "Hi-Speed C 25 - 2000",
     "ItemHideMouseCursor": "隱藏滑鼠游標",
-    "ItemEnableMouseUIInput": "允許用滑鼠操作遊戲畫面",
+    "ItemEnableMouseUIInput": "允許用滑鼠點擊操作遊戲畫面",
     "ItemAssignRightClickToBack": "將右鍵分配給Back按鈕",
     "ItemUseNumpadAsArrowKeys": "使用數字鍵盤作為方向鍵 (用於帶數字鍵盤的控制器)",
     "ItemShowTranslitKana": "將含假名的曲名・演出者名以拉丁字母顯示",
     "ItemShowTranslitHangul": "將含諺文的曲名・演出者名以拉丁字母顯示",
-    "ItemShowTranslitKanji": "將含漢字的曲名・演出者名以拉丁字母顯示"
+    "ItemShowTranslitKanji": "將含漢字的曲名・演出者名以拉丁字母顯示",
+    "AssistTickOn": "開",
+    "HeadingScreen": "畫面設定",
+    "HeadingDisplay": "顯示設定",
+    "HeadingSound": "音效設定",
+    "HeadingJudgment": "判定設定",
+    "HeadingTimingAdjustment": "時機設定",
+    "HeadingLaserInput": "LASER 輸入設定",
+    "HeadingKeyboardButton": "鍵盤・按鍵設定",
+    "HeadingHispeedType": "Hi-Speed 設定",
+    "HeadingMouseKeyboard": "滑鼠・鍵盤設定",
+    "HeadingTranslit": "拉丁字母顯示設定"
   },
   "InputGate": {
     "BulkDownloadConfirm": "有 {0} 個可輸入的譜面。\n是否一次全部下載？"
@@ -286,6 +298,7 @@
     "SkinHelpText": "在遊戲資料夾的 skins/ 下新增外觀資料夾，例如 skins/skin_1/，即可新增外觀。\n\n缺少圖片處理設為 Default 時，目前外觀中缺少的圖片會使用 imgs/ 中的原始圖片補齊。選擇 Yellow，可用黃色標記檢查外觀缺少的圖片。",
     "RememberEffRate": "結束遊戲後保留所選EFF.RATE",
     "AsioJudgmentCorrection": "ASIO附加判定校正",
-    "AsioJudgmentCorrectionHelp": "正值提前判定時刻並減小FAST誤差。依目前ASIO裝置儲存。"
+    "AsioJudgmentCorrectionHelp": "正值提前判定時刻並減小FAST誤差。依目前ASIO裝置儲存。",
+    "GameplaySettingsHeading": "遊玩設定"
   }
 }

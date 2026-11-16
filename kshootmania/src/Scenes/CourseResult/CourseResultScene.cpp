@@ -190,7 +190,7 @@ Co::Task<bool> CourseResultScene::waitForNewRecordPanelClose()
 
 bool CourseResultScene::isClickDecideDown() const
 {
-	if (!MouseL.down())
+	if (!InputUtils::IsUIMouseInputEnabled() || isFadingIn() || !MouseL.down())
 	{
 		return false;
 	}
@@ -218,7 +218,10 @@ void CourseResultScene::update()
 	ksmaudio::qa::Scope qaScope{ "CourseResultScene.update", false };
 	ksmaudio::qa::Scene("courseresult");
 	// 画面全体がクリック可能なのでカーソルを人差し指に変更
-	Cursor::RequestStyle(CursorStyle::Hand);
+	if (InputUtils::IsUIMouseInputEnabled())
+	{
+		Cursor::RequestStyle(CursorStyle::Hand);
+	}
 
 	// フェード中はクリックやホバーが効かないようヒットテスト無効
 	m_canvas->update(noco::HitTestEnabledYN{ !isFadingIn() && !isFadingOut() && InputUtils::IsUIMouseInputEnabled() });

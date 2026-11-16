@@ -55,21 +55,21 @@ namespace MusicGame::Scroll
 			}
 		}
 
-		/// @brief ハイスピード値を求める
+		/// @brief 整数に切り捨てる前のハイスピード値を求める
 		/// @param hispeedSetting ハイスピード設定
 		/// @param currentBPM 現在のBPM
 		/// @param stdBPM 基準BPM
-		/// @return ハイスピード係数
-		/// @note HispeedFactorにBPMをかけた値と基本的に同じだが、C-modで設定値をそのまま返す点、整数のまま計算する点が異なる
-		int32 CurrentHispeed(const HispeedSetting& hispeedSetting, double currentBPM, double stdBPM)
+		/// @return 切り捨て前のハイスピード値
+		/// @note HispeedFactorにBPMをかけた値と基本的に同じだが、C-modで設定値をそのまま返す点、x-modでBPMを整数にしてから計算する点が異なる
+		double CurrentHispeedBeforeTruncation(const HispeedSetting& hispeedSetting, double currentBPM, double stdBPM)
 		{
 			switch (hispeedSetting.type)
 			{
 			case HispeedType::XMod:
-				return static_cast<int32>(currentBPM) * hispeedSetting.value / 10;
+				return static_cast<int32>(currentBPM) * hispeedSetting.value / 10.0;
 
 			case HispeedType::OMod:
-				return static_cast<int32>(currentBPM * hispeedSetting.value / stdBPM);
+				return currentBPM * hispeedSetting.value / stdBPM;
 
 			case HispeedType::CMod:
 				return hispeedSetting.value;
@@ -78,6 +78,17 @@ namespace MusicGame::Scroll
 				assert(false && "Unknown hispeed type");
 				return static_cast<int32>(currentBPM);
 			}
+		}
+
+		/// @brief ハイスピード値を求める
+		/// @param hispeedSetting ハイスピード設定
+		/// @param currentBPM 現在のBPM
+		/// @param stdBPM 基準BPM
+		/// @return ハイスピード係数
+		/// @note CurrentHispeedBeforeTruncationの値を整数に切り捨てたもの
+		int32 CurrentHispeed(const HispeedSetting& hispeedSetting, double currentBPM, double stdBPM)
+		{
+			return static_cast<int32>(CurrentHispeedBeforeTruncation(hispeedSetting, currentBPM, stdBPM));
 		}
 
 		/// @brief scrollSpeedの1区間を台形則で積分(始点After/終点Beforeで即時変更に対応)
@@ -162,12 +173,17 @@ namespace MusicGame::Scroll
 
 	int32 HighwayScrollContext::relPulseToPixelHeight(kson::Pulse basePulse, kson::RelPulse relPulse) const
 	{
-		return m_pHighwayScroll->relPulseToPixelHeight(basePulse, relPulse, *m_pBeatInfo);
+		return m_pHighwayScroll->relPulseToPixelHeight(basePulse, relPulse, *m_pBeatInfo, *m_pTimingCache);
 	}
 
 	const HighwayScroll& HighwayScrollContext::highwayScroll() const
 	{
 		return *m_pHighwayScroll;
+	}
+
+	const kson::TimingCache& HighwayScrollContext::timingCache() const
+	{
+		return *m_pTimingCache;
 	}
 
 	bool HighwayScrollContext::hasNegativeScrollSpeed() const
@@ -217,8 +233,9 @@ namespace MusicGame::Scroll
 			}
 		}
 
+		// 切り捨てによる誤差が重ならないよう、scroll_speedを掛けてから整数にする
 		const double scrollSpeed = kson::GraphValueAt(m_pBeatInfo->scrollSpeed, currentPulse);
-		return static_cast<int32>(hispeed * Abs(scrollSpeed));
+		return static_cast<int32>(m_pHighwayScroll->currentHispeedBeforeTruncation() * Abs(scrollSpeed));
 	}
 
 	int32 HighwayScrollContext::hispeedWithScrollSpeedAt(kson::Pulse pulse) const
@@ -237,8 +254,9 @@ namespace MusicGame::Scroll
 			return hispeed;
 		}
 
+		// 切り捨てによる誤差が重ならないよう、scroll_speedを掛けてから整数にする
 		const double scrollSpeed = kson::GraphValueAt(m_pBeatInfo->scrollSpeed, pulse);
-		return static_cast<int32>(hispeed * Abs(scrollSpeed));
+		return static_cast<int32>(m_pHighwayScroll->hispeedBeforeTruncationAt(pulse, *m_pBeatInfo) * Abs(scrollSpeed));
 	}
 
 	double HighwayScroll::pulseToSec(kson::Pulse pulse, const kson::BeatInfo& beatInfo, const kson::TimingCache& timingCache) const
@@ -342,11 +360,21 @@ namespace MusicGame::Scroll
 		return static_cast<int32>(Graphics::kHighwayTextureSize.y - Graphics::kJdglineYFromBottom) - static_cast<int32>(relPulseEquivalent * kBasePixels * m_hispeedFactor / kson::kResolution4);
 	}
 
-	int32 HighwayScroll::relPulseToPixelHeight(kson::Pulse basePulse, kson::RelPulse relPulse, const kson::BeatInfo& beatInfo) const
+	int32 HighwayScroll::relPulseToPixelHeight(kson::Pulse basePulse, kson::RelPulse relPulse, const kson::BeatInfo& beatInfo, const kson::TimingCache& timingCache) const
 	{
 		assert(m_hispeedFactor != 0.0 && "HighwayScroll::update() must be called at least once before HighwayScroll::relPulseToPixelHeight()");
 
-		const double relPulseEquivalent = scrollSpeedIntegral(beatInfo.scrollSpeed, static_cast<double>(basePulse), static_cast<double>(basePulse + relPulse));
+		double relPulseEquivalent;
+		if (m_hispeedSetting.type == HispeedType::CMod)
+		{
+			// C-modでは秒数をもとに計算した換算値を使う(getRelPulseEquvalentと同じ)
+			const double relTimeSec = pulseToSec(basePulse + relPulse, beatInfo, timingCache) - pulseToSec(basePulse, beatInfo, timingCache);
+			relPulseEquivalent = relTimeSec / 60 * kson::kResolution;
+		}
+		else
+		{
+			relPulseEquivalent = scrollSpeedIntegral(beatInfo.scrollSpeed, static_cast<double>(basePulse), static_cast<double>(basePulse + relPulse));
+		}
 		return static_cast<int32>(relPulseEquivalent * kBasePixels * m_hispeedFactor / kson::kResolution4);
 	}
 
@@ -365,8 +393,18 @@ namespace MusicGame::Scroll
 		return m_currentHispeed;
 	}
 
+	double HighwayScroll::currentHispeedBeforeTruncation() const
+	{
+		return CurrentHispeedBeforeTruncation(m_hispeedSetting, m_currentBPM, m_stdBPM);
+	}
+
 	int32 HighwayScroll::hispeedAt(kson::Pulse pulse, const kson::BeatInfo& beatInfo) const
 	{
 		return CurrentHispeed(m_hispeedSetting, kson::TempoAt(pulse, beatInfo), m_stdBPM);
+	}
+
+	double HighwayScroll::hispeedBeforeTruncationAt(kson::Pulse pulse, const kson::BeatInfo& beatInfo) const
+	{
+		return CurrentHispeedBeforeTruncation(m_hispeedSetting, kson::TempoAt(pulse, beatInfo), m_stdBPM);
 	}
 }

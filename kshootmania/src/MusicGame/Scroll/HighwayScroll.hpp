@@ -70,6 +70,10 @@ namespace MusicGame::Scroll
 		/// @return HighwayScrollへの参照
 		const HighwayScroll& highwayScroll() const;
 
+		/// @brief TimingCacheへの参照を返す
+		/// @return TimingCacheへの参照
+		const kson::TimingCache& timingCache() const;
+
 		/// @brief scrollSpeedに負の値が含まれているかを返す
 		/// @return 負の値が含まれていればtrue
 		bool hasNegativeScrollSpeed() const;
@@ -170,8 +174,9 @@ namespace MusicGame::Scroll
 		/// @param basePulse 基準となるPulse位置(scroll_speed計算に使用)
 		/// @param relPulse 相対Pulse値
 		/// @param beatInfo kson.beat
+		/// @param timingCache 事前計算したTimingCache
 		/// @return ピクセル高さ
-		int32 relPulseToPixelHeight(kson::Pulse basePulse, kson::RelPulse relPulse, const kson::BeatInfo& beatInfo) const;
+		int32 relPulseToPixelHeight(kson::Pulse basePulse, kson::RelPulse relPulse, const kson::BeatInfo& beatInfo, const kson::TimingCache& timingCache) const;
 
 		/// @brief scrollSpeedに負の値が含まれているかを返す
 		/// @return 負の値が含まれていればtrue
@@ -185,10 +190,20 @@ namespace MusicGame::Scroll
 		/// @return ハイスピード値
 		int32 currentHispeed() const;
 
+		/// @brief 整数に切り捨てる前の現在のハイスピード値を返す
+		/// @return 切り捨て前のハイスピード値
+		double currentHispeedBeforeTruncation() const;
+
 		/// @brief 指定したPulse位置でのハイスピード値を返す
 		/// @param pulse Pulse値
 		/// @param beatInfo kson.beat
 		/// @return ハイスピード値
 		int32 hispeedAt(kson::Pulse pulse, const kson::BeatInfo& beatInfo) const;
+
+		/// @brief 指定したPulse位置での、整数に切り捨てる前のハイスピード値を返す
+		/// @param pulse Pulse値
+		/// @param beatInfo kson.beat
+		/// @return 切り捨て前のハイスピード値
+		double hispeedBeforeTruncationAt(kson::Pulse pulse, const kson::BeatInfo& beatInfo) const;
 	};
 }

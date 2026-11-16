@@ -58,6 +58,17 @@ private:
 	void drawAudioLog() const;
 	void saveOutputSelection();
 
+	// 設定項目のノード(見出しは含まない)
+	Array<std::shared_ptr<noco::Node>> m_settingItemNodes;
+
+	// 言語変更はメニューのコールバックから呼ばれるため、メニューの再生成はupdate内で行う
+	bool m_languageChangeRequested = false;
+
+	// カーソル位置に合わせて設定項目をスクロール中かどうか
+	bool m_isSettingMenuScrollFollowingCursor = false;
+
+	double m_settingMenuScrollVelocity = 0.0;
+
 	ksmaudio::Stream m_bgmStream{ "se/option_bgm.ogg", 1.0, false, false, true };
 
 	std::unique_ptr<std::array<OptionMenu, kOptionMenuTypeEnumCount>> makeOptionMenus();
@@ -70,8 +81,23 @@ private:
 
 	void refreshSettingItemParams();
 
+	/// @brief カーソル位置の項目が中央に来る設定項目のスクロール位置を取得する
+	/// @return スクロール位置(設定項目がない場合はnone)
+	[[nodiscard]]
+	Optional<double> settingMenuScrollTargetY() const;
+
+	/// @brief 設定項目のスクロール位置をカーソル位置へ即座に合わせる
+	void resetSettingMenuScroll();
+
+	/// @brief 設定項目のスクロール位置をカーソル位置へ滑らかに近づける
+	void updateSettingMenuScroll();
+
 public:
 	explicit OptionScene(bool displayShortcut = false);
+
+#if KSM_ENABLE_DIAGNOSTICS
+	void runMigration220Checks();
+#endif
 
 	virtual void update() override;
 

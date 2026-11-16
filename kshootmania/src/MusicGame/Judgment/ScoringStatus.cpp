@@ -84,11 +84,8 @@ namespace MusicGame::Judgment
 		switch (m_gaugeCalcType)
 		{
 		case GaugeCalcType::kNormalEasy:
-			adjustedSub = static_cast<int32>(sub * kGaugeDecreaseRateEasy);
-			break;
-
 		case GaugeCalcType::kNormalNormal:
-			adjustedSub = NormalGaugeState::Decrease(sub);
+			adjustedSub = sub;
 			break;
 
 		case GaugeCalcType::kNormalHard:
@@ -122,10 +119,38 @@ namespace MusicGame::Judgment
 
 		m_gaugeValue = Max(m_gaugeValue - adjustedSub, 0);
 		m_uncappedGaugeValue -= adjustedSub;
+	}
+
+	void ScoringStatus::subtractGaugeValueNormal(int32 sub)
+	{
+		m_gaugeValueNormal = Max(m_gaugeValueNormal - sub, 0);
+	}
+
+	void ScoringStatus::subtractGaugeValueOnError(double normalPercent, int32 hardSub, int32 courseBaseSub)
+	{
+		switch (m_gaugeCalcType)
+		{
+		case GaugeCalcType::kNormalEasy:
+			subtractGaugeValue(static_cast<int32>(m_gaugeValueMax * normalPercent * kGaugeDecreaseRateEasy / 100));
+			break;
+
+		case GaugeCalcType::kNormalNormal:
+			subtractGaugeValue(static_cast<int32>(m_gaugeValueMax * normalPercent * kGaugeDecreaseRateNormal / 100));
+			break;
+
+		case GaugeCalcType::kNormalHard:
+			subtractGaugeValue(hardSub);
+			break;
+
+		case GaugeCalcType::kCourseEasy:
+		case GaugeCalcType::kCourseNormal:
+		case GaugeCalcType::kCourseHard:
+			subtractGaugeValue(courseBaseSub);
+			break;
+		}
 
 		// Grade計算用にNORMAL基準のゲージ値も更新
-		const int32 normalSub = static_cast<int32>(sub * kGaugeDecreaseRateNormal);
-		m_gaugeValueNormal = Max(m_gaugeValueNormal - normalSub, 0);
+		subtractGaugeValueNormal(static_cast<int32>(m_gaugeValueMax * normalPercent / 100));
 	}
 
 	ScoringStatus::ScoringStatus(int32 scoreValueMax, int32 gaugeValueMax, GaugeType gaugeType, const Optional<CourseContinuation>& courseContinuation, GameMode gameMode, bool apsEnabled)
@@ -152,8 +177,9 @@ namespace MusicGame::Judgment
 			m_scoreValue += Judgment::kScoreValueNear;
 			if (m_gaugeCalcType == GaugeCalcType::kCourseHard)
 			{
-				// コースモードのHARDゲージでは、NEARでゲージが減る
-				subtractGaugeValue(kGaugeDecreaseBaseValueCourseChipError);
+				// コースモードのHARDゲージでは、NEARで実ゲージが減るが、グレード計算用のNORMAL基準ゲージは増やす
+				subtractGaugeValue(kGaugeDecreaseBaseValueCourseHardNear);
+				addGaugeValueNormal(kGaugeValueChipNear);
 			}
 			else if (m_gaugeType != GaugeType::kHardGauge)
 			{
@@ -168,18 +194,7 @@ namespace MusicGame::Judgment
 			break;
 
 		case Judgment::JudgmentResult::kError:
-			if (m_gaugeCalcType == GaugeCalcType::kCourseEasy || m_gaugeCalcType == GaugeCalcType::kCourseNormal || m_gaugeCalcType == GaugeCalcType::kCourseHard)
-			{
-				subtractGaugeValue(kGaugeDecreaseBaseValueCourseChipError);
-			}
-			else if (m_gaugeCalcType == GaugeCalcType::kNormalHard)
-			{
-				subtractGaugeValue(kGaugeDecreaseValueHardChipError);
-			}
-			else
-			{
-				subtractGaugeValue(NormalGaugeState::ErrorBase(m_gaugeValueMax, true));
-			}
+			subtractGaugeValueOnError(kGaugeDecreasePercentByChipError, kGaugeDecreaseValueHardChipError, kGaugeDecreaseBaseValueCourseChipError);
 			break;
 
 		default:
@@ -203,18 +218,7 @@ namespace MusicGame::Judgment
 			break;
 
 		case Judgment::JudgmentResult::kError:
-			if (m_gaugeCalcType == GaugeCalcType::kCourseEasy || m_gaugeCalcType == GaugeCalcType::kCourseNormal || m_gaugeCalcType == GaugeCalcType::kCourseHard)
-			{
-				subtractGaugeValue(kGaugeDecreaseBaseValueCourseLongError);
-			}
-			else if (m_gaugeCalcType == GaugeCalcType::kNormalHard)
-			{
-				subtractGaugeValue(kGaugeDecreaseValueHardLongError);
-			}
-			else
-			{
-				subtractGaugeValue(NormalGaugeState::ErrorBase(m_gaugeValueMax, false));
-			}
+			subtractGaugeValueOnError(kGaugeDecreasePercentByLongError, kGaugeDecreaseValueHardLongError, kGaugeDecreaseBaseValueCourseLongError);
 			break;
 
 		default:
@@ -286,7 +290,11 @@ namespace MusicGame::Judgment
 		// HARDゲージまたはコースモードの場合はNORMAL基準のゲージ値を使用
 		if (m_gaugeType == GaugeType::kHardGauge || m_gameMode == GameMode::kCourseMode)
 		{
-			return calcGaugePercentageFromValue(m_gaugeValueNormal, GaugeType::kNormalGauge);
+			if (m_gaugeValueMax == 0)
+			{
+				return 0.0;
+			}
+			return 100.0 * m_gaugeValueNormal / m_gaugeValueMax;
 		}
 		else
 		{
@@ -347,6 +355,11 @@ namespace MusicGame::Judgment
 	int32 ScoringStatus::courseCombo() const
 	{
 		return m_comboStatus.courseCombo();
+	}
+
+	int32 ScoringStatus::courseMaxCombo() const
+	{
+		return m_comboStatus.courseMaxCombo();
 	}
 
 	bool ScoringStatus::courseIsNoError() const

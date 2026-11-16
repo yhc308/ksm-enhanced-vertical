@@ -12,10 +12,11 @@ private:
 	size_t m_currentChartIdx = 0U;
 	Array<MusicGame::PlayResult> m_results;
 
-	int32 m_totalScore = 0;
+	int64 m_totalScore = 0; // 曲数が多い場合に備えてint64
 	int32 m_totalCritical = 0;
 	int32 m_totalNear = 0;
 	int32 m_totalError = 0;
+	int32 m_courseMaxCombo = 0;
 
 	CourseContinuation m_continuation; // 次の曲に引き継ぐ情報
 
@@ -48,6 +49,7 @@ public:
 		m_totalCritical += playResult.comboStats.critical;
 		m_totalNear += playResult.comboStats.totalNear();
 		m_totalError += playResult.comboStats.error;
+		m_courseMaxCombo = Max(m_courseMaxCombo, playResult.courseMaxCombo);
 
 		m_failedChartTimeProgress = playResult.chartTimeProgress;
 
@@ -68,6 +70,9 @@ public:
 		if (hasNextChart())
 		{
 			++m_currentChartIdx;
+
+			// 次の曲のプレイ前にコースを抜けた場合に、前の曲の進行率が加算されないようにリセット
+			m_failedChartTimeProgress = 0.0;
 		}
 	}
 
@@ -106,7 +111,7 @@ public:
 	}
 
 	[[nodiscard]]
-	int32 totalScore() const
+	int64 totalScore() const
 	{
 		return m_totalScore;
 	}
@@ -120,7 +125,7 @@ public:
 		}
 
 		const int32 chartCount = static_cast<int32>(m_courseInfo.charts.size());
-		const int32 avgScore = chartCount > 0 ? m_totalScore / chartCount : 0;
+		const int32 avgScore = chartCount > 0 ? static_cast<int32>(m_totalScore / chartCount) : 0;
 
 		if (m_cleared)
 		{

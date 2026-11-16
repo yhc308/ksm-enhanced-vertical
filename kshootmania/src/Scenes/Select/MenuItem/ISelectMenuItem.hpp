@@ -96,35 +96,29 @@ protected:
 			return SongInfoTextDisplayParams{ .text = std::move(text) };
 		}
 
-		constexpr double kOriginalDisplaySec = 2.0;
-		constexpr double kFadeSec = 1.0;
-		constexpr double kPeriodSec = (kOriginalDisplaySec + kFadeSec) * 2.0;
-
-		const double elapsed = Max(0.0, Scene::Time() - SongInfoTextDisplayStartTime());
-		const double t = std::fmod(elapsed, kPeriodSec);
-		double translitAlpha = 0.0;
-		if (t < kOriginalDisplaySec)
-		{
-			translitAlpha = 0.0;
-		}
-		else if (t < kOriginalDisplaySec + kFadeSec)
-		{
-			translitAlpha = (t - kOriginalDisplaySec) / kFadeSec;
-		}
-		else if (t < kOriginalDisplaySec * 2.0 + kFadeSec)
-		{
-			translitAlpha = 1.0;
-		}
-		else
-		{
-			translitAlpha = 1.0 - ((t - (kOriginalDisplaySec * 2.0 + kFadeSec)) / kFadeSec);
-		}
-
 		return SongInfoTextDisplayParams{
 			.text = std::move(text),
 			.translitText = std::move(translitText),
-			.translitFadeRate = translitAlpha,
+			.translitFadeRate = TranslitFadeRateNow(),
 		};
+	}
+
+	/// @brief 曲の項目の表示に使うグリフの事前生成を要求
+	static void RequestSongInfoGlyphPreload(const SelectChartInfo& chartInfo)
+	{
+		const SongInfoTextDisplayParams titleParams = MakeSongInfoTextDisplayParams(chartInfo.title(), chartInfo.titleTranslit());
+		const SongInfoTextDisplayParams artistParams = MakeSongInfoTextDisplayParams(chartInfo.artist(), chartInfo.artistTranslit());
+
+		const Font fontBold = AssetManagement::SystemFontBold();
+		GlyphPreloadAddon::Request(fontBold, titleParams.text);
+		GlyphPreloadAddon::Request(fontBold, titleParams.translitText);
+
+		const Font font = AssetManagement::SystemFont();
+		GlyphPreloadAddon::Request(font, artistParams.text);
+		GlyphPreloadAddon::Request(font, artistParams.translitText);
+		GlyphPreloadAddon::Request(font, chartInfo.jacketAuthor());
+		GlyphPreloadAddon::Request(font, chartInfo.chartAuthor());
+		GlyphPreloadAddon::Request(font, chartInfo.information());
 	}
 
 public:
@@ -135,6 +129,33 @@ public:
 	static void ResetSongInfoTextDisplayTimer()
 	{
 		SongInfoTextDisplayStartTime() = Scene::Time();
+	}
+
+	/// @brief 英字表記と元の曲名・アーティスト名の表示を切り替えるフェードの進行度(0～1)
+	static double TranslitFadeRateNow()
+	{
+		constexpr double kOriginalDisplaySec = 2.0;
+		constexpr double kFadeSec = 1.0;
+		constexpr double kPeriodSec = (kOriginalDisplaySec + kFadeSec) * 2.0;
+
+		const double elapsed = Max(0.0, Scene::Time() - SongInfoTextDisplayStartTime());
+		const double t = std::fmod(elapsed, kPeriodSec);
+		if (t < kOriginalDisplaySec)
+		{
+			return 0.0;
+		}
+		else if (t < kOriginalDisplaySec + kFadeSec)
+		{
+			return (t - kOriginalDisplaySec) / kFadeSec;
+		}
+		else if (t < kOriginalDisplaySec * 2.0 + kFadeSec)
+		{
+			return 1.0;
+		}
+		else
+		{
+			return 1.0 - ((t - (kOriginalDisplaySec * 2.0 + kFadeSec)) / kFadeSec);
+		}
 	}
 
 	virtual void decide(const SelectMenuEventContext& context, int32 difficultyIdx) = 0;
@@ -187,6 +208,17 @@ public:
 		return false;
 	}
 
+	/// @brief この項目に譜面がない難易度をクリックした場合の処理
+	/// @param context イベントコンテキスト
+	/// @param clickedDifficultyIdx クリックされた難易度(0～3)
+	/// @return 難易度変更が行われた場合はtrue
+	virtual bool handleDifficultyClick(
+		[[maybe_unused]] const SelectMenuEventContext& context,
+		[[maybe_unused]] int32 clickedDifficultyIdx) const
+	{
+		return false;
+	}
+
 	virtual bool isSubFolderHeading() const
 	{
 		return false;
@@ -204,6 +236,13 @@ public:
 		return false;
 	}
 
+	/// @brief レベルソートの譜面項目(SelectMenuLevelSongItem)かどうか
+	/// @return レベルソートの譜面項目の場合はtrue
+	virtual bool isLevelSortSongItem() const
+	{
+		return false;
+	}
+
 	/// @brief Canvasのパラメータを設定(中央の項目)
 	/// @param context イベントコンテキスト
 	/// @param canvas 設定対象のCanvas
@@ -216,6 +255,28 @@ public:
 	/// @param difficultyIdx 現在選択中の難易度のインデックス(0～3)
 	/// @param tag SubCanvasのタグ(例:"top1", "bottom2")
 	virtual void setCanvasParamsTopBottom(const SelectMenuEventContext& context, noco::Canvas& canvas, int32 difficultyIdx, StringView tag) const = 0;
+
+	/// @brief 中央の項目に表示するジャケット画像のパスを取得
+	/// @param difficultyIdx 現在選択中の難易度のインデックス(0～3)
+	/// @return ジャケット画像のパス(表示しない場合は空)
+	virtual FilePath jacketFilePathCenter([[maybe_unused]] int32 difficultyIdx) const
+	{
+		return FilePath{};
+	}
+
+	/// @brief 上下の項目に表示するジャケット画像のパスを取得
+	/// @param difficultyIdx 現在選択中の難易度のインデックス(0～3)
+	/// @return ジャケット画像のパス(表示しない場合は空)
+	virtual FilePath jacketFilePathTopBottom([[maybe_unused]] int32 difficultyIdx) const
+	{
+		return FilePath{};
+	}
+
+	/// @brief この項目の表示に使うグリフの事前生成を要求
+	/// @param difficultyIdx 現在選択中の難易度のインデックス(0～3)
+	virtual void requestGlyphPreload([[maybe_unused]] int32 difficultyIdx) const
+	{
+	}
 
 	/// @brief この項目をエクスプローラで表示
 	/// @param difficultyIdx 現在選択中の難易度のインデックス(0～3)

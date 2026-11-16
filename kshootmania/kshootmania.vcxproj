@@ -173,6 +173,7 @@
     <ClCompile Include="src\Addon\AutoMuteAddon.cpp" />
     <ClCompile Include="src\Addon\CommonSEAddon.cpp" />
     <ClCompile Include="src\Addon\DisableIMEAddon.cpp" />
+    <ClCompile Include="src\Addon\GlyphPreloadAddon.cpp" />
     <ClCompile Include="src\Common\AssetManagement.cpp" />
     <ClCompile Include="src\Common\Encoding.cpp" />
     <ClCompile Include="src\Common\FrameRateLimit.cpp" />
@@ -295,6 +296,7 @@
     <ClCompile Include="src\Scenes\Select\SearchInputDialog.cpp" />
     <ClCompile Include="src\Scenes\Select\SelectChartInfo.cpp" />
     <ClCompile Include="src\Scenes\Select\SelectDifficultyMenu.cpp" />
+    <ClCompile Include="src\Scenes\Select\SelectFolderLoading.cpp" />
     <ClCompile Include="src\Scenes\Select\SelectHighScoreCache.cpp" />
     <ClCompile Include="src\Scenes\Select\SelectMenu.cpp" />
     <ClCompile Include="src\Scenes\Select\SelectMenuCacheDb.cpp" />
@@ -412,6 +414,7 @@
     <ClInclude Include="src\Addon\AutoMuteAddon.hpp" />
     <ClInclude Include="src\Addon\CommonSEAddon.hpp" />
     <ClInclude Include="src\Addon\DisableIMEAddon.hpp" />
+    <ClInclude Include="src\Addon\GlyphPreloadAddon.hpp" />
     <ClInclude Include="src\Common\AssetManagement.hpp" />
     <ClInclude Include="src\Common\CommonDefines.hpp" />
     <ClInclude Include="src\Common\Encoding.hpp" />
@@ -556,6 +559,7 @@
     <ClInclude Include="src\Scenes\Select\MenuItem\SelectMenuBackToFolderItem.hpp" />
     <ClInclude Include="src\Scenes\Select\SelectSceneSearchParams.hpp" />
     <ClInclude Include="src\Scenes\Select\SearchInputDialog.hpp" />
+    <ClInclude Include="src\Scenes\Select\SelectFolderLoading.hpp" />
     <ClInclude Include="src\Scenes\Select\MenuItem\SelectMenuCourseItem.hpp" />
     <ClInclude Include="src\Scenes\Select\MenuItem\SelectMenuCoursesFolderItem.hpp" />
     <ClInclude Include="src\Scenes\Select\MenuItem\SelectMenuDirFolderItem.hpp" />

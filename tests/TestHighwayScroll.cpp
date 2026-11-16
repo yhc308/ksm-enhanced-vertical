@@ -96,10 +96,101 @@ TEST_CASE("HighwayScroll integrates partial scroll_speed interpolation across ze
 	const int32 posY_480 = highwayScroll.getPositionY(480, chartData.beat, timingCache, gameStatus);
 	const int32 posY_720 = highwayScroll.getPositionY(720, chartData.beat, timingCache, gameStatus);
 
-	// For speed -1 + pulse/480, the signed integrals from the zero-speed
-	// origin (480) to 240 and 720 are both +60 pulse units. Both notes
-	// therefore have the same screen displacement above the judgment line.
+	REQUIRE(posY_480 > posY_720);
 	REQUIRE(posY_240 == posY_720);
-	REQUIRE(posY_480 > posY_240);
-	REQUIRE(posY_480 - posY_240 == 33);
+	REQUIRE(posY_480 - posY_720 == 33);
+}
+
+TEST_CASE("HighwayScroll currentHispeedWithScrollSpeed truncates only once", "[HighwayScroll]")
+{
+	kson::ChartData chartData;
+	chartData.beat.bpm[0] = 100.0;
+	chartData.beat.timeSig[0] = kson::TimeSig{ 4, 4 };
+	chartData.beat.scrollSpeed[0] = kson::GraphPoint{ 2.0 };
+
+	auto timingCache = kson::CreateTimingCache(chartData.beat);
+
+	HighwayScroll highwayScroll(chartData);
+
+	HispeedSetting hispeedSetting;
+	hispeedSetting.type = HispeedType::OMod;
+	hispeedSetting.value = 333;
+
+	// 150 * 333 / 100 = 499.5
+	highwayScroll.update(hispeedSetting, 150.0);
+	REQUIRE(highwayScroll.currentHispeed() == 499);
+
+	GameStatus gameStatus;
+	gameStatus.currentPulse = 0;
+	gameStatus.currentPulseDouble = 0.0;
+
+	const HighwayScrollContext highwayScrollContext(&highwayScroll, &chartData.beat, &timingCache, &gameStatus);
+	REQUIRE(highwayScrollContext.currentHispeedWithScrollSpeed() == 999);
+}
+
+TEST_CASE("HighwayScroll hispeedWithScrollSpeedAt truncates only once", "[HighwayScroll]")
+{
+	kson::ChartData chartData;
+	chartData.beat.bpm[0] = 100.0;
+	chartData.beat.bpm[kson::kResolution4 * 4] = 150.0;
+	chartData.beat.timeSig[0] = kson::TimeSig{ 4, 4 };
+	chartData.beat.scrollSpeed[0] = kson::GraphPoint{ 2.0 };
+
+	auto timingCache = kson::CreateTimingCache(chartData.beat);
+
+	HighwayScroll highwayScroll(chartData);
+
+	HispeedSetting hispeedSetting;
+	hispeedSetting.type = HispeedType::OMod;
+	hispeedSetting.value = 333;
+	highwayScroll.update(hispeedSetting, 100.0);
+
+	GameStatus gameStatus;
+	const HighwayScrollContext highwayScrollContext(&highwayScroll, &chartData.beat, &timingCache, &gameStatus);
+
+	// 100 * 333 / 100 * 2 = 666
+	REQUIRE(highwayScrollContext.hispeedWithScrollSpeedAt(0) == 666);
+
+	// 150 * 333 / 100 = 499.5、2倍で999
+	REQUIRE(highwayScrollContext.hispeedWithScrollSpeedAt(kson::kResolution4 * 4) == 999);
+}
+
+TEST_CASE("HighwayScroll currentHispeed for x-mod and o-mod", "[HighwayScroll]")
+{
+	kson::ChartData chartData;
+	chartData.beat.bpm[0] = 180.0;
+	chartData.beat.timeSig[0] = kson::TimeSig{ 4, 4 };
+
+	HighwayScroll highwayScroll(chartData);
+
+	for (const double bpm : { 60.0, 99.9, 150.5, 180.0, 222.25, 999.99 })
+	{
+		for (const int32 value : { 1, 7, 25, 123, 500, 975 })
+		{
+			highwayScroll.update(HispeedSetting{ .type = HispeedType::XMod, .value = value }, bpm);
+			REQUIRE(highwayScroll.currentHispeed() == static_cast<int32>(bpm) * value / 10);
+
+			highwayScroll.update(HispeedSetting{ .type = HispeedType::OMod, .value = value }, bpm);
+			REQUIRE(highwayScroll.currentHispeed() == static_cast<int32>(bpm * value / 180.0));
+		}
+	}
+}
+
+TEST_CASE("HighwayScroll relPulseToPixelHeight for c-mod matches o-mod at the same BPM", "[HighwayScroll]")
+{
+	kson::ChartData chartData;
+	chartData.beat.bpm[0] = 150.0;
+	chartData.beat.timeSig[0] = kson::TimeSig{ 4, 4 };
+
+	auto timingCache = kson::CreateTimingCache(chartData.beat);
+
+	HighwayScroll highwayScroll(chartData);
+
+	// 1/32 = 30 Pulse = 0.05秒、0.05 / 60 * 240 * 540 * 400 / 960 = 45
+	highwayScroll.update(HispeedSetting{ .type = HispeedType::CMod, .value = 400 }, 150.0);
+	REQUIRE(highwayScroll.relPulseToPixelHeight(0, 30, chartData.beat, timingCache) == 45);
+
+	// 30 * 540 * (400 / 150) / 960 = 45
+	highwayScroll.update(HispeedSetting{ .type = HispeedType::OMod, .value = 400 }, 150.0);
+	REQUIRE(highwayScroll.relPulseToPixelHeight(0, 30, chartData.beat, timingCache) == 45);
 }

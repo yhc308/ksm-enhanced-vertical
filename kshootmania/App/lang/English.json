@@ -22,7 +22,7 @@
     "TurnSRandom": " S-Random ",
     "PlaybackSpeed": "Song Speed: ",
     "AssistTick": "Assist Tick:  ",
-    "AssistTickOff": "    OFF     ",
+    "AssistTickOff": "    Off     ",
     "AssistTickAuto": "    AUTO    ",
     "AssistTickInput": "   INPUT    ",
     "AutoSync": "Auto Sync:    ",
@@ -31,8 +31,8 @@
     "AutoSyncOnLow": "  On (Low)  ",
     "AutoSyncOff": "    Off     ",
     "FastSlow": "FAST/SLOW:    ",
-    "FastSlowHide": "    OFF     ",
-    "FastSlowShow": "   ORIGIN   ",
+    "FastSlowHide": "    Hide    ",
+    "FastSlowShow": "    Show    ",
     "FastSlowNew": "    NEW+    ",
     "TimingPosition": "TIMING POSITION:",
     "TimingMsDisplay": "±ms DISPLAY:",
@@ -48,7 +48,8 @@
     "PlayStatsClear": "  Clear   : ",
     "PlayStatsFullCombo": "Full combo: ",
     "PlayStatsPerfect": " Perfect  : ",
-    "SearchCloseResult": "Close Search Results"
+    "SearchCloseResult": "Close Search Results",
+    "AssistTickOn": "     On     "
   },
   "Play": {
     "ErrorChartFileNotFound": "Cannot find the chart file.",
@@ -96,7 +97,7 @@
     "LaserInputTypeMouseXY": "Mouse X/Y signal (for Controller)",
     "LaserInputTypeSlider": "Slider signal (for Controller)",
     "LaserInputTypeAnalogStickXY": "Analog Stick X/Y",
-    "AssistTickOff": "OFF",
+    "AssistTickOff": "Off",
     "AssistTickAuto": "AUTO",
     "AssistTickInput": "INPUT",
     "DisableIMEOff": "Off",
@@ -149,7 +150,7 @@
     "ItemAlwaysShowOtherFolders": "Always Show Other Folders",
     "ItemHideAllFolder": "Hide \"All\" Folder",
     "ItemMasterVolume": "Master Volume",
-    "ItemAudioBackend": "Audio output (restart required)",
+    "ItemAudioBackend": "Audio Output Method (Applied after app restart)",
     "ItemVsync": "VSync",
     "ItemDefaultBTJudgmentMode": "BT Notes Default Judgment Mode",
     "ItemDefaultFXJudgmentMode": "FX Notes Default Judgment Mode",
@@ -171,12 +172,23 @@
     "ItemHispeedTypeOMod": "Hi-Speed Type 25 - 2000",
     "ItemHispeedTypeCMod": "Hi-Speed Type C 25 - 2000",
     "ItemHideMouseCursor": "Hide Mouse Cursor",
-    "ItemEnableMouseUIInput": "Enable On-Screen Mouse Control",
+    "ItemEnableMouseUIInput": "Enable On-Screen Mouse Click Control",
     "ItemAssignRightClickToBack": "Assign Right-Click to Back Button",
     "ItemUseNumpadAsArrowKeys": "Use Numpad as Arrow Keys (for Controllers with Numpad)",
     "ItemShowTranslitKana": "Show romanized song titles and artists containing kana",
     "ItemShowTranslitHangul": "Show romanized song titles and artists containing hangul",
-    "ItemShowTranslitKanji": "Show romanized song titles and artists containing kanji"
+    "ItemShowTranslitKanji": "Show romanized song titles and artists containing kanji",
+    "AssistTickOn": "On",
+    "HeadingScreen": "Screen Settings",
+    "HeadingDisplay": "Display Settings",
+    "HeadingSound": "Sound Settings",
+    "HeadingJudgment": "Judgment Settings",
+    "HeadingTimingAdjustment": "Timing Settings",
+    "HeadingLaserInput": "Laser Input Settings",
+    "HeadingKeyboardButton": "Keyboard & Button Settings",
+    "HeadingHispeedType": "Hi-Speed Settings",
+    "HeadingMouseKeyboard": "Mouse & Keyboard Settings",
+    "HeadingTranslit": "Romanization Settings"
   },
   "InputGate": {
     "BulkDownloadConfirm": "There are {0} charts available for input.\nWould you like to download them all at once?"
@@ -286,6 +298,7 @@
     "SkinHelpText": "Add a skin by placing its folder inside the game folder, for example skins/skin_1/.\n\nWith Default missing-image handling, images absent from the selected skin are replaced by the original images in imgs/. Select Yellow to highlight missing skin images in yellow.",
     "RememberEffRate": "Remember selected EFF.RATE on exit",
     "AsioJudgmentCorrection": "ASIO additional judgment correction",
-    "AsioJudgmentCorrectionHelp": "Positive values advance judgment timing and reduce FAST errors. Saved per active ASIO device."
+    "AsioJudgmentCorrectionHelp": "Positive values advance judgment timing and reduce FAST errors. Saved per active ASIO device.",
+    "GameplaySettingsHeading": "Gameplay Settings"
   }
 }

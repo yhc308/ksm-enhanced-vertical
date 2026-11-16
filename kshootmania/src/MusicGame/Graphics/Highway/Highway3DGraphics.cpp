@@ -51,8 +51,8 @@ namespace MusicGame::Graphics
 		}
 	}
 
-	Highway3DGraphics::Highway3DGraphics()
-		: m_shineEffectTexture(TextureAsset(kShineEffectTextureFilename)), m_barLineTexture(TextureAsset(kBarLineTextureFilename)), m_meshData(MeshData::Grid({ 0.0, 0.0, 0.0 }, kHighwayPlaneSizeWide, 1, 1, { 1.0f - kUVShrinkX, 1.0f - kUVShrinkY }, { kUVShrinkX / 2, kUVShrinkY / 2 })), m_mesh(m_meshData) // DynamicMesh::fill()で頂点データの配列サイズが動的に変更される訳ではないのでこの初期化は必須
+	Highway3DGraphics::Highway3DGraphics(const kson::ChartData& chartData, const std::array<HashSet<kson::Pulse>, kNumSRandomLanesSZ>& fxChipKeySoundPulses)
+		: m_buttonNoteGraphics(chartData, fxChipKeySoundPulses), m_shineEffectTexture(TextureAsset(kShineEffectTextureFilename)), m_barLineTexture(TextureAsset(kBarLineTextureFilename)), m_meshData(MeshData::Grid({ 0.0, 0.0, 0.0 }, kHighwayPlaneSizeWide, 1, 1, { 1.0f - kUVShrinkX, 1.0f - kUVShrinkY }, { kUVShrinkX / 2, kUVShrinkY / 2 })), m_mesh(m_meshData) // DynamicMesh::fill()で頂点データの配列サイズが動的に変更される訳ではないのでこの初期化は必須
 		  ,
 		  m_verticalMesh(MeshData::Grid(kHighwayPlaneSizeWide, 1, 2))
 	{

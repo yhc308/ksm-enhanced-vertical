@@ -500,3 +500,9 @@ __pycache__/
 
 # Required Windows long-path application manifest
 !/kshootmania/app.manifest
+
+# Separate KSM 2.2.0 migration documentation
+!/docs/MIGRATION_2.2.0*.md
+
+# Local migration packages are never source inputs
+/releases_QA/

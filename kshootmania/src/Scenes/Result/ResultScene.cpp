@@ -648,7 +648,7 @@ Co::Task<void> ResultScene::start()
 			{
 				m_courseState->setCleared(true);
 			}
-			requestNextScene<CourseResultScene>(*m_courseState);
+			requestNextScene<CourseResultScene>(*m_courseState, m_selectSearchParams);
 		}
 		else
 		{
@@ -724,7 +724,7 @@ Co::Task<bool> ResultScene::waitForNewRecordPanelClose()
 
 bool ResultScene::isClickDecideDown() const
 {
-	if (!MouseL.down())
+	if (!InputUtils::IsUIMouseInputEnabled() || isFadingIn() || !MouseL.down())
 	{
 		return false;
 	}
@@ -752,7 +752,10 @@ void ResultScene::update()
 	ksmaudio::qa::Scope qaScope{ "ResultScene.update", false };
 	ksmaudio::qa::Scene("result");
 	// 画面全体がクリック可能なのでカーソルを人差し指に変更
-	Cursor::RequestStyle(CursorStyle::Hand);
+	if (InputUtils::IsUIMouseInputEnabled())
+	{
+		Cursor::RequestStyle(CursorStyle::Hand);
+	}
 
 	const bool fxLPressed = KeyConfig::Pressed(kButtonFX_L);
 	const bool fxRPressed = KeyConfig::Pressed(kButtonFX_R);

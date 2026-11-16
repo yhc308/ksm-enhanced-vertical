@@ -225,7 +225,8 @@ namespace MusicGame::Audio
 					if (def.type == kson::AudioEffectType::SwitchAudio)
 					{
 						// SwitchAudioの場合
-						if (def.v.contains("filename"))
+						// (v1と同様、f音源指定時はSwitchAudioを使用しない)
+						if (legacyMode == LegacyAudioFPMode::kNone && def.v.contains("filename"))
 						{
 							// ファイル名をもとに音声を追加ロード
 							const std::string& filename = def.v.at("filename");
@@ -296,6 +297,11 @@ namespace MusicGame::Audio
 								.audioEffectIdx = audioEffectBus.audioEffectNameToIdx(audioEffectName),
 								.overrideParams = ksmaudio::AudioEffect::StrDictToParamValueSetDict(dict),
 							});
+						}
+						else
+						{
+							// 存在しないエフェクトの場合はエフェクトなしにする
+							convertedLongEvent[i].insert_or_assign(y, none);
 						}
 					}
 				}
@@ -384,6 +390,17 @@ namespace MusicGame::Audio
 			return none;
 		}
 
+		// 音声エフェクト用のLASERの値を取得(legacyTailIntervalsの区間内は値なし)
+		std::optional<double> LaserValueForAudioEffectAt(const kson::ByPulse<kson::LaserSection>& lane, const kson::ByPulse<kson::Interval>& legacyTailIntervals, kson::Pulse pulse)
+		{
+			if (kson::IntervalAt(legacyTailIntervals, pulse) != legacyTailIntervals.end())
+			{
+				return std::nullopt;
+			}
+
+			return kson::GraphSectionValueAt(lane, pulse);
+		}
+
 		kson::FXLane<Optional<AudioEffectInvocation>> RegisterAudioEffectsAndCreateLongFXNoteInvocations(BGM& bgm, const kson::ChartData& chartData, const kson::TimingCache& timingCache, const FilePath& parentPath, double bgmVolume)
 		{
 			// エフェクト名のインデックス変換用にRegisterAudioEffectsを先に呼ぶ必要がある
@@ -461,12 +478,48 @@ namespace MusicGame::Audio
 		return audioEffectInvocation;
 	}
 
+	LegacyLaserTailIntervals MakeLegacyLaserTailIntervals(const kson::ChartData& chartData)
+	{
+		LegacyLaserTailIntervals intervals;
+		if (!chartData.compat.isKshVersionOlderThan(kson::kKshVersionKsonBased))
+		{
+			return intervals;
+		}
+
+		// v1ではLASERセクション末尾の1/32以下の区間に音声エフェクトをかけない
+		// 直角の点を端に持つ区間は、KSHでの末尾の区間と一致しないため対象外とする
+		//
+		// HSP版での対応箇所: https://github.com/kshootmania/ksm-v1/blob/ceb3992c8fac3b141031731926346d9d84138c37/src/scene/play/play_laser_note.hsp#L38-L40
+		for (std::size_t i = 0; i < kson::kNumLaserLanesSZ; ++i)
+		{
+			for (const auto& [y, section] : chartData.note.laser[i])
+			{
+				if (section.v.size() <= 1)
+				{
+					continue;
+				}
+
+				const auto lastPointItr = std::prev(section.v.end());
+				const auto lastSegmentStartItr = std::prev(lastPointItr);
+				const auto& [lastRy, lastPoint] = *lastPointItr;
+				const auto& [lastSegmentStartRy, lastSegmentStartPoint] = *lastSegmentStartItr;
+				const bool isSlamIncluded = !kson::AlmostEquals(lastPoint.v.v, lastPoint.v.vf) || !kson::AlmostEquals(lastSegmentStartPoint.v.v, lastSegmentStartPoint.v.vf);
+				if (!isSlamIncluded && lastRy - lastSegmentStartRy <= kson::kResolution4 / 32)
+				{
+					intervals[i].insert_or_assign(y + lastSegmentStartRy, kson::Interval{ .length = lastRy - lastSegmentStartRy });
+				}
+			}
+		}
+
+		return intervals;
+	}
+
 	AudioEffectMain::AudioEffectMain(BGM& bgm, const kson::ChartData& chartData, const kson::TimingCache& timingCache, const FilePath& parentPath, double audioProcDelaySec, double bgmVolume)
 		: m_longFXNoteInvocations(RegisterAudioEffectsAndCreateLongFXNoteInvocations(bgm, chartData, timingCache, parentPath, bgmVolume)), m_laserPulseInvocations(CreateLaserPulseAudioEffectInvocations(bgm, chartData)), m_audioProcDelaySec(audioProcDelaySec), m_peakingFilterDelaySec(GetEffectivePeakingFilterDelaySec(chartData))
 	{
 	}
 
-	void AudioEffectMain::update(BGM& bgm, const kson::ChartData& chartData, const kson::FXLane<kson::Interval>& fxNoteLanesForAudio, const kson::TimingCache& timingCache, const AudioEffectInputStatus& inputStatus, kson::Pulse currentPulseForSwitchAudio)
+	void AudioEffectMain::update(BGM& bgm, const kson::ChartData& chartData, const kson::FXLane<kson::Interval>& fxNoteLanesForAudio, const LegacyLaserTailIntervals& legacyLaserTailIntervals, const kson::TimingCache& timingCache, const AudioEffectInputStatus& inputStatus, kson::Pulse currentPulseForSwitchAudio)
 	{
 		// TODO: SecondsFに統一
 		const double currentTimeSec = bgm.posSec().count();
@@ -546,7 +599,7 @@ namespace MusicGame::Audio
 					continue;
 				}
 
-				const auto& laneLaserValue = kson::GraphSectionValueAt(chartData.note.laser[i], currentPulseForLaserAudio);
+				const auto& laneLaserValue = LaserValueForAudioEffectAt(chartData.note.laser[i], legacyLaserTailIntervals[i], currentPulseForLaserAudio);
 				if (!laneLaserValue.has_value())
 				{
 					// 現在時間(currentPulseForLaserAudio)の時点にLASERノーツがない場合はエフェクトを適用しない
@@ -590,7 +643,7 @@ namespace MusicGame::Audio
 				continue;
 			}
 
-			const auto currentLongNoteByTime = CurrentLongNoteByTime(chartData.note.fx[i], currentPulseForSwitchAudio);
+			const auto currentLongNoteByTime = CurrentLongNoteByTime(fxNoteLanesForAudio[i], currentPulseForSwitchAudio);
 			if (!currentLongNoteByTime.has_value())
 			{
 				continue;
@@ -627,7 +680,7 @@ namespace MusicGame::Audio
 			{
 				if (inputStatus.laserIsOnOrNone[i])
 				{
-					const auto& laneLaserValue = kson::GraphSectionValueAt(chartData.note.laser[i], currentPulseForSwitchAudio);
+					const auto& laneLaserValue = LaserValueForAudioEffectAt(chartData.note.laser[i], legacyLaserTailIntervals[i], currentPulseForSwitchAudio);
 					if (laneLaserValue.has_value())
 					{
 						isAnyLaserOn = true;
@@ -656,7 +709,7 @@ namespace MusicGame::Audio
 				int totalFXCount = 0;
 				for (std::size_t i = 0; i < kson::kNumFXLanesSZ; ++i)
 				{
-					const auto currentLongNoteByTime = CurrentLongNoteByTime(chartData.note.fx[i], currentPulseForSwitchAudio);
+					const auto currentLongNoteByTime = CurrentLongNoteByTime(fxNoteLanesForAudio[i], currentPulseForSwitchAudio);
 					if (currentLongNoteByTime.has_value())
 					{
 						totalFXCount++;
@@ -678,7 +731,7 @@ namespace MusicGame::Audio
 				int totalLaserCount = 0;
 				for (std::size_t i = 0; i < kson::kNumLaserLanesSZ; ++i)
 				{
-					const auto& laneLaserValue = kson::GraphSectionValueAt(chartData.note.laser[i], currentPulseForSwitchAudio);
+					const auto& laneLaserValue = LaserValueForAudioEffectAt(chartData.note.laser[i], legacyLaserTailIntervals[i], currentPulseForSwitchAudio);
 					if (laneLaserValue.has_value())
 					{
 						totalLaserCount++;

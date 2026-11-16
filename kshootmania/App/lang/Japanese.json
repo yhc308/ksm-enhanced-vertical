@@ -31,8 +31,8 @@
     "AutoSyncOnLow": "  ON (LOW)  ",
     "AutoSyncOff": "    OFF     ",
     "FastSlow": "FAST/SLOW:    ",
-    "FastSlowHide": "    OFF     ",
-    "FastSlowShow": "   ORIGIN   ",
+    "FastSlowHide": "   非表示   ",
+    "FastSlowShow": "    表示    ",
     "FastSlowNew": "    NEW+    ",
     "TimingPosition": "TIMING POSITION:",
     "TimingMsDisplay": "±ms DISPLAY:",
@@ -48,7 +48,8 @@
     "PlayStatsClear": "  CLEAR  : ",
     "PlayStatsFullCombo": "FULLCOMBO: ",
     "PlayStatsPerfect": " PERFECT : ",
-    "SearchCloseResult": "検索結果を閉じる"
+    "SearchCloseResult": "検索結果を閉じる",
+    "AssistTickOn": "     ON     "
   },
   "Play": {
     "ErrorChartFileNotFound": "指定された譜面ファイルが見つかりません。",
@@ -149,7 +150,7 @@
     "ItemAlwaysShowOtherFolders": "他フォルダを常に表示",
     "ItemHideAllFolder": "\"All\"フォルダを非表示化",
     "ItemMasterVolume": "マスター音量",
-    "ItemAudioBackend": "音声出力 (再起動後に適用)",
+    "ItemAudioBackend": "オーディオ出力方式(アプリ再起動後に反映)",
     "ItemVsync": "垂直同期",
     "ItemDefaultBTJudgmentMode": "BTノーツのデフォルト判定モード",
     "ItemDefaultFXJudgmentMode": "FXノーツのデフォルト判定モード",
@@ -171,12 +172,23 @@
     "ItemHispeedTypeOMod": "ハイスピード 25 - 2000",
     "ItemHispeedTypeCMod": "ハイスピード C 25 - 2000",
     "ItemHideMouseCursor": "マウスカーソルを非表示化",
-    "ItemEnableMouseUIInput": "ゲーム画面をマウスで操作可能にする",
+    "ItemEnableMouseUIInput": "ゲーム画面をマウスクリックで操作可能にする",
     "ItemAssignRightClickToBack": "右クリックをBackボタンに割り当てる",
     "ItemUseNumpadAsArrowKeys": "テンキーを方向キーとして使用(テンキー付き専用コントローラー向け)",
     "ItemShowTranslitKana": "かなを含む曲名・アーティスト名は英字表記を表示",
     "ItemShowTranslitHangul": "ハングルを含む曲名・アーティスト名は英字表記を表示",
-    "ItemShowTranslitKanji": "漢字を含む曲名・アーティスト名は英字表記を表示"
+    "ItemShowTranslitKanji": "漢字を含む曲名・アーティスト名は英字表記を表示",
+    "AssistTickOn": "ON",
+    "HeadingScreen": "画面設定",
+    "HeadingDisplay": "表示設定",
+    "HeadingSound": "サウンド設定",
+    "HeadingJudgment": "判定設定",
+    "HeadingTimingAdjustment": "タイミング設定",
+    "HeadingLaserInput": "LASER入力設定",
+    "HeadingKeyboardButton": "キーボード・ボタン設定",
+    "HeadingHispeedType": "ハイスピード設定",
+    "HeadingMouseKeyboard": "マウス・キーボード設定",
+    "HeadingTranslit": "英字表記設定"
   },
   "InputGate": {
     "BulkDownloadConfirm": "インプット可能な譜面が{0}件あります。\n一括でダウンロードしますか？"
@@ -286,6 +298,7 @@
     "SkinHelpText": "ゲームフォルダー内の skins/ に skins/skin_1/ のようなフォルダーを追加すると、スキンを登録できます。\n\n不足画像処理が Default の場合、選択中のスキンにない画像は imgs/ の元画像で補完されます。Yellow を選ぶと、不足しているスキン画像を黄色で確認できます。",
     "RememberEffRate": "終了後も選択EFF.RATEを保持",
     "AsioJudgmentCorrection": "ASIO追加判定補正",
-    "AsioJudgmentCorrectionHelp": "正の値は判定時刻を進め、FAST誤差を減らします。使用中のASIOデバイスごとに保存します。"
+    "AsioJudgmentCorrectionHelp": "正の値は判定時刻を進め、FAST誤差を減らします。使用中のASIOデバイスごとに保存します。",
+    "GameplaySettingsHeading": "プレイ設定"
   }
 }

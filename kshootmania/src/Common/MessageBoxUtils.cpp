@@ -1,4 +1,6 @@
-﻿#include "MessageBoxUtils.hpp"
+﻿#include "Diagnostics/DiagnosticArguments.hpp"
+#include "Common/FsUtils.hpp"
+#include "MessageBoxUtils.hpp"
 #if defined(_WIN32)
 #include <Windows.h>
 #elif defined(__APPLE__)
@@ -31,6 +33,13 @@ namespace
 
 MessageBoxResult MessageBoxUtils::ShowOK(const StringView text, const MessageBoxStyle style)
 {
+#if KSM_ENABLE_DIAGNOSTICS
+	if (ModDiagnostics::Arguments().contains(U"--silent-qa"))
+	{
+		TextWriter{ FsUtils::GetResourcePath(U"silent-qa-dialog.txt"), OpenMode::Append }.writeln(text);
+		return MessageBoxResult::OK;
+	}
+#endif
 #ifdef _WIN32
 	const auto hWnd = static_cast<HWND>(Platform::Windows::Window::GetHWND());
 	::MessageBoxW(hWnd, text.toWstr().c_str(), Window::GetTitle().toWstr().c_str(), MB_OK | ToIconFlag(style));
@@ -47,6 +56,13 @@ MessageBoxResult MessageBoxUtils::ShowOK(const StringView text, const MessageBox
 
 MessageBoxResult MessageBoxUtils::ShowYesNo(const StringView text, const MessageBoxStyle style)
 {
+#if KSM_ENABLE_DIAGNOSTICS
+	if (ModDiagnostics::Arguments().contains(U"--silent-qa"))
+	{
+		TextWriter{ FsUtils::GetResourcePath(U"silent-qa-dialog.txt"), OpenMode::Append }.writeln(text);
+		return MessageBoxResult::Cancel;
+	}
+#endif
 #ifdef _WIN32
 	const auto hWnd = static_cast<HWND>(Platform::Windows::Window::GetHWND());
 	const int result = ::MessageBoxW(hWnd, text.toWstr().c_str(), Window::GetTitle().toWstr().c_str(), MB_YESNO | ToIconFlag(style));

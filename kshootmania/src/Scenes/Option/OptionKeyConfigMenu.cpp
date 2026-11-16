@@ -2,6 +2,8 @@
 
 #ifdef __APPLE__
 #include <ksmplatform_macos/input_method.h>
+#elif defined(__linux__)
+#include <ksmplatform_linux/keyboard.h>
 #endif
 
 namespace
@@ -1208,11 +1210,15 @@ void OptionKeyConfigMenu::updateSettingButtonState()
 			}
 		}
 
-#ifdef __APPLE__
-		// macOSプラットフォーム特有のキーもチェック
+#if defined(__APPLE__) || defined(__linux__)
+		// プラットフォーム特有のキーもチェック
 		for (const auto& key : kPlatformKeys)
 		{
+#ifdef __APPLE__
 			const bool pressed = KSMPlatformMacOS_IsKeyPressed(key.nativeCode);
+#else
+			const bool pressed = Window::GetState().focused && KSMPlatformLinux_IsKeyPressed(key.nativeCode);
+#endif
 			const bool wasPressed = m_platformKeyWasPressed[key.nativeCode];
 
 			if (pressed && !wasPressed)
@@ -1239,6 +1245,12 @@ void OptionKeyConfigMenu::updateSettingButtonState()
 				bool isAnyButtonDown = false;
 				for (const auto& input : gamepad.buttons)
 				{
+					// ボタン番号32以上は「デバイス番号*32+ボタン番号」形式で保存できないため割り当て不可
+					if (input.code() >= 32)
+					{
+						continue;
+					}
+
 					if (input.down())
 					{
 						setInput(input);

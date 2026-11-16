@@ -112,6 +112,7 @@ namespace I18n
 		RememberEffRate,
 		AsioJudgmentCorrection,
 		AsioJudgmentCorrectionHelp,
+		GameplaySettingsHeading,
 	};
 
 	/// @brief 共通/起動時テキストのキー名
@@ -333,6 +334,16 @@ namespace I18n
 		ItemShowTranslitKana,
 		ItemShowTranslitHangul,
 		ItemShowTranslitKanji,
+		HeadingScreen,
+		HeadingDisplay,
+		HeadingSound,
+		HeadingJudgment,
+		HeadingTimingAdjustment,
+		HeadingLaserInput,
+		HeadingKeyboardButton,
+		HeadingHispeedType,
+		HeadingMouseKeyboard,
+		HeadingTranslit,
 	};
 
 	/// @brief カテゴリ名とキー名からテキストを直接取得

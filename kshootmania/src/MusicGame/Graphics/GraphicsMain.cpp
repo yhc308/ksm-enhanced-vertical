@@ -368,7 +368,7 @@ namespace MusicGame::Graphics
 		}
 	}
 
-	GraphicsMain::GraphicsMain(const kson::ChartData& chartData, const kson::TimingCache& timingCache, FilePathView parentPath, const PlayOption& playOption)
+	GraphicsMain::GraphicsMain(const kson::ChartData& chartData, const kson::TimingCache& timingCache, const std::array<HashSet<kson::Pulse>, kNumSRandomLanesSZ>& fxChipKeySoundPulses, FilePathView parentPath, const PlayOption& playOption)
 		: m_camera(GameRender::VerticalEnabled()
 					   ? Vertical::MakeCamera(GameRender::Size(), Vertical::ModConfig::Load().layout)
 					   : BasicCamera3D{ GameRender::Size(), kCameraVerticalFOV, kCameraPosition, kCameraLookAt }),
@@ -384,7 +384,7 @@ namespace MusicGame::Graphics
 																																																																																																																																	  }
 																																																																																																																																  return Texture{ image };
 																																																																																																																															  }()),
-		  m_tunnelWarp(VerticalBackdropMesh(true, Size{ 720, 640 }, &m_camera), m_vertical && m_depthEnabled), m_bgTextures(LoadBGTextures(chartData, parentPath)), m_verticalBGMeshes{ Mesh{ VerticalBackdropMesh(false, m_bgTextures[0].size()) }, Mesh{ VerticalBackdropMesh(false, m_bgTextures[1].size()) } }, m_bgTransform(GameRender::VerticalEnabled() ? VerticalBackdrop(m_camera, kBGBillboardPosition) : BackgroundBillboard(m_camera, kBGBillboardPosition, kBGBillboardSize)), m_layerFrameTextures(LoadLayerFrameTextures(LayerFilePath(chartData, parentPath))), m_layerTransform(GameRender::VerticalEnabled() ? VerticalBackdrop(m_camera, kLayerBillboardPosition) : m_camera.billboard(kLayerBillboardPosition, kLayerBillboardSize)), m_jdgoverlay3DGraphics(m_camera), m_hudCanvas(LoadHUDCanvas()), m_gaugePanel(ToGaugeCalcType(playOption.gaugeType, playOption.gameMode)), m_laserApproachIndicator(chartData), m_moviePanel(MovieFilePath(chartData, parentPath), chartData.bg.legacy.movie.offset / 1000.0 / playOption.nonZeroPlaybackSpeed(), playOption.playbackSpeed, playOption.movieEnabled), m_playOption(playOption), m_layerTilt(chartData.bg.legacy.layer.rotation.tilt && !ModDiagnostics::Arguments().contains(U"--vertical-preview-layer-static")), m_layerSpin(chartData.bg.legacy.layer.rotation.spin && !ModDiagnostics::Arguments().contains(U"--vertical-preview-layer-static")), m_layerFrameOriginTimeSec(-TimeSecBeforeStart(m_moviePanel.isEnabled()).count()), m_layerFrameOriginPulse(static_cast<kson::Pulse>(kson::SecToPulseDouble(m_layerFrameOriginTimeSec, chartData.beat, timingCache)))
+		  m_tunnelWarp(VerticalBackdropMesh(true, Size{ 720, 640 }, &m_camera), m_vertical && m_depthEnabled), m_bgTextures(LoadBGTextures(chartData, parentPath)), m_verticalBGMeshes{ Mesh{ VerticalBackdropMesh(false, m_bgTextures[0].size()) }, Mesh{ VerticalBackdropMesh(false, m_bgTextures[1].size()) } }, m_bgTransform(GameRender::VerticalEnabled() ? VerticalBackdrop(m_camera, kBGBillboardPosition) : BackgroundBillboard(m_camera, kBGBillboardPosition, kBGBillboardSize)), m_layerFrameTextures(LoadLayerFrameTextures(LayerFilePath(chartData, parentPath))), m_layerTransform(GameRender::VerticalEnabled() ? VerticalBackdrop(m_camera, kLayerBillboardPosition) : m_camera.billboard(kLayerBillboardPosition, kLayerBillboardSize)), m_highway3DGraphics(chartData, fxChipKeySoundPulses), m_jdgoverlay3DGraphics(m_camera), m_hudCanvas(LoadHUDCanvas()), m_gaugePanel(ToGaugeCalcType(playOption.gaugeType, playOption.gameMode)), m_laserApproachIndicator(chartData), m_moviePanel(MovieFilePath(chartData, parentPath), chartData.bg.legacy.movie.offset / 1000.0 / playOption.nonZeroPlaybackSpeed(), playOption.playbackSpeed, playOption.movieEnabled), m_playOption(playOption), m_layerTilt(chartData.bg.legacy.layer.rotation.tilt && !ModDiagnostics::Arguments().contains(U"--vertical-preview-layer-static")), m_layerSpin(chartData.bg.legacy.layer.rotation.spin && !ModDiagnostics::Arguments().contains(U"--vertical-preview-layer-static")), m_layerFrameOriginTimeSec(-TimeSecBeforeStart(m_moviePanel.isEnabled()).count()), m_layerFrameOriginPulse(static_cast<kson::Pulse>(kson::SecToPulseDouble(m_layerFrameOriginTimeSec, chartData.beat, timingCache)))
 	{
 		const String layerName = Unicode::FromUTF8(chartData.bg.legacy.layer.filename);
 		const FilePath logicalLayer = FileSystem::Extension(layerName).isEmpty() ? U"imgs/bg/{}.gif"_fmt(layerName) : FileSystem::PathAppend(parentPath, layerName);
@@ -606,7 +606,7 @@ namespace MusicGame::Graphics
 		{
 			const double preStartOffset = m_moviePanel.isEnabled() ? kPreStartOffsetWithMovieSec : kPreStartOffsetSec;
 			const double totalDurationSec = bgmDuration.count() + preStartOffset;
-			const double progress = Clamp(gameStatus.currentTimeSec / totalDurationSec, 0.0, 1.0);
+			const double progress = Clamp((gameStatus.currentTimeSec + preStartOffset) / totalDurationSec, 0.0, 1.0);
 
 			m_hudCanvas->setParamValues({
 				{ U"positionMarkerProgress", progress },

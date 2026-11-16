@@ -10,7 +10,7 @@ namespace
 			return defaultValue;
 		}
 
-		return static_cast<T>(Parse<int32>(values[index]));
+		return static_cast<T>(ParseOr<int32>(values[index], static_cast<int32>(defaultValue)));
 	}
 }
 
@@ -45,7 +45,7 @@ KscValue KscValue::applyPlayResultForCourse(const MusicGame::PlayResult& playRes
 		.percent = Max(percent, playResult.gaugePercentForHighScore()),
 		.maxCombo = Max(maxCombo, playResult.maxCombo),
 		.playCount = playCount + 1,
-		.clearCount = clearCount,
+		.clearCount = clearCount + (playResult.achievement() >= Achievement::kFullCombo ? 1 : 0),
 		.fullComboCount = fullComboCount + (playResult.achievement() >= Achievement::kFullCombo ? 1 : 0),
 		.perfectCount = perfectCount + (playResult.achievement() >= Achievement::kPerfect ? 1 : 0),
 	};

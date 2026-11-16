@@ -66,12 +66,27 @@ public:
 		int32 currentDifficultyIdx,
 		int32 delta) const override;
 
+	virtual bool handleDifficultyClick(
+		const SelectMenuEventContext& context,
+		int32 clickedDifficultyIdx) const override;
+
 	[[nodiscard]]
 	virtual bool isFavoriteRegisterableItemType() const override;
+
+	[[nodiscard]]
+	virtual bool isLevelSortSongItem() const override;
 
 	virtual void setCanvasParamsCenter(const SelectMenuEventContext& context, noco::Canvas& canvas, int32 difficultyIdx) const override;
 
 	virtual void setCanvasParamsTopBottom(const SelectMenuEventContext& context, noco::Canvas& canvas, int32 difficultyIdx, StringView tag) const override;
+
+	[[nodiscard]]
+	virtual FilePath jacketFilePathCenter(int32 difficultyIdx) const override;
+
+	[[nodiscard]]
+	virtual FilePath jacketFilePathTopBottom(int32 difficultyIdx) const override;
+
+	virtual void requestGlyphPreload(int32 difficultyIdx) const override;
 
 	virtual void showInFileManager(int32 difficultyIdx) const override;
 

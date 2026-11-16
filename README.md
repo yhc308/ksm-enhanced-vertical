@@ -1,12 +1,14 @@
+> **KSM 2.2.0 移行テスト用ブランチです。2.1.0版は従来のブランチ・配布物に保持されています。まだ公開リリースではありません。**
+
 # KSM Enhanced Vertical Mod (Windows x64 専用)
 
-[0.5.4-beta4 更新・設定移行ガイド](https://github.com/yhc308/ksm-enhanced-vertical-mod/blob/main/docs/UPDATE_0.5.4-beta4.md)
-**K-Shoot Mania 2.1.0を縦画面でも楽しめるように拡張する非公式Modです。**
+[2.2.0 移行・検証内容](docs/MIGRATION_2.2.0.md) · [原作変更の対応表](docs/MIGRATION_2.2.0_UPSTREAM.md)
+**K-Shoot Mania 2.2.0を縦画面でも楽しめるように拡張する非公式Modです。**
 縦画面プレイ、スキンプリセット、画面のカスタマイズ、EXスコア、HARD+APS、判定タイミング設定、一部のASIO機能を提供します。
 
-[独立Modリポジトリ](https://github.com/yhc308/ksm-enhanced-vertical-mod) · [ダウンロード](https://github.com/yhc308/ksm-enhanced-vertical-mod/releases/tag/v0.5.1-beta1) · [開発ガイド](REVIEW.md) · [原作のビルド・貢献案内](docs/UPSTREAM_README.md)
+[独立Modリポジトリ](https://github.com/yhc308/ksm-enhanced-vertical-mod) · [既存2.1.0版の配布](https://github.com/yhc308/ksm-enhanced-vertical-mod/releases) · [開発ガイド](REVIEW.md) · [原作のビルド・貢献案内](docs/UPSTREAM_README.md)
 
-このフォークは、原作のGit履歴を保持したModの全体ソースを提供します。インストーラーの配布と利用者向けの案内は、[独立Modリポジトリ](https://github.com/yhc308/ksm-enhanced-vertical-mod)をご覧ください。最新の統合ソースは `enhanced-vertical` ブランチにあります。
+このフォークは、原作のGit履歴を保持したModの全体ソースを提供します。インストーラーの配布と利用者向けの案内は、[独立Modリポジトリ](https://github.com/yhc308/ksm-enhanced-vertical-mod)をご覧ください。2.2.0版の検証ソースは `feature/ksm-2.2.0` ブランチに分離しています。従来の `enhanced-vertical` は2.1.0版です。
 
 ## 主な機能
 

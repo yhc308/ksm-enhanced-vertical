@@ -34,7 +34,8 @@ namespace MusicGame::Graphics
 		Float3 m_displayNoteAnchor{ 0, 0, 0 };
 
 	public:
-		Highway3DGraphics();
+		/// @param fxChipKeySoundPulses キー音付きFXチップノーツのpulse(配置後のレーン基準)
+		explicit Highway3DGraphics(const kson::ChartData& chartData, const std::array<HashSet<kson::Pulse>, kNumSRandomLanesSZ>& fxChipKeySoundPulses);
 
 		void update(const ViewStatus& viewStatus, const BasicCamera3D* displayCamera = nullptr);
 		const Vertical::LaneSpan& displayLaneSpan() const { return m_displayLaneSpan; }

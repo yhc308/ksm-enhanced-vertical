@@ -22,7 +22,7 @@
     "TurnSRandom": " S-RANDOM ",
     "PlaybackSpeed": "SONG SPEED: ",
     "AssistTick": "ASSIST TICK:  ",
-    "AssistTickOff": "    OFF     ",
+    "AssistTickOff": "     关     ",
     "AssistTickAuto": "    AUTO    ",
     "AssistTickInput": "   INPUT    ",
     "AutoSync": "Auto Sync:    ",
@@ -31,8 +31,8 @@
     "AutoSyncOnLow": "  开 (Low)  ",
     "AutoSyncOff": "    关     ",
     "FastSlow": "FAST/SLOW:    ",
-    "FastSlowHide": "    OFF     ",
-    "FastSlowShow": "   ORIGIN   ",
+    "FastSlowHide": "    隐藏    ",
+    "FastSlowShow": "    显示    ",
     "FastSlowNew": "    NEW+    ",
     "TimingPosition": "TIMING POSITION:",
     "TimingMsDisplay": "±ms DISPLAY:",
@@ -48,7 +48,8 @@
     "PlayStatsClear": "  CLEAR  : ",
     "PlayStatsFullCombo": "FULLCOMBO: ",
     "PlayStatsPerfect": " PERFECT : ",
-    "SearchCloseResult": "关闭搜索结果"
+    "SearchCloseResult": "关闭搜索结果",
+    "AssistTickOn": "     开     "
   },
   "Play": {
     "ErrorChartFileNotFound": "找不到谱面文件。",
@@ -96,7 +97,7 @@
     "LaserInputTypeMouseXY": "鼠标 X/Y 信号 (手台用)",
     "LaserInputTypeSlider": "滑块信号 (手台用)",
     "LaserInputTypeAnalogStickXY": "摇杆 X/Y 信号 (循环)",
-    "AssistTickOff": "OFF",
+    "AssistTickOff": "关",
     "AssistTickAuto": "AUTO",
     "AssistTickInput": "INPUT",
     "DisableIMEOff": "关",
@@ -149,7 +150,7 @@
     "ItemAlwaysShowOtherFolders": "始终显示其他文件夹",
     "ItemHideAllFolder": "隐藏\"All\"文件夹",
     "ItemMasterVolume": "主音量",
-    "ItemAudioBackend": "音频输出（重启后生效）",
+    "ItemAudioBackend": "音频输出方式 (重启后生效)",
     "ItemVsync": "垂直同步",
     "ItemDefaultBTJudgmentMode": "BT 音符默认判定模式",
     "ItemDefaultFXJudgmentMode": "FX 音符默认判定模式",
@@ -171,12 +172,23 @@
     "ItemHispeedTypeOMod": "Hi-Speed 25 - 2000",
     "ItemHispeedTypeCMod": "Hi-Speed C 25 - 2000",
     "ItemHideMouseCursor": "隐藏鼠标光标",
-    "ItemEnableMouseUIInput": "允许用鼠标操作游戏画面",
+    "ItemEnableMouseUIInput": "允许用鼠标点击操作游戏画面",
     "ItemAssignRightClickToBack": "将右键分配给Back按钮",
     "ItemUseNumpadAsArrowKeys": "使用数字键盘作为方向键 (用于带数字键盘的控制器)",
     "ItemShowTranslitKana": "将含假名的曲名・艺术家名以拉丁字母显示",
     "ItemShowTranslitHangul": "将含谚文的曲名・艺术家名以拉丁字母显示",
-    "ItemShowTranslitKanji": "将含汉字的曲名・艺术家名以拉丁字母显示"
+    "ItemShowTranslitKanji": "将含汉字的曲名・艺术家名以拉丁字母显示",
+    "AssistTickOn": "开",
+    "HeadingScreen": "屏幕设置",
+    "HeadingDisplay": "显示设置",
+    "HeadingSound": "声音设置",
+    "HeadingJudgment": "判定设置",
+    "HeadingTimingAdjustment": "时机设置",
+    "HeadingLaserInput": "LASER 输入设置",
+    "HeadingKeyboardButton": "键盘・按键设置",
+    "HeadingHispeedType": "Hi-Speed 设置",
+    "HeadingMouseKeyboard": "鼠标・键盘设置",
+    "HeadingTranslit": "拉丁字母显示设置"
   },
   "InputGate": {
     "BulkDownloadConfirm": "有 {0} 个可输入的谱面。\n是否一次全部下载？"
@@ -286,6 +298,7 @@
     "SkinHelpText": "在游戏文件夹的 skins/ 下添加皮肤文件夹，例如 skins/skin_1/，即可添加皮肤。\n\n缺失图像处理设为 Default 时，当前皮肤中缺少的图像会使用 imgs/ 中的原始图像补充。选择 Yellow，可用黄色标记检查皮肤缺失的图像。",
     "RememberEffRate": "退出游戏后保留所选EFF.RATE",
     "AsioJudgmentCorrection": "ASIO附加判定校正",
-    "AsioJudgmentCorrectionHelp": "正值提前判定时刻并减小FAST误差。按当前ASIO设备保存。"
+    "AsioJudgmentCorrectionHelp": "正值提前判定时刻并减小FAST误差。按当前ASIO设备保存。",
+    "GameplaySettingsHeading": "游玩设置"
   }
 }
