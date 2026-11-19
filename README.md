@@ -8,7 +8,7 @@
 
 [独立Modリポジトリ](https://github.com/yhc308/ksm-enhanced-vertical-mod) · [2.2.0版ダウンロード](https://github.com/yhc308/ksm-enhanced-vertical-mod/releases/tag/v0.5.5-Beta5) · [従来の2.1.0版](https://github.com/yhc308/ksm-enhanced-vertical-mod/releases/tag/v0.5.4-beta4) · [開発ガイド](REVIEW.md) · [原作のビルド・貢献案内](docs/UPSTREAM_README.md)
 
-このフォークは、原作のGit履歴を保持したModの全体ソースを提供します。インストーラーの配布と利用者向けの案内は、[独立Modリポジトリ](https://github.com/yhc308/ksm-enhanced-vertical-mod)をご覧ください。既定の `enhanced-vertical` ブランチに最新の2.2.0版を統合しています。`feature/ksm-2.2.0` は同じバージョンの開発用ブランチです。旧2.1.0版とその履歴は `legacy/ksm-2.1.0` および既存のリリースタグに保持しています。
+このフォークは、原作のGit履歴を保持したModの全体ソースを提供します。インストーラーの配布と利用者向けの案内は、[独立Modリポジトリ](https://github.com/yhc308/ksm-enhanced-vertical-mod)をご覧ください。既定の `enhanced-vertical` ブランチに最新の2.2.0版を統合しています。旧2.1.0版とその履歴は `legacy/ksm-2.1.0` および既存のリリースタグに保持しています。
 
 ## 主な機能
 
