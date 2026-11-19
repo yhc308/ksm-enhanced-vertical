@@ -506,3 +506,6 @@ __pycache__/
 
 # Local migration packages are never source inputs
 /releases_QA/
+
+# Upstream version maintenance policy
+!/docs/UPSTREAM_UPDATE_POLICY.md

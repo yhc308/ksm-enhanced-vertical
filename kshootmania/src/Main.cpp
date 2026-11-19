@@ -402,7 +402,7 @@ void KSMMain()
 	LicenseManager::DisableDefaultTrigger();
 
 	// ウィンドウタイトル
-	Window::SetTitle(U"K-Shoot Mania V2.2.0 - Enhanced Vertical Mod 0.5.4-beta4 (Unofficial Build)");
+	Window::SetTitle(U"K-Shoot Mania V2.2.0 - Enhanced Vertical Mod 0.5.5-Beta5 (Unofficial Build)");
 
 	// カレントディレクトリを設定
 	// (ChangeCurrentDirectoryはここ以外は基本的に使用禁止。どうしても使う必要がある場合は必ずResourceDirectoryPathに戻すこと)
